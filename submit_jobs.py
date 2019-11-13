@@ -8,30 +8,15 @@ Created on Fri Jun 21 11:08:01 2019
 import numpy as np
 import math
 import os
-from wrf_related import wrf_vertical_stretching_2
+import vertical_grid
 import pandas as pd
 import datetime
 import argparse
 import sys
 import glob
-import tools
-#import time
+import misc
 
-def find_nproc(n, method=0, denom=25):
-    if n <= denom:
-        return 1
-    elif method == 0:
-        return math.floor(n/denom)
-    else:
-        for d in np.arange(denom, n+1):
-            if n%d==0:
-                return int(n/d)
 
-def bool_to_fort(b):
-    if b:
-        return ".true."
-    else:
-        return ".false."
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--init",
                     action="store_true", dest="init", default = False,
@@ -54,9 +39,6 @@ parser.add_argument("-d", "--debug",
 parser.add_argument("-p", "--pool",
                     action="store_true", dest="pool_jobs", default = False,
                     help="Gather jobs before submitting")
-# parser.add_argument("--res",
-#                     action="store", type=float, nargs="+", dest="res", default = None,
-#                     help="Gather jobs before submitting")
 
 
 options = parser.parse_args()
@@ -78,7 +60,7 @@ param_grid = dict(
             c1={"dx" : [125,4000,4000,4000], "bl_pbl_physics": [0,1,5,7], "dz0" : [10,50,50,50], "nz" : [350,60,60,60], "composite_name": ["LES", "MYJ", "MYNN", "ACM2"]})
 #dx=[4000, 2000, 1000, 500, 250, 125, 62.5]# hor. grid spacings in meter
 
-param_combs, param_grid_flat, composite_params = tools.grid_combinations(param_grid)
+param_combs, param_grid_flat, composite_params = misc.grid_combinations(param_grid)
 a = {}
 
 start_time = "2018-06-20_00:00:00" #"2018-06-20_20:00:00"
@@ -97,12 +79,10 @@ use_gridpoints = True #True
 a["ztop"] = 15000 #15000
 a["nz"] = 122 #176
 a["dz0"] = 20 #10
-#dz_method = {100 : 1, 200 : 1, 1000: 0, 2000: 0} #0
 a["dz_method"] = 0
 a["dt"] = None #1
 
 a["input_sounding"] = "schlemmer_stable"
-#input_soundings = ["schlemmer_stable_u_5"]
 a["topo"] = "flat"#, "cos"]
 
 a["spec_hfx"] = None #None specified surface heat flux instead of radiation
@@ -262,8 +242,8 @@ for i in range(len(combs)):
     if (r in nslots_dict) and (nslots_dict[r] is not None):
         nx, ny = nslots_dict[r]
     else:
-        nx = find_nproc(args["e_we"]-1, method=np_method, denom=np_denom)
-        ny = find_nproc(args["e_sn"]-1, method=np_method, denom=np_denom)
+        nx = misc.find_nproc(args["e_we"]-1, method=np_method, denom=np_denom)
+        ny = misc.find_nproc(args["e_sn"]-1, method=np_method, denom=np_denom)
     if (nx == 1) and (ny == 1):
         nx = -1
         ny = -1
@@ -285,7 +265,7 @@ for i in range(len(combs)):
     args["e_vert"] = args["nz"]
     args["zdamp"] = int(args["ztop"]/3)
 
-    eta, dz = wrf_vertical_stretching_2.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
+    eta, dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
                                                       dz0=args["dz0"], plot=False, table=False)
 
     eta_levels = "'" + ",".join(eta.astype(str)) + "'"
@@ -362,8 +342,8 @@ for i in range(len(combs)):
             new_dtypes[arg] = typ
 
         args_str = args_df.astype(new_dtypes).iloc[0].to_dict()
-        args_str["init_pert"] = bool_to_fort(args_str["init_pert"])
-        args_str["const_sw"] = bool_to_fort(args_str["const_sw"])
+        args_str["init_pert"] = misc.bool_to_fort(args_str["init_pert"])
+        args_str["const_sw"] = misc.bool_to_fort(args_str["const_sw"])
         args_str = str(args_str).replace("{","").replace("}","").replace("'","").replace(":","").replace(",","")
         args_str = args_str +  " iofields_filename " + iofile
         args_str += " eta_levels " + eta_levels
@@ -431,10 +411,6 @@ for i in range(len(combs)):
                 if one_frame:
                     outname += "_<date>"
 
-    #                    elif outfile == "pbase":
-    #                        hist_paths = r'''{} {} ""'''.format(hist_paths, stream)
-    #                        continue
-
                 hist_paths = r'''{} {} "{}"'''.format(hist_paths, stream, outname)
 
             args_str = args_str + hist_paths
@@ -466,7 +442,6 @@ for i in range(len(combs)):
                 if run_h == 0:
                     continue
                 rtri = runtime_per_step[r] * run_h/dt * rt_buffer
-               # rtri = "{:02d}:{:02d}:00".format(math.floor(rtri), math.ceil((rtri - math.floor(rtri))*60))
                 rst_opt = "restart .true. start_year {} start_month {} start_day {} start_hour {} start_minute {} start_second {} run_hours {}".format(*rst_date, *rst_time, run_h)
                 os.makedirs("{}/bk/".format(outpath), exist_ok=True)
                 bk_files = glob.glob("{}/bk/*{}".format(outpath, IDr))
@@ -541,25 +516,3 @@ for i in range(len(combs)):
                 pi += 1
 
 
-                #time.sleep(1)
-                #%%
-    #jobs = ""
-    #nslots = ""
-    #j=0
-    #r=125
-    #for i in ["stable", "unstable"]:
-    #    for rep in np.arange(3):
-    #        #for r in [1000,2000,4000]:
-    #            j+=1
-    #            jobs += 'cos_schlemmer_{}_{}_{} '.format(i, int(r), rep)
-    #            nslots += '4 '
-    #
-    #print('jobs="{}"'.format(jobs[:-1]))
-    #print('nslots="{}"'.format(nslots[:-1]))
-    #r62 = 48*(16*.7)/24
-    #r125 = 48*(8*.7)/24
-    #r250 = 48*(4*.3)/24
-    #r500 = 48*(2*.3)/24
-    #rx1000 = 3*48*(2*.2)/24
-    #r125 + r250 + r500 + rx1000
-    #
