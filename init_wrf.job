@@ -1,0 +1,166 @@
+#!/bin/bash
+
+#$ -q std.q
+#$ -cwd
+#$ -N wrf
+#$ -o /scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID_init.out
+#$ -e /scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID_init.err
+
+# -j yes
+#$ -l h_rt=00:10:00
+#$ -M matthias.goebel@uibk.ac.at
+#$ -m a
+# -m n
+#$ -l h_vmem=20G
+#$ -l h_stack=128M
+
+# -pe openmpi-fillup 4
+
+
+set -e
+
+#~ echo $id
+#~ echo $wrfv
+#~ echo $wrf_args
+
+if [ -z $ENVIRONMENT ]
+then
+  #~ if  [ $HOSTNAME = "pc45-c707" ]
+  #~ then
+  home_dir=$HOME
+  #~ else
+    #~ home_dir="$SCRATCH"
+  #~ fi
+  ulimit -s unlimited
+
+  JOB_NAME=$1
+  shift
+  wrfv=$1
+  shift
+  ideal_case=$1
+  shift
+  sleep=$1
+  shift
+  input_sounding=$1
+  shift
+  nx=$1
+  shift
+  ny=$1
+  shift
+  wrf_args=$1
+  set -o errexit
+
+
+  
+else
+  echo "start cluster job"
+  home_dir="$SCRATCH"
+  if [ -d $homedir/parallel_studio_2019 ]
+  then
+    module purge
+    export NETCDF="${home_dir}/netcdf"
+    source ${home_dir}/parallel_studio_2019/parallel_studio_xe_2019.4.070/bin/psxevars.sh
+  else
+    module load intel/18.0u1 netcdf-4
+  fi
+
+fi
+
+build_dir="${home_dir}/wrf/builds/$wrfv"
+run_dir="${home_dir}/wrf/runs/WRF_$JOB_NAME"
+wrf_case_dir="${build_dir}/test/$ideal_case"
+cd $wrf_case_dir
+
+ #~ module load intel netcdf-4 openmpi hdf5 netcdf
+#~ export HDF5=${UIBK_HDF5_LIB%%/lib}
+#~ export PHDF5=${UIBK_HDF5_LIB%%/lib}
+#~ export NETCDF=${UIBK_NETCDF_4_LIB%%/lib}
+#~ export NETCDF=/usr/site/hpc/x86_64/glibc-2.12/gulftown/netcdf/4.1.3/intel-12.1
+#echo OMP_STACKSIZE $OMP_STACKSIZE 
+#ulimit -s 1000000
+#export OMP_STACKSIZE=512M
+#export OMP_NUM_THREADS=$NSLOTS
+#~ while [ -f used.tmp ] #wait until previous process has finished preparing
+#~ do
+  #~ sleep 5
+  #~ echo "waiting for previous job to finish preparing"
+#~ done
+#~ sleep 20
+#~ echo "preparing $JOB_NAME" > used.tmp
+
+echo "Copy files"
+
+rm $run_dir -rf
+mkdir -p $run_dir
+cd $run_dir
+
+#~ echo "linking"
+trans="cp" #"ln -sf"
+$trans ${build_dir}/run/RRTM* .
+$trans ${build_dir}/run/LANDUSE.TBL .
+$trans ${build_dir}/run/SOILPARM.TBL .
+$trans ${build_dir}/run/VEGPARM.TBL .
+$trans ${build_dir}/run/GENPARM.TBL .
+$trans ${build_dir}/run/ozone* .
+$trans ${build_dir}/run/p3* .
+$trans ${build_dir}/main/wrf.exe .
+$trans ${build_dir}/main/ideal.exe .
+#~ $trans ${build_dir}/run/freezeH2O.dat .
+#~ $trans ${build_dir}/run/qr_acr* .
+cp -u -r $wrf_case_dir/* $run_dir
+
+
+input_sounding_org="input_sounding"
+rm -f $input_sounding_org
+cp ${input_sounding_org}_${input_sounding} ${input_sounding_org}
+
+readonly LOG_FILE="init.log"
+readonly ERR_FILE="init.err"
+touch $LOG_FILE
+touch $ERR_FILE
+exec 1>$LOG_FILE
+exec 2>$ERR_FILE
+
+
+echo "create namelist"
+echo $wrf_args
+
+#~ echo "bash ${home_dir}/phd/code/search_replace.sh namelist.input namelist.$JOB_NAME $wrf_args"
+source ${home_dir}/phd/code/search_replace.sh namelist.input namelist.$JOB_NAME $wrf_args
+cp namelist.$JOB_NAME namelist.input 
+
+echo
+echo "Running ideal"
+echo
+
+echo "sleep $sleep s"
+sleep $sleep
+
+
+./ideal.exe
+wait
+
+
+if [[ ${wrfv} == *"mpi"* ]]
+then
+  cat rsl.error.0000
+  #~ slot_comm="-pe openmpi-fillup ${slots}"
+  source ${home_dir}/phd/code/search_replace.sh namelist.input namelist.input nproc_x $nx nproc_y $ny
+fi
+
+
+#~ if [ ${init_only} = "True" ]
+#~ then
+  #~ exit
+#~ fi
+
+
+#cp namelist.$JOB_NAME namelist.input 
+
+
+#~ if [ $HOSTNAME = "pc45-c707" ]
+#~ then
+  #~ bash ${home_dir}/phd/code/run_wrf.job $slots $JOB_NAME $wrfv
+#~ else
+  #~ qsub -N $JOB_NAME -q $queue $slot_comm -l h_rt=$rt -l h_vmem=$vmem -v wrfv='$wrfv' ${home_dir}/phd/code/run_wrf.job
+#~ fi
