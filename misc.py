@@ -3,6 +3,8 @@
 """
 Created on Wed Nov 13 19:22:36 2019
 
+Miscellaneous functions for submit_jobs.py
+
 @author: c7071088
 """
 
@@ -13,17 +15,38 @@ import pandas as pd
 import math
 
 
-def find_nproc(n, method=0, denom=25):
-    if n <= denom:
+def find_nproc(n, min_n_per_proc=25, even_split=False):
+    """
+    Find number of processors needed for a given number grid points in WRF.
+
+    Parameters
+    ----------
+    n : int
+        number of grid points
+    min_n_per_proc : int, optional
+        Minimum number of grid points per processor. The default is 25.
+    even_split : bool, optional
+        Force even split of grid points between processors.
+
+    Returns
+    -------
+    int
+        number of processors.
+
+    """
+
+    if n <= min_n_per_proc:
         return 1
-    elif method == 0:
-        return math.floor(n/denom)
-    else:
-        for d in np.arange(denom, n+1):
+    elif even_split:
+        for d in np.arange(min_n_per_proc, n+1):
             if n%d==0:
                 return int(n/d)
+    else:
+        return math.floor(n/min_n_per_proc)
+
 
 def bool_to_fort(b):
+    """Convert python boolean to fortran boolean (as str)."""
     if b:
         return ".true."
     else:
@@ -40,16 +63,14 @@ def transpose_list(l):
 
     Returns
     -------
-    list
+    list :
         transposed list.
 
     """
     return list(map(list, zip(*l)))
 
 def flatten_list(l):
-    """
-    Flattens list. Works for list elements that are lists or tuples
-    """
+    """Flattens list-like variables. Works for lists, tuples and numpy arrays."""
     flat_l = []
     for item in l:
         if type(item) in [list, tuple, np.ndarray]:

@@ -14,8 +14,6 @@
 #$ -l h_vmem=20G
 #$ -l h_stack=128M
 
-# -pe openmpi-fillup 4
-
 
 set -e
 
@@ -24,6 +22,7 @@ then
   home_dir="$HOME"
   ulimit -s unlimited
   set -o errexit
+  wrf_args=$1
 
 else
   echo "start cluster job"

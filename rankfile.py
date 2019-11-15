@@ -3,24 +3,18 @@
 """
 Created on Wed Aug  7 18:25:41 2019
 
+Produce rankfile to pin jobs to certain processors.
+
 @author: c7071088
 """
 
 import sys
 from collections import Counter
 
-#           rank 0=aa slot=1
-#           rank 1=bb slot=8
-#           rank 2=cc slot=6
 
-#print(sys.argv)
 hosts = sys.argv[1]
 si = int(sys.argv[2])
 ns = int(sys.argv[3])
-
-#hosts = "n015 n015 n015 n015 n015 n015 n015 n045 n045 n045 n045 n019 n019 n032 n016 n016"
-#si = 6
-#ns = 4
 
 hosts = hosts.split(" ")
 hosts = Counter(hosts)

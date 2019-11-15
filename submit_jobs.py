@@ -3,6 +3,8 @@
 """
 Created on Fri Jun 21 11:08:01 2019
 
+Automatically initialize and run idealized experiments in WRF on a single computer or cluster.
+
 @author: c7071088
 """
 import numpy as np
@@ -15,38 +17,39 @@ import argparse
 import sys
 import glob
 import misc
+from collections import OrderedDict as odict
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--init",
                     action="store_true", dest="init", default = False,
                     help="Initialize simulations")
+parser.add_argument("-r", "--restart",
+                    action="store_true", dest="restart", default = False,
+                    help="Restart simulations")
+parser.add_argument("-o", "--outdir",
+                    action="store", dest="outdir", default = None,
+                    help="Gather jobs before submitting")
+parser.add_argument("-d", "--debug",
+                    action="store_true", dest="debug", default = False,
+                    help="Run wrf in debugging mode")
+parser.add_argument("-q", "--qsub",
+                    action="store_true", dest="use_qsub", default = False,
+                    help="Use qsub to submit jobs")
 parser.add_argument("-t", "--test",
                     action="store_true", dest="check_args", default = False,
                     help="Only test python script (no jobs sumitted)")
 parser.add_argument("-c", "--cluster",
                     action="store_true", dest="force_cluster", default = False,
-                    help="Force cluster settings")
-parser.add_argument("-q", "--qsub",
-                    action="store_true", dest="use_qsub", default = False,
-                    help="Use qsub to submit jobs")
-parser.add_argument("-r", "--restart",
-                    action="store_true", dest="restart", default = False,
-                    help="Restart simulations")
-parser.add_argument("-d", "--debug",
-                    action="store_true", dest="debug", default = False,
-                    help="Run wrf in debugging mode")
+                    help="Force cluster settings (for test purposes)")
 parser.add_argument("-p", "--pool",
                     action="store_true", dest="pool_jobs", default = False,
                     help="Gather jobs before submitting")
-parser.add_argument("-o", "--outdir",
-                    action="store", dest="outdir", default = None,
-                    help="Gather jobs before submitting")
+
 
 
 options = parser.parse_args()
 
-dx_ind = [62.5, 125, 250]
 #%%
 '''Simulations settings'''
 
@@ -58,7 +61,7 @@ outdir = "test/qbudget" #subdirectory for WRF output if not set in command line
 if options.outdir is not None:
     outdir = options.outdir
 
-outpath =  os.path.join(os.environ["wrf_res"] + outdir) #WRF output path
+outpath = os.path.join(os.environ["wrf_res"], outdir, "") #WRF output path
 wrfpath = os.environ["wrf_runs"] #path where run directories of simulations will be created
 
 
@@ -69,15 +72,15 @@ wrfpath = os.environ["wrf_runs"] #path where run directories of simulations will
 #             input_sounding=["schlemmer_stable","schlemmer_unstable"],
 #             topo=["cos", "flat"])
 
-param_grid = dict(
+param_grid = odict(
             c1={"dx" : [125,4000,4000,4000], "bl_pbl_physics": [0,1,5,7], "dz0" : [10,50,50,50], "nz" : [350,60,60,60], "composite_name": ["LES", "MYJ", "MYNN", "ACM2"]})
-param_grid = dict(
+param_grid = odict(
             c1={"dx" : [4000], "bl_pbl_physics": [7], "dz0" : [50], "nz" : [60], "composite_name": ["ACM2"]})
 
 param_combs, param_grid_flat, composite_params = misc.grid_combinations(param_grid)
 a = {}
 
-#Set additional namelist parameters (only applies if they are not present in param_grid) 
+#Set additional namelist parameters (only applies if they are not present in param_grid)
 #any namelist parameters and some additional ones can be used
 
 start_time = "2018-06-20_00:00:00" #"2018-06-20_20:00:00"
@@ -92,9 +95,11 @@ a["lx"] = 50 #16000, horizontal extent in east west (m)
 a["ly"] = 50 #4000, minimum horizontal extent in north south (m)
 use_gridpoints = True #use minimum number of grid points set below
 a["gridpoints"] = 2 #16, minimum number of grid points in each direction -1
+force_domain_multiple = True #if use_gridpoints: force domain with x and y extents that are multiples of lx and ly, respectively
 
 #vertical grid
 a["ztop"] = 15000 #15000, top of domain (m)
+a["zdamp"] = int(a["ztop"]/3) #depth of damping layer (m)
 a["nz"] = 122 #176, number of vertical levels
 a["dz0"] = 20 #10, height of first model level (m)
 a["dz_method"] = 0 #method for creating vertical grid as defined in vertical_grid.py
@@ -114,7 +119,6 @@ a["bl_mynn_edmf_tke"] = 1
 a["scalar_pblmix"] = 1
 a["topo_shading"] = 1
 a["slope_rad"] = 1
-a["auxhist7_interval"] = 10
 
 #custom namelist parameters (not available in official WRF)
 a["topo"] = "flat"#, "cos"] #topography type
@@ -123,6 +127,11 @@ a["pert_res"] = 4000 #resolution below which initial perturbations are used
 no_pert = False
 all_pert = False
 
+#indices for output streams and their respective name and output interval (min); 0 is the standard output stream
+output_streams = {0: ["wrfout", 30], 7: ["fastout", 10], 8 : ["meanout", 30]}
+
+
+
 #%%
 '''Settings for resource requirements of SGE jobs'''
 queue = "std.q" #queue for SGE
@@ -130,24 +139,31 @@ use_rankfiles = False #use rankfiles to pin SGE jobs to certain hosts (necessary
 
 split_output_res = 0 #resolution below which to split output in one timestep per file
 
-vmem_init_per_grid = 30e3/(320*320)
-vmem_init_min = 2000
-vmem0 = 1450
-vmem_grad = -2.4
-min_vmem = 600
-vmem_pool = 2000
-vmem_buffer = 1.2
+#virtual memory: numbers need adjustment
+#TODO: approach is not optimized yet!
+vmem_init_per_grid_point = 0.3 #virtual memory (MB) per horizontal grid point to request for WRF initialization (ideal.exe)
+vmem_init_min = 2000 #minimum virtual memory (MB) for WRF initialization
 
+vmem_per_grid_point = 0.3 #virtual memory (MB) per horizontal grid point to request for running WRF (wrf.exe); will be divided by number of slots
+vmem_min = 600 #minimum virtual memory (MB) for running WRF
+vmem_pool = 2000 #virtual memory to request per slot if pooling is used
+
+vmem_buffer = 1.2 #buffer factor for virtual memory
+
+# runtime
 rt = None #None or job runtime in seconds
 rt_buffer = 1.5 #buffer factor to multiply rt with
 runtime_per_step = { 62.5 : 3., 100: 3., 125. : 3. , 250. : 1., 500: 0.5, 1000: 0.3, 2000.: 0.3, 4000.: 0.3}# if rt is None: runtime per time step in seconds for different dx
 
+# slots
 nslots_dict = {} #set number of slots for each resolution
-np_method = 0 #1, method to set number of slots in x and y direction
-np_denom = 16 #25, minimum number of grid points per slot
+min_n_per_proc = 16 #25, minimum number of grid points per processor
+even_split = False #1, force equal split between processors
 
 #%%
 '''Slot configurations for personal computer and cluster'''
+
+dx_ind = [62.5, 125, 250] #resolutions which have their own job pools (if pooling is used)
 
 if options.force_cluster or ("SCRATCH" in os.environ):
     cluster = True
@@ -165,11 +181,11 @@ else:
 if not os.path.isdir(outpath):
     os.makedirs(outpath)
 
-    
+
 #%%
 if not options.use_qsub:
     cluster = False
-outpath_esc = outpath.replace("/", "\/")
+outpath_esc = outpath.replace("/", "\/") #need to escape slashes
 if options.restart:
     init = False
 
@@ -200,6 +216,7 @@ if "dx" in param_grid_flat:
 else:
     dx = [a["dx"]]
 
+#combine param grid and additional settings
 combs = param_combs.copy()
 for param, val in a.items():
     if param not in combs:
@@ -231,7 +248,7 @@ for i in range(len(combs)):
 
     args["run_hours"] = run_hours
     if "dt" not in args:
-        args["dt"] = r/1000*6
+        args["dt"] = r/1000*6 #wrf rule of thumb
     dt = args["dt"]
 
     dt_int = math.floor(args["dt"])
@@ -244,51 +261,48 @@ for i in range(len(combs)):
     if use_gridpoints:
         args["e_we"] = max(math.ceil(args["lx"]/r), args["gridpoints"]) + 1
         lxr = (args["e_we"] -1)*r/args["lx"]
-        if lxr != int(lxr):
-            raise Exception("Domain must be multiple of lx")
+        if force_domain_multiple:
+            if lxr != int(lxr):
+                raise Exception("Domain size must be multiple of lx")
         args["e_sn"] = max(math.ceil(args["ly"]/r), args["gridpoints"]) + 1
     else:
         args["e_we"] = math.ceil(args["lx"]/r) + 1
         args["e_sn"] = math.ceil(args["ly"]/r) + 1
 
-    vmem_init = max(vmem_init_min, int(vmem_init_per_grid*args["e_we"]*args["e_sn"]))
+    vmem_init = max(vmem_init_min, int(vmem_init_per_grid_point*args["e_we"]*args["e_sn"]))
 
     if (nslots_dict is not None) and (r in nslots_dict) and (nslots_dict[r] is not None):
         nx, ny = nslots_dict[r]
     else:
-        nx = misc.find_nproc(args["e_we"]-1, method=np_method, denom=np_denom)
-        ny = misc.find_nproc(args["e_sn"]-1, method=np_method, denom=np_denom)
+        nx = misc.find_nproc(args["e_we"]-1, min_n_per_proc=min_n_per_proc, even_split=even_split )
+        ny = misc.find_nproc(args["e_sn"]-1, min_n_per_proc=min_n_per_proc, even_split=even_split )
     if (nx == 1) and (ny == 1):
         nx = -1
         ny = -1
     nx = min(max_nslotsx, nx)
     ny = min(max_nslotsy, ny)
 
-#        if nx*ny > max_nslots:
-#            red_f = max_nslots/(nx*ny)
-#            if nx < ny:
-#                nx = max(1, round(red_f**0.5*nx))
-#                ny = max(1, math.floor(max_nslots/nx))
-#            else:
-#                ny = max(1, round(red_f**0.5*ny))
-#                nx = max(1, math.floor(max_nslots/ny))
-#
     nslotsi = nx*ny
     nslots.append(nslotsi)
 
     args["e_vert"] = args["nz"]
-    args["zdamp"] = int(args["ztop"]/3)
-
     eta, dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
                                                       dz0=args["dz0"], plot=False, table=False)
 
     eta_levels = "'" + ",".join(eta.astype(str)) + "'"
     one_frame = False
-    if r <= split_output_res:
+    if r <= split_output_res: #split output in one timestep per file
         args["frames_per_outfile"] = 1
-        args["frames_per_auxhist7"] = 1
-        args["frames_per_auxhist8"] = 1
+        for out_ind in output_streams.keys():
+            if out_ind != 0:
+                args["frames_per_auxhist{}".format(out_ind)] = 1
         one_frame = True
+
+    for stream, (_, out_int) in output_streams.items():
+        if stream > 0:
+            args["auxhist{}_interval".format(stream)] = out_int
+        else:
+            args["history_interval_m"] = out_int
 
     if options.init:
         if "spec_hfx" in args:
@@ -324,12 +338,14 @@ for i in range(len(combs)):
             args["bl_mynn_edmf_tke"] = 0
             args["scalar_pblmix"] = 0
 
+        #choose surface layer scheme that is compatible with PBL scheme
         if pbl_scheme in [1,2,3,4,5,7,10]:
             sfclay_scheme = pbl_scheme
         elif pbl_scheme == 6:
             sfclay_scheme = 5
         else:
             sfclay_scheme = 1
+
         args["sf_sfclay_physics"] = sfclay_scheme
 
         if "init_pert" not in args:
@@ -340,22 +356,26 @@ for i in range(len(combs)):
             else:
                 args["init_pert"] = False
 
-
-        del_args =  ["dx", "nz", "dz0","dz_method", "gridpoints", "lx", "ly", "spec_hfx", "spec_sw",
+        # delete non-namelist parameters
+        del_args =  ["dx", "nz", "dz0","dz_method", "gridpoints", "lx", "ly", "spec_hfx", "spec_sw","composite_name",
                     "pert_res", "input_sounding", "repi", "n_rep", "isotropic_res", "pbl_res", "dt"]
         args_df = args.copy()
         for del_arg in del_args:
             if del_arg in args_df:
                 del args_df[del_arg]
+
         args_df = pd.DataFrame(args_df, index=[0])
+
+        #use integer datatype for integer parameters
         new_dtypes = {}
         for arg in args_df.keys():
             typ = args_df.dtypes[arg]
             if (typ == float) and (args_df[arg].dropna() == args_df[arg].dropna().astype(int)).all():
                 typ = int
             new_dtypes[arg] = typ
-
         args_str = args_df.astype(new_dtypes).iloc[0].to_dict()
+
+        #add a few more parameters
         args_str["init_pert"] = misc.bool_to_fort(args_str["init_pert"])
         args_str["const_sw"] = misc.bool_to_fort(args_str["const_sw"])
         args_str = str(args_str).replace("{","").replace("}","").replace("'","").replace(":","").replace(",","")
@@ -370,14 +390,14 @@ for i in range(len(combs)):
         args["nslots"] = nslotsi
 
     if rt is not None:
-        rtri = rt/3600
+        rtri = rt/3600 #runtime in hours
     else:
         rtri = runtime_per_step[r] * run_hours/dt * rt_buffer
     args["rtr"] = rtri
     args["nx"] = nx
     args["ny"] = ny
     for arg, val in args.items():
-        combs.loc[i, arg] = val
+        combs.loc[i, arg] = val #not needed; just for completeness of dataframe
 
     if options.debug:
         wrf_dir_i = wrf_dir_pre + "_debug"
@@ -394,20 +414,20 @@ for i in range(len(combs)):
         slot_comm = "-pe openmpi-{0}perhost {0}".format(pool_size)
         vmemi = vmem_pool
     else:
-        vmemi = int(vmem_buffer*max(min_vmem,vmem0 + vmem_grad*r))
+        vmemi = max(vmem_min, int(vmem_per_grid_point*args["e_we"]*args["e_sn"]))
     vmem.append(vmemi)
 
-
+    #create output ID for current configuration
     IDi = param_comb.copy()
     for p in IDi.keys():
         if (p in composite_params) and (p != "composite_name"):
             del IDi[p]
-
     IDi = "_".join(IDi.values.astype(str))
     IDi =  runID + "_" + IDi
+
     repi = args["repi"]
     n_rep = args["n_rep"]
-    for rep in range(repi, n_rep+repi):
+    for rep in range(repi, n_rep+repi): #repetion loop
         IDr = IDi + "_" + str(rep)
         IDs.append(IDr)
 
@@ -415,12 +435,17 @@ for i in range(len(combs)):
             print("")
 
             hist_paths = r""
-            for outfile, stream in zip(["wrfout", "meanout", "fastout"], ["history_outname", "auxhist8_outname", "auxhist7_outname"]):
-                outname = r"{}/{}_{}".format(outpath_esc, outfile, IDr)
+            for stream, (outfile, _) in output_streams.items():
+                outname = r"{}{}_{}".format(outpath_esc, outfile, IDr)
                 if one_frame:
                     outname += "_<date>"
 
-                hist_paths = r'''{} {} "{}"'''.format(hist_paths, stream, outname)
+                if stream == 0:
+                    stream_arg = "history_outname"
+                else:
+                    stream_arg = "auxhist{}_outname".format(stream)
+
+                hist_paths = r'''{} {} "{}"'''.format(hist_paths, stream_arg, outname)
 
             args_str = args_str + hist_paths
             comm_args =dict(wrfv=wrf_dir_i, ideal_case=ideal_case, input_sounding=args["input_sounding"],
@@ -429,10 +454,13 @@ for i in range(len(combs)):
                 comm_args_str = " ".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                 comm = r"qsub -q {} -l h_vmem={}M -N {} -v {} init_wrf.job".format(init_queue, vmem_init, IDr, comm_args_str)
             else:
+                d = {}
                 for p, v in comm_args.items():
                     os.environ[p] = str(v)
-                os.environ["JOB_NAME"] = IDr  
-                comm = "bash init_wrf.job"
+
+                os.environ["JOB_NAME"] = IDr
+                comm = "bash init_wrf.job '{}' ".format(args_str)
+
             print(comm)
             if not options.check_args:
                 os.system(comm)
@@ -457,12 +485,12 @@ for i in range(len(combs)):
                     continue
                 rtri = runtime_per_step[r] * run_h/dt * rt_buffer
                 rst_opt = "restart .true. start_year {} start_month {} start_day {} start_hour {} start_minute {} start_second {} run_hours {}".format(*rst_date, *rst_time, run_h)
-                os.makedirs("{}/bk/".format(outpath), exist_ok=True)
+                os.makedirs("{}/bk/".format(outpath), exist_ok=True) #move previous output in backup directory
                 bk_files = glob.glob("{}/bk/*{}".format(outpath, IDr))
                 if len(bk_files) != 0:
                     raise FileExistsError("Backup files for restart already present. Double check!")
                 os.system("mv {}/*{} {}/bk/".format(outpath, IDr, outpath))
-                os.system("bash search_replace.sh {1}/namelist.input {1}/namelist.input {2}".format(wdir, rst_opt))
+                os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input {1}".format(wdir, rst_opt))
             rtr.append(rtri)
 
             split_res = False
@@ -473,9 +501,10 @@ for i in range(len(combs)):
             elif (rep == n_rep+repi-1) and (i == len(combs)):
                 last_id = True
 
-            if (sum(nslots) >= pool_size) or (not options.pool_jobs) or split_res or last_id:
+            if (sum(nslots) >= pool_size) or (not options.pool_jobs) or split_res or last_id: #submit current pool of jobs
                 print("")
                 resched_i = False
+                #if pool is already too large: cut out last job, which is rescheduled afterwards
                 if (sum(nslots) > pool_size) or split_res:
                     nslots = nslots[:-1]
                     wrf_dir = wrf_dir[:-1]
@@ -499,11 +528,15 @@ for i in range(len(combs)):
                     job_name = IDr
                 jobs = " ".join(IDs)
 
+                comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, use_rankfiles=use_rankfiles)
                 if cluster:
-                    comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {} -v wrfv='{}',nslots='{}',jobs='{}',use_rankfiles='{}' run_wrf.job".format(queue,\
-                                     job_name, rtp, vmemp, slot_comm, wrf_dir, nslots, jobs, use_rankfiles)
+                    comm_args_str = " ".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
+                    comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {}  -v {} run_wrf.job".format(queue, job_name, rtp, vmemp, slot_comm, comm_args_str)
                 else:
-                    comm = "bash run_wrf.job '{}' '{}' '{}' {}".format(nslots, jobs, wrf_dir, use_rankfiles)
+                    for p, v in comm_args.items():
+                        os.environ[p] = str(v)
+
+                    comm = "bash run_wrf.job"
 
                 pi = 0
                 if resched_i:

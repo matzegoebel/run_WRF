@@ -18,13 +18,7 @@ if [ -z $ENVIRONMENT ]
 then
   home_dir="$HOME"
   cluster=false
-  nslots=$1
-  shift
-  jobs=$1
-  shift
-  wrfv=$1
-  shift
-  use_rankfiles=$1
+
 else
   home_dir="$SCRATCH"
   cluster=true
