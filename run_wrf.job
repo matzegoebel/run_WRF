@@ -10,37 +10,21 @@
 #$ -l h_rt=00:20:00
 #$ -M matthias.goebel@uibk.ac.at
 #$ -m sea
-# -m n
 #$ -l h_vmem=1500M
-# -l h_stack=128
 
-# -pe openmpi-fillup 64
-# -pe openmpi-16perhost 16
-# -pe openmpi-fillup 8-16
-# -pe openmp 8
-
-#set -e
-pwd
+set -e
 
 if [ -z $ENVIRONMENT ]
 then
-  if  [ $HOSTNAME = "pc45-c707" ]
-  then
-    home_dir="/home/c7071088"
-  else
-    home_dir="$SCRATCH"
-  fi
+  home_dir="$HOME"
   cluster=false
   nslots=$1
   shift
   jobs=$1
   shift
   wrfv=$1
-  #~ echo "wrfv $wrfv"
-
   shift
   use_rankfiles=$1
-  ulimit -s unlimited
 else
   home_dir="$SCRATCH"
   cluster=true
@@ -62,13 +46,11 @@ jobs=(${jobs})
 nslots=(${nslots})
 wrfv=(${wrfv})
 
-#~ echo ${#jobs[@]}
 echo "job ID : $JOB_ID"
 echo
 
  
 si=0
-#~ sleep 100
 pool=false
 if (( ${#jobs[@]} > 1 ))
 then

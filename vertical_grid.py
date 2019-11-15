@@ -19,15 +19,14 @@ Lukas Strauss
 #-------------------------------------------------------------------------------
 # Import modules.
 import numpy as np
-import sys
-import pprint
 import matplotlib.pyplot as plt
 
 # Import user modules.
-from wrf_related import isa
-import wrf
-from tools import figloc
+import isa
+import os
 
+figloc = "~"
+figloc = os.path.expanduser(figloc)
 #-------------------------------------------------------------------------------
 # FUNCTIONS
 #-------------------------------------------------------------------------------
@@ -317,27 +316,13 @@ def create_levels(nz=150, ztop=15000, method=0, dz0=10, etaz1=0.87, etaz2=0.4, n
                     alpha_z[i])))
         print('-'*len(header))
 
-    #---------------------------------------------------------------------------
-    # Print eta only
-    #---------------------------------------------------------------------------
-#    if 1:
+
 
     return eta, dz
 
 
 if __name__ == '__main__':
 
-  #  eta, dz = create_levels(nz=176, ztop=15000, method=0, dz0=10, etaz1=0.87, etaz2=0.4, n2=37, plot=True, table=True, savefig=False)
     eta, dz = create_levels(nz=176, ztop=15000, method=0, dz0=10, etaz1=0.87, etaz2=0.4, n2=37, plot=True, table=True, savefig=False)
-    eta, dz = create_levels(nz=30, ztop=5000, method=0, dz0=50, etaz1=0.87, etaz2=0.4, n2=37, plot=True, table=True, savefig=False)
-    eta, dz = create_levels(nz=350, ztop=15000, method=0, dz0=10, etaz1=0.87, etaz2=0.4, n2=37, plot=True, table=True, savefig=False)
     print(', '.join(['%.6f'%eta_tmp for eta_tmp in eta]))
-  #  plt.savefig()
 
-  #%%
-#   i = np.arange(100)
-#   dz0 = 10
-#   c = 1.01
-#   dz = np.array([dz0*c**j for j in i])
-#   z = np.cumsum(dz)
-#   plt.plot(dz,z)

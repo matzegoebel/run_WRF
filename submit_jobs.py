@@ -23,7 +23,7 @@ parser.add_argument("-i", "--init",
                     help="Initialize simulations")
 parser.add_argument("-t", "--test",
                     action="store_true", dest="check_args", default = False,
-                    help="Test run")
+                    help="Only test python script (no jobs sumitted)")
 parser.add_argument("-c", "--cluster",
                     action="store_true", dest="force_cluster", default = False,
                     help="Force cluster settings")
@@ -39,75 +39,96 @@ parser.add_argument("-d", "--debug",
 parser.add_argument("-p", "--pool",
                     action="store_true", dest="pool_jobs", default = False,
                     help="Gather jobs before submitting")
+parser.add_argument("-o", "--outdir",
+                    action="store", dest="outdir", default = None,
+                    help="Gather jobs before submitting")
 
 
 options = parser.parse_args()
-test = False
-use_rankfiles = False
 
 dx_ind = [62.5, 125, 250]
 #%%
-wrf_dir_pre = "WRF"
-ideal_case = "em_les" #em_les
-runID = "scm_mp"
-outdir =  "test/qbudget"
+'''Simulations settings'''
+
+wrf_dir_pre = "WRF" #prefix for WRF build directory (_debug and _mpi will be added later)
+ideal_case = "em_les" #idealized WRF case
+runID = "scm_mp" #name for this simulation series
+
+outdir = "test/qbudget" #subdirectory for WRF output if not set in command line
+if options.outdir is not None:
+    outdir = options.outdir
+
+outpath =  os.path.join(os.environ["wrf_res"] + outdir) #WRF output path
+wrfpath = os.environ["wrf_runs"] #path where run directories of simulations will be created
+
+
+#Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
 
 # param_grid = dict(
+#              dx=[4000, 2000, 1000, 500, 250, 125, 62.5],# hor. grid spacings in meter
 #             input_sounding=["schlemmer_stable","schlemmer_unstable"],
-#             topo=["cos", "flat"],
-#             c1={"res" : [250,1000], "nz" : [120, 80]})
+#             topo=["cos", "flat"])
+
 param_grid = dict(
             c1={"dx" : [125,4000,4000,4000], "bl_pbl_physics": [0,1,5,7], "dz0" : [10,50,50,50], "nz" : [350,60,60,60], "composite_name": ["LES", "MYJ", "MYNN", "ACM2"]})
-#dx=[4000, 2000, 1000, 500, 250, 125, 62.5]# hor. grid spacings in meter
+param_grid = dict(
+            c1={"dx" : [4000], "bl_pbl_physics": [7], "dz0" : [50], "nz" : [60], "composite_name": ["ACM2"]})
 
 param_combs, param_grid_flat, composite_params = misc.grid_combinations(param_grid)
 a = {}
 
+#Set additional namelist parameters (only applies if they are not present in param_grid) 
+#any namelist parameters and some additional ones can be used
+
 start_time = "2018-06-20_00:00:00" #"2018-06-20_20:00:00"
 end_time = "2018-06-21_00:00:00" #"2018-06-23_00:00:00"
 
-a["n_rep"] = 1
+a["n_rep"] = 1 #number of repetitions for each configuration
 a["repi"] = 0#start id for reps
 
-a["dx"] = 500
+#horizontal grid
+a["dx"] = 500 #horizontal grid spacing (m)
 a["lx"] = 50 #16000, horizontal extent in east west (m)
 a["ly"] = 50 #4000, minimum horizontal extent in north south (m)
-a["gridpoints"] = 2 #16, inimum number of grid points in each direction -1
-use_gridpoints = True #True
+use_gridpoints = True #use minimum number of grid points set below
+a["gridpoints"] = 2 #16, minimum number of grid points in each direction -1
 
+#vertical grid
+a["ztop"] = 15000 #15000, top of domain (m)
+a["nz"] = 122 #176, number of vertical levels
+a["dz0"] = 20 #10, height of first model level (m)
+a["dz_method"] = 0 #method for creating vertical grid as defined in vertical_grid.py
+a["dt"] = None #1 #time step (s), if None calculated as dt = 6 s/m *dx/1000
 
-a["ztop"] = 15000 #15000
-a["nz"] = 122 #176
-a["dz0"] = 20 #10
-a["dz_method"] = 0
-a["dt"] = None #1
-
-a["input_sounding"] = "schlemmer_stable"
-a["topo"] = "flat"#, "cos"]
-
-a["spec_hfx"] = None #None specified surface heat flux instead of radiation
-a["spec_sw"] = None  # specified constant shortwave radiation
+a["input_sounding"] = "schlemmer_stable" #name of input sounding to use (should be named input_sounding_name)
 
 a["isotropic_res"] = 100 #resolution below which mixing is isotropic
-a["mp_physics"] = 2
+a["pbl_res"] = 500 #resolution above which to use PBL scheme (m)
+a["spec_hfx"] = None #None specified surface heat flux instead of radiation
 
-a["pbl_res"] = 500#500
+#standard namelist parameters
+a["mp_physics"] = 2
 a["bl_pbl_physics"] = 6
 a["bl_mynn_edmf"] = 1
 a["bl_mynn_edmf_tke"] = 1
 a["scalar_pblmix"] = 1
-
 a["topo_shading"] = 1
 a["slope_rad"] = 1
-
 a["auxhist7_interval"] = 10
 
+#custom namelist parameters (not available in official WRF)
+a["topo"] = "flat"#, "cos"] #topography type
+a["spec_sw"] = None  # specified constant shortwave radiation
 a["pert_res"] = 4000 #resolution below which initial perturbations are used
 no_pert = False
 all_pert = False
 
 #%%
-split_output_res = 0 #resolution below which to split output in timestep per file
+'''Settings for resource requirements of SGE jobs'''
+queue = "std.q" #queue for SGE
+use_rankfiles = False #use rankfiles to pin SGE jobs to certain hosts (necessary if whole nodes shall be filled up)
+
+split_output_res = 0 #resolution below which to split output in one timestep per file
 
 vmem_init_per_grid = 30e3/(320*320)
 vmem_init_min = 2000
@@ -117,40 +138,34 @@ min_vmem = 600
 vmem_pool = 2000
 vmem_buffer = 1.2
 
-rt = 400 #None or rt in seconds
-rt = None
-rt_buffer = 1.5
-runtime_per_step = { 62.5 : 3., 100: 3., 125. : 3. , 250. : 1., 500: 0.5, 1000: 0.3, 2000.: 0.3, 4000.: 0.3}# if rt is None: runtime per time step in seconds
+rt = None #None or job runtime in seconds
+rt_buffer = 1.5 #buffer factor to multiply rt with
+runtime_per_step = { 62.5 : 3., 100: 3., 125. : 3. , 250. : 1., 500: 0.5, 1000: 0.3, 2000.: 0.3, 4000.: 0.3}# if rt is None: runtime per time step in seconds for different dx
 
-nslots_dict = {}#{125: (3,1)}
-np_method = 0 #1
-np_denom = 16 #25
+nslots_dict = {} #set number of slots for each resolution
+np_method = 0 #1, method to set number of slots in x and y direction
+np_denom = 16 #25, minimum number of grid points per slot
 
 #%%
+'''Slot configurations for personal computer and cluster'''
 
-if (not options.force_cluster) and (os.getenv("DESKTOP_SESSION") == "ubuntu"):
+if options.force_cluster or ("SCRATCH" in os.environ):
+    cluster = True
+    max_nslotsy = 2
+    max_nslotsx = 7
+    pool_size = 28 #number of cores per pool if job pooling is used
+else:
     cluster = False
     use_rankfiles = False
-    outpath = os.environ["wrf_res"] + "/"+ outdir + "/"
-    wrfpath =  os.path.expanduser("~/wrf/runs/")
-    codedir =  os.path.expanduser("~/phd/code/")
-
     max_nslotsy = 2
     max_nslotsx = 4
     pool_size = 8
 
-else:
-    cluster = True
-    outpath = "/scratch/c7071088/phd/results/wrf/" + outdir + "/"
-    wrfpath = "/scratch/c7071088/wrf/runs/"
-    codedir = "/scratch/c7071088/phd/code/"
-    max_nslotsy = 2
-    max_nslotsx = 7
-    pool_size = 28
-    np_denom = 32
 
 if not os.path.isdir(outpath):
     os.makedirs(outpath)
+
+    
 #%%
 if not options.use_qsub:
     cluster = False
@@ -168,7 +183,6 @@ end_d = end_d.split("-")
 end_t = end_t.split(":")
 
 run_hours = int((end_time_dt - start_time_dt).total_seconds()/3600)
-
 
 IDs = []
 rtr = []
@@ -239,7 +253,7 @@ for i in range(len(combs)):
 
     vmem_init = max(vmem_init_min, int(vmem_init_per_grid*args["e_we"]*args["e_sn"]))
 
-    if (r in nslots_dict) and (nslots_dict[r] is not None):
+    if (nslots_dict is not None) and (r in nslots_dict) and (nslots_dict[r] is not None):
         nx, ny = nslots_dict[r]
     else:
         nx = misc.find_nproc(args["e_we"]-1, method=np_method, denom=np_denom)
@@ -369,7 +383,7 @@ for i in range(len(combs)):
         wrf_dir_i = wrf_dir_pre + "_debug"
         slot_comm = ""
     elif nslotsi > 1:
-        wrf_dir_i = wrf_dir_pre + "mpi"
+        wrf_dir_i = wrf_dir_pre + "_mpi"
         slot_comm = "-pe openmpi-fillup {}".format(nslotsi)
     else:
         wrf_dir_i = wrf_dir_pre
@@ -382,11 +396,6 @@ for i in range(len(combs)):
     else:
         vmemi = int(vmem_buffer*max(min_vmem,vmem0 + vmem_grad*r))
     vmem.append(vmemi)
-
-    if test:
-        queue = "short.q"
-    else:
-        queue = "std.q"
 
 
     IDi = param_comb.copy()
@@ -407,18 +416,23 @@ for i in range(len(combs)):
 
             hist_paths = r""
             for outfile, stream in zip(["wrfout", "meanout", "fastout"], ["history_outname", "auxhist8_outname", "auxhist7_outname"]):
-                outname = r"{}{}_{}".format(outpath_esc, outfile, IDr)
+                outname = r"{}/{}_{}".format(outpath_esc, outfile, IDr)
                 if one_frame:
                     outname += "_<date>"
 
                 hist_paths = r'''{} {} "{}"'''.format(hist_paths, stream, outname)
 
             args_str = args_str + hist_paths
+            comm_args =dict(wrfv=wrf_dir_i, ideal_case=ideal_case, input_sounding=args["input_sounding"],
+                            sleep=rep, nx=nx, ny=ny, wrf_args=args_str)
             if cluster:
-                comm = r"qsub -q {} -l h_vmem={}M -N {} -v wrfv='{}',ideal_case='{}', input_sounding='{}',sleep='{}',nx='{}',ny='{}',wrf_args='{}' init_wrf.job".format(init_queue, vmem_init, IDr, wrf_dir_i,
-                ideal_case, args["input_sounding"], rep, nx, ny, args_str)
+                comm_args_str = " ".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
+                comm = r"qsub -q {} -l h_vmem={}M -N {} -v {} init_wrf.job".format(init_queue, vmem_init, IDr, comm_args_str)
             else:
-                comm = "bash init_wrf.job   {} {} {} {} {} {} {} '{}'  ".format(IDr, wrf_dir_i, ideal_case, rep, args["input_sounding"], nx,ny,args_str)
+                for p, v in comm_args.items():
+                    os.environ[p] = str(v)
+                os.environ["JOB_NAME"] = IDr  
+                comm = "bash init_wrf.job"
             print(comm)
             if not options.check_args:
                 os.system(comm)
@@ -428,7 +442,7 @@ for i in range(len(combs)):
             nslots = []
         else:
             if options.restart:
-                wdir = "{}WRF_{}/".format(wrfpath,IDr)
+                wdir = "{}/WRF_{}/".format(wrfpath,IDr)
                 rstfiles = glob.glob(wdir + "wrfrst*")
                 if len(rstfiles) == 0:
                     raise RuntimeError("No restart files found!")
@@ -448,7 +462,7 @@ for i in range(len(combs)):
                 if len(bk_files) != 0:
                     raise FileExistsError("Backup files for restart already present. Double check!")
                 os.system("mv {}/*{} {}/bk/".format(outpath, IDr, outpath))
-                os.system("bash {0}/search_replace.sh {1}/namelist.input {1}/namelist.input {2}".format(codedir, wdir, rst_opt))
+                os.system("bash search_replace.sh {1}/namelist.input {1}/namelist.input {2}".format(wdir, rst_opt))
             rtr.append(rtri)
 
             split_res = False
