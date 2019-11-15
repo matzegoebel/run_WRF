@@ -14,26 +14,21 @@
 
 set -e
 
-if [ -z $ENVIRONMENT ]
+if (( cluster==1 ))
 then
-  home_dir="$HOME"
-  cluster=false
-
-else
-  home_dir="$SCRATCH"
-  cluster=true
-  echo "start cluster job"
-  if [ -d ${homedir}/parallel_studio_2019 ]
-  then
-    module purge
-    export NETCDF="${home_dir}/netcdf"
-    source ${home_dir}/parallel_studio_2019/parallel_studio_xe_2019.4.070/bin/psxevars.sh
-  else
-    module load intel/18.0u1 netcdf-4
-  fi
+  module load intel/18.0u1 netcdf-4
+  #~ if [ -d $SCRATCH/parallel_studio_2019 ]
+  #~ then
+    #~ module purge
+    #~ export NETCDF="$SCRATCH/netcdf"
+    #~ source ${home_dir}/parallel_studio_2019/parallel_studio_xe_2019.4.070/bin/psxevars.sh
+  #~ fi
 fi
 
 ulimit -s unlimited
+
+code_dir=$(pwd)
+echo ${code_dir}
 
 echo "jobs: $jobs"
 jobs=(${jobs})
@@ -52,7 +47,7 @@ then
   then
     pool=true
     qs=$(qstat -t)
-    hosts=$(python ${home_dir}/phd/code/wrf_related/get_hosts.py "$JOB_ID" "$qs")
+    hosts=$(python ${code_dir}/get_hosts.py "$JOB_ID" "$qs")
     hosts=(${hosts})
     echo "hosts ${hosts[*]}"
   fi
@@ -60,13 +55,13 @@ fi
 
 for (( i=0; i<${#jobs[@]}; i++ ))
 do
-  cd ${home_dir}/wrf/runs/WRF_${jobs[$i]}
+  cd ${run_path}/WRF_${jobs[$i]}
   echo "Running job: ${jobs[$i]}"
   nsi=${nslots[$i]}
   wrf_dir_i=${wrfv[$i]}
   echo "slots: $nsi "
 
-  if [[ ${wrf_dir_i} == *"par"* ]]
+  if (( nsi > 1 ))
   then
     echo "parallel"
     if $pool
@@ -75,8 +70,8 @@ do
       hostsi=${hosts[@]:$si:$nsi}
       echo "on hosts: $hostsi"
 
-      H=$(python ${home_dir}/phd/code/wrf_related/get_hosts_set.py "$hostsi")
-      python ${home_dir}/phd/code/wrf_related/rankfile.py  "${hosts[*]}" "$si" "$nsi" > rankfile.$JOB_ID
+      H=$(python ${code_dir}/get_hosts_set.py "$hostsi")
+      python ${code_dir}/rankfile.py  "${hosts[*]}" "$si" "$nsi" > rankfile.$JOB_ID
       cat rankfile.$JOB_ID
 
       mpiexec -H $H -rf rankfile.$JOB_ID -mca rmaps_rank_file_physical 1 -np $nsi -v -report-bindings -display-map -display-allocation ./wrf.exe  > run.log 2> run.err || true &
@@ -96,7 +91,9 @@ do
   echo
 done
 
-if $cluster
+if [ -z $SGE_STDOUT_PATH ]
 then
+ echo "job runs in background"
+else
   wait
 fi

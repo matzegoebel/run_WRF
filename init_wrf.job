@@ -17,29 +17,32 @@
 
 set -e
 
-if [ -z $ENVIRONMENT ]
+if (( cluster==0 ))
 then
-  home_dir="$HOME"
   ulimit -s unlimited
   set -o errexit
-  wrf_args=$1
 
 else
   echo "start cluster job"
-  home_dir="$SCRATCH"
-  if [ -d $homedir/parallel_studio_2019 ]
-  then
-    module purge
-    export NETCDF="${home_dir}/netcdf"
-    source ${home_dir}/parallel_studio_2019/parallel_studio_xe_2019.4.070/bin/psxevars.sh
-  else
-    module load intel/18.0u1 netcdf-4
-  fi
+  module load intel/18.0u1 netcdf-4
 
+  #~ if [ -d $SCRATCH/parallel_studio_2019 ]
+  #~ then
+    #~ module purge
+    #~ export NETCDF="$SCRATCH/netcdf"
+    #~ source ${home_dir}/parallel_studio_2019/parallel_studio_xe_2019.4.070/bin/psxevars.sh
+  #~ fi
 fi
+
+if [ -z $SGE_STDOUT_PATH ]
+then
+  wrf_args=$1
+fi
+
+
 code_dir=$(pwd)
-build_dir="${home_dir}/wrf/builds/$wrfv"
-run_dir="${home_dir}/wrf/runs/WRF_$JOB_NAME"
+build_dir="${build_path}/$wrfv"
+run_dir="${run_path}/WRF_$JOB_NAME"
 wrf_case_dir="${build_dir}/test/$ideal_case"
 cd $wrf_case_dir
 
@@ -95,7 +98,7 @@ sleep $sleep
 wait
 
 
-if [[ ${wrfv} == *"mpi"* ]]
+if ((nx*ny > 1))
 then
   cat rsl.error.0000
   source ${code_dir}/search_replace.sh namelist.input namelist.input nproc_x $nx nproc_y $ny

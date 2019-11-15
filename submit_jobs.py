@@ -29,7 +29,7 @@ parser.add_argument("-r", "--restart",
                     help="Restart simulations")
 parser.add_argument("-o", "--outdir",
                     action="store", dest="outdir", default = None,
-                    help="Gather jobs before submitting")
+                    help="Subdirectory for WRF output")
 parser.add_argument("-d", "--debug",
                     action="store_true", dest="debug", default = False,
                     help="Run wrf in debugging mode")
@@ -39,9 +39,6 @@ parser.add_argument("-q", "--qsub",
 parser.add_argument("-t", "--test",
                     action="store_true", dest="check_args", default = False,
                     help="Only test python script (no jobs sumitted)")
-parser.add_argument("-c", "--cluster",
-                    action="store_true", dest="force_cluster", default = False,
-                    help="Force cluster settings (for test purposes)")
 parser.add_argument("-p", "--pool",
                     action="store_true", dest="pool_jobs", default = False,
                     help="Gather jobs before submitting")
@@ -58,12 +55,13 @@ ideal_case = "em_les" #idealized WRF case
 runID = "scm_mp" #name for this simulation series
 
 outdir = "test/qbudget" #subdirectory for WRF output if not set in command line
+cluster_name = "leo" #this name should be included in the variable $HOSTNAME to detect if cluster settings should be used
 if options.outdir is not None:
     outdir = options.outdir
 
 outpath = os.path.join(os.environ["wrf_res"], outdir, "") #WRF output path
-wrfpath = os.environ["wrf_runs"] #path where run directories of simulations will be created
-
+run_path = os.environ["wrf_runs"] #path where run directories of simulations will be created
+build_path = os.environ["wrf_builds"]
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
 
@@ -165,7 +163,7 @@ even_split = False #1, force equal split between processors
 
 dx_ind = [62.5, 125, 250] #resolutions which have their own job pools (if pooling is used)
 
-if options.force_cluster or ("SCRATCH" in os.environ):
+if (("HOSTNAME" in os.environ) and (cluster_name in os.environ["HOSTNAME"])):
     cluster = True
     max_nslotsy = 2
     max_nslotsx = 7
@@ -183,8 +181,7 @@ if not os.path.isdir(outpath):
 
 
 #%%
-if not options.use_qsub:
-    cluster = False
+
 outpath_esc = outpath.replace("/", "\/") #need to escape slashes
 if options.restart:
     init = False
@@ -449,8 +446,8 @@ for i in range(len(combs)):
 
             args_str = args_str + hist_paths
             comm_args =dict(wrfv=wrf_dir_i, ideal_case=ideal_case, input_sounding=args["input_sounding"],
-                            sleep=rep, nx=nx, ny=ny, wrf_args=args_str)
-            if cluster:
+                            sleep=rep, nx=nx, ny=ny, wrf_args=args_str, run_path=run_path, build_path=build_path,qsub=int(options.use_qsub))
+            if options.use_qsub:
                 comm_args_str = " ".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                 comm = r"qsub -q {} -l h_vmem={}M -N {} -v {} init_wrf.job".format(init_queue, vmem_init, IDr, comm_args_str)
             else:
@@ -470,7 +467,7 @@ for i in range(len(combs)):
             nslots = []
         else:
             if options.restart:
-                wdir = "{}/WRF_{}/".format(wrfpath,IDr)
+                wdir = "{}/WRF_{}/".format(run_path,IDr)
                 rstfiles = glob.glob(wdir + "wrfrst*")
                 if len(rstfiles) == 0:
                     raise RuntimeError("No restart files found!")
@@ -528,8 +525,8 @@ for i in range(len(combs)):
                     job_name = IDr
                 jobs = " ".join(IDs)
 
-                comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, use_rankfiles=use_rankfiles)
-                if cluster:
+                comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, use_rankfiles=use_rankfiles, run_path=run_path, cluster=int(cluster))
+                if options.use_qsub:
                     comm_args_str = " ".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                     comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {}  -v {} run_wrf.job".format(queue, job_name, rtp, vmemp, slot_comm, comm_args_str)
                 else:
