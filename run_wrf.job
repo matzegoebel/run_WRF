@@ -8,7 +8,7 @@
 
 set -e
 
-if (( cluster==1 ))
+if (( cluster == 1 ))
 then
   module load intel/18.0u1 netcdf-4
   #~ if [ -d $SCRATCH/parallel_studio_2019 ]
@@ -37,7 +37,7 @@ si=0
 pool=false
 if (( ${#jobs[@]} > 1 ))
 then
-  if [ ${pool_jobs} == 1 ]
+  if (( ${pool_jobs} == 1 ))
   then
     pool=true
     qs=$(qstat -t)

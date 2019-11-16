@@ -165,13 +165,14 @@ even_split = False #1, force equal split between processors
 #%%
 '''Slot configurations for personal computer and cluster'''
 
-dx_ind = [62.5, 125, 250] #resolutions which have their own job pools (if pooling is used)
+#dx_ind = [62.5, 125, 250] #INACTIVE; resolutions which have their own job pools (if pooling is used)
 
 if (("HOSTNAME" in os.environ) and (cluster_name in os.environ["HOSTNAME"])):
     cluster = True
     max_nslotsy = 2
     max_nslotsx = 7
     pool_size = 28 #number of cores per pool if job pooling is used
+    reduce_pool = True #reduce pool size to the actual uses number of slots; do not use if you do not want to share the node with others
 else:
     cluster = False
     max_nslotsy = 2
@@ -412,7 +413,6 @@ for i in range(len(combs)):
 
     wrf_dir.append(wrf_dir_i)
     if options.pool_jobs:
-        slot_comm = "-pe openmpi-{0}perhost {0}".format(pool_size)
         vmemi = vmem_pool
     else:
         vmemi = max(vmem_min, int(vmem_per_grid_point*args["e_we"]*args["e_sn"]))
@@ -494,19 +494,21 @@ for i in range(len(combs)):
                 os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input {1}".format(wdir, rst_opt))
             rtr.append(rtri)
 
-            split_res = False
+            #split_res = False
             last_id = False
             dx_p_set = [str(int(rs)) for rs in set(dx_p)]
-            if (np.in1d(dx_ind, dx_p).any()) and (len(dx_p_set) > 1):
-                split_res = True
-            elif (rep == n_rep+repi-1) and (i == len(combs)):
+#            if (np.in1d(dx_ind, dx_p).any()) and (len(dx_p_set) > 1):
+#                split_res = True
+            if (rep == n_rep+repi-1) and (i == len(combs) - 1):
                 last_id = True
 
-            if (sum(nslots) >= pool_size) or (not options.pool_jobs) or split_res or last_id: #submit current pool of jobs
+            if (sum(nslots) >= pool_size) or (not options.pool_jobs) or last_id: #submit current pool of jobs
                 print("")
                 resched_i = False
                 #if pool is already too large: cut out last job, which is rescheduled afterwards
-                if (sum(nslots) > pool_size) or split_res:
+                if (sum(nslots) > pool_size):
+                    if len(nslots) == 1:
+                        raise ValueError("Pool size ({}) smaller than number of slots of current job ({})!".format(pool_size, nslots[0]))
                     nslots = nslots[:-1]
                     wrf_dir = wrf_dir[:-1]
                     vmem = vmem[:-1]
@@ -515,52 +517,63 @@ for i in range(len(combs)):
                     dx_p = dx_p[:-1]
                     resched_i = True
                     dx_p_set = [str(int(rs)) for rs in set(dx_p)]
+                
+                iterate = True
+                while iterate:
+                    iterate = False
+                    print("Submit IDs: {}".format(IDs))
+                    print("with total cores: {}".format(sum(nslots)))
+                    
+                    if options.pool_jobs:
+                        nperhost =  pool_size
+                        if reduce_pool:
+                            nperhost_sge = np.array([1, *np.arange(2,29,2)])
+                            nperhost = nperhost_sge[(nperhost_sge >= sum(nslots)).argmax()] #select available nperhost that is greater and closest to the number of slots 
+                        slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
+                            
+                    rtp = max(rtr)
+                    rtp = "{:02d}:{:02d}:00".format(math.floor(rtp), math.ceil((rtp - math.floor(rtp))*60))
+                    nslots = " ".join([str(ns) for ns in nslots])
+                    wrf_dir = " ".join([str(wd) for wd in wrf_dir])
+                    vmemp = int(sum(vmem)/len(vmem))
+                    if options.pool_jobs:
+                        job_name = "pool_" + "_".join(IDs)
+                    else:
+                        job_name = IDr
+                    jobs = " ".join(IDs)
+    
+                    comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool=int(options.pool_jobs), run_path=run_path, cluster=int(cluster))
+                    if options.use_qsub:
+                        comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
+                        comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -v {} run_wrf.job".format(queue, job_name, rtp, vmemp, slot_comm, options.mail, comm_args_str)
+                    else:
+                        for p, v in comm_args.items():
+                            os.environ[p] = str(v)
+    
+                        comm = "bash run_wrf.job"
+    
+                    pi = 0
+                    if resched_i:
+                        IDs = [IDr]
+                        rtr = [rtri]
+                        vmem = [vmemi]
+                        nslots = [nslotsi]
+                        wrf_dir = [wrf_dir_i]
+                        dx_p = [r]
+                        if last_id:
+                            iterate = True
+                            last_id = False
+                    else:
+                        IDs = []
+                        rtr = []
+                        vmem = []
+                        nslots = []
+                        wrf_dir = []
+                        dx_p = []
 
-                print("Submit IDs: {}".format(IDs))
-                print("with total cores: {}".format(sum(nslots)))
-                rtp = max(rtr)
-                rtp = "{:02d}:{:02d}:00".format(math.floor(rtp), math.ceil((rtp - math.floor(rtp))*60))
-                nslots = " ".join([str(ns) for ns in nslots])
-                wrf_dir = " ".join([str(wd) for wd in wrf_dir])
-                vmemp = int(sum(vmem)/len(vmem))
-                if options.pool_jobs:
-                    job_name = "pool_" + "_".join(IDs)
-                else:
-                    job_name = IDr
-                jobs = " ".join(IDs)
-
-                comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool=int(options.pool_jobs), run_path=run_path, cluster=int(cluster))
-                if options.use_qsub:
-                    comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
-                    comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -v {} run_wrf.job".format(queue, job_name, rtp, vmemp, slot_comm, options.mail, comm_args_str)
-                else:
-                    for p, v in comm_args.items():
-                        os.environ[p] = str(v)
-
-                    comm = "bash run_wrf.job"
-
-                pi = 0
-                if resched_i:
-                    IDs = [IDr]
-                    rtr = [rtri]
-                    vmem = [vmemi]
-                    nslots = [nslotsi]
-                    nslots = [wrf_dir_i]
-                    dx_p = [r]
-
-                else:
-                    IDs = []
-                    rtr = []
-                    vmem = []
-                    nslots = []
-                    wrf_dir = []
-                    dx_p = []
-
-                print(comm)
-                if not options.check_args:
-                    os.system(comm)
+                    print(comm)
+                    if not options.check_args:
+                        os.system(comm)
 
             else:
                 pi += 1
-
-
