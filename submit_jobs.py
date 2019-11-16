@@ -329,6 +329,8 @@ for i in range(len(combs)):
             args["sf_sfclay_physics"] = 1
             iofile = '"LES_IO.txt"'
 
+        args["bl_pbl_physics"] = pbl_scheme
+
         if pbl_scheme in [5, 6]:
             args["bl_mynn_tkebudget"] = 1
         else:
@@ -450,7 +452,7 @@ for i in range(len(combs)):
             comm_args =dict(wrfv=wrf_dir_i, ideal_case=ideal_case, input_sounding=args["input_sounding"],
                             sleep=rep, nx=nx, ny=ny, wrf_args=args_str, run_path=run_path, build_path=build_path,qsub=int(options.use_qsub))
             if options.use_qsub:
-                comm_args_str = " ".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
+                comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                 comm = r"qsub -q {} -l h_vmem={}M -m {} -N {} -v {} init_wrf.job".format(init_queue, vmem_init, options.mail, IDr, comm_args_str)
             else:
                 d = {}
@@ -529,7 +531,7 @@ for i in range(len(combs)):
 
                 comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, use_rankfiles=use_rankfiles, run_path=run_path, cluster=int(cluster))
                 if options.use_qsub:
-                    comm_args_str = " ".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
+                    comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                     comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -v {} run_wrf.job".format(queue, job_name, rtp, vmemp, slot_comm, options.mail, comm_args_str)
                 else:
                     for p, v in comm_args.items():
