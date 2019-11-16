@@ -14,7 +14,6 @@ import vertical_grid
 import pandas as pd
 import datetime
 import argparse
-import sys
 import glob
 import misc
 from collections import OrderedDict as odict
@@ -29,7 +28,7 @@ parser.add_argument("-r", "--restart",
                     help="Restart simulations")
 parser.add_argument("-o", "--outdir",
                     action="store", dest="outdir", default = None,
-                    help="Subdirectory for WRF output")
+                    help="Subdirectory for WRF output. Default defined in script. Only effective during initialization.")
 parser.add_argument("-d", "--debug",
                     action="store_true", dest="debug", default = False,
                     help="Run wrf in debugging mode")
@@ -42,20 +41,22 @@ parser.add_argument("-t", "--test",
 parser.add_argument("-p", "--pool",
                     action="store_true", dest="pool_jobs", default = False,
                     help="Gather jobs before submitting")
-
+parser.add_argument("-m", "--mail",
+                    action="store", dest="mail", type=str, default = "ea",
+                    help="If using qsub, defines when mail is sent. Either 'n' for no mails, or a combination of 'b' (beginning of job), 'e' (end), 'a' (abort)', 's' (suspended). Default: 'ea'")
 
 
 options = parser.parse_args()
-
+if (not options.init) and (options.outdir is not None):
+    print("WARNING: option -o ignored when not in initialization mode!\n")
 #%%
 '''Simulations settings'''
 
 wrf_dir_pre = "WRF" #prefix for WRF build directory (_debug and _mpi will be added later)
 ideal_case = "em_les" #idealized WRF case
-runID = "scm_mp" #name for this simulation series
+runID = "test" #name for this simulation series
 
 outdir = "test/qbudget" #subdirectory for WRF output if not set in command line
-cluster_name = "leo" #this name should be included in the variable $HOSTNAME to detect if cluster settings should be used
 if options.outdir is not None:
     outdir = options.outdir
 
@@ -70,8 +71,8 @@ build_path = os.environ["wrf_builds"]
 #             input_sounding=["schlemmer_stable","schlemmer_unstable"],
 #             topo=["cos", "flat"])
 
-param_grid = odict(
-            c1={"dx" : [125,4000,4000,4000], "bl_pbl_physics": [0,1,5,7], "dz0" : [10,50,50,50], "nz" : [350,60,60,60], "composite_name": ["LES", "MYJ", "MYNN", "ACM2"]})
+#param_grid = odict(
+#            c1={"dx" : [125,4000,4000,4000], "bl_pbl_physics": [0,1,5,7], "dz0" : [10,50,50,50], "nz" : [350,60,60,60], "composite_name": ["LES", "MYJ", "MYNN", "ACM2"]})
 param_grid = odict(
             c1={"dx" : [4000], "bl_pbl_physics": [7], "dz0" : [50], "nz" : [60], "composite_name": ["ACM2"]})
 
@@ -129,9 +130,9 @@ all_pert = False
 output_streams = {0: ["wrfout", 30], 7: ["fastout", 10], 8 : ["meanout", 30]}
 
 
-
 #%%
 '''Settings for resource requirements of SGE jobs'''
+cluster_name = "leo" #this name should appear in the variable $HOSTNAME to detect if cluster settings should be used
 queue = "std.q" #queue for SGE
 use_rankfiles = False #use rankfiles to pin SGE jobs to certain hosts (necessary if whole nodes shall be filled up)
 
@@ -225,7 +226,8 @@ for param, val in a.items():
 for i in range(len(combs)):
     args = combs.loc[i].dropna().to_dict()
     param_comb = param_combs.loc[i]
-    print(param_comb)
+    print("Config:")
+    print("\n".join(str(param_comb).split("\n")[:-1]))
 
     r = args["dx"]
     dx_p.append(r)
@@ -449,7 +451,7 @@ for i in range(len(combs)):
                             sleep=rep, nx=nx, ny=ny, wrf_args=args_str, run_path=run_path, build_path=build_path,qsub=int(options.use_qsub))
             if options.use_qsub:
                 comm_args_str = " ".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
-                comm = r"qsub -q {} -l h_vmem={}M -N {} -v {} init_wrf.job".format(init_queue, vmem_init, IDr, comm_args_str)
+                comm = r"qsub -q {} -l h_vmem={}M -m {} -N {} -v {} init_wrf.job".format(init_queue, vmem_init, options.mail, IDr, comm_args_str)
             else:
                 d = {}
                 for p, v in comm_args.items():
@@ -528,7 +530,7 @@ for i in range(len(combs)):
                 comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, use_rankfiles=use_rankfiles, run_path=run_path, cluster=int(cluster))
                 if options.use_qsub:
                     comm_args_str = " ".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
-                    comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {}  -v {} run_wrf.job".format(queue, job_name, rtp, vmemp, slot_comm, comm_args_str)
+                    comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -v {} run_wrf.job".format(queue, job_name, rtp, vmemp, slot_comm, options.mail, comm_args_str)
                 else:
                     for p, v in comm_args.items():
                         os.environ[p] = str(v)

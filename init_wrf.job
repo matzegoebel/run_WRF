@@ -1,17 +1,10 @@
 #!/bin/bash
 
-#$ -q std.q
 #$ -cwd
-#$ -N wrf
 #$ -o /scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID_init.out
 #$ -e /scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID_init.err
-
-# -j yes
-#$ -l h_rt=00:10:00
 #$ -M matthias.goebel@uibk.ac.at
-#$ -m a
-# -m n
-#$ -l h_vmem=20G
+#$ -l h_rt=00:10:00
 #$ -l h_stack=128M
 
 
@@ -46,13 +39,13 @@ run_dir="${run_path}/WRF_$JOB_NAME"
 wrf_case_dir="${build_dir}/test/$ideal_case"
 cd $wrf_case_dir
 
+echo
 echo "Copy files"
-
+echo $run_dir
 rm $run_dir -rf
 mkdir -p $run_dir
 cd $run_dir
 
-#~ echo "linking"
 trans="cp" #"ln -sf"
 $trans ${build_dir}/run/RRTM* .
 $trans ${build_dir}/run/LANDUSE.TBL .
@@ -67,40 +60,38 @@ $trans ${build_dir}/main/ideal.exe .
 #~ $trans ${build_dir}/run/qr_acr* .
 cp -u -r $wrf_case_dir/* $run_dir
 
-
 input_sounding_org="input_sounding"
 rm -f $input_sounding_org
 cp ${input_sounding_org}_${input_sounding} ${input_sounding_org}
 
-readonly LOG_FILE="init.log"
-readonly ERR_FILE="init.err"
-touch $LOG_FILE
-touch $ERR_FILE
-exec 1>$LOG_FILE
-exec 2>$ERR_FILE
+#redirect logs to file and stdout
+exec 1> >(tee "init.log")
+exec 2> >(tee "init.err")
 
-
+echo
 echo "create namelist"
-echo $wrf_args
+#echo $wrf_args
 
 source ${code_dir}/search_replace.sh namelist.input namelist.$JOB_NAME $wrf_args
 cp namelist.$JOB_NAME namelist.input 
 
 echo
 echo "Running ideal"
-echo
 
+echo
 echo "sleep $sleep s"
+echo
 sleep $sleep
 
 
 ./ideal.exe
 wait
 
-
+#include information about number of processors in namelist.input
 if ((nx*ny > 1))
 then
   cat rsl.error.0000
   source ${code_dir}/search_replace.sh namelist.input namelist.input nproc_x $nx nproc_y $ny
 fi
+
 

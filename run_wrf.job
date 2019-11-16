@@ -1,16 +1,10 @@
 #!/bin/bash
 
-#$ -q std.q
 #$ -cwd
-#$ -N wrf_test
 #$ -o /scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID.out
 #$ -e /scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID.err
-
-# -j yes
-#$ -l h_rt=00:20:00
 #$ -M matthias.goebel@uibk.ac.at
 #$ -m sea
-#$ -l h_vmem=1500M
 
 set -e
 
@@ -61,6 +55,10 @@ do
   wrf_dir_i=${wrfv[$i]}
   echo "slots: $nsi "
 
+  #redirect logs to file and stdout
+  exec 1> "run.log"
+  exec 2> "run.err"
+
   if (( nsi > 1 ))
   then
     echo "parallel"
@@ -74,18 +72,16 @@ do
       python ${code_dir}/rankfile.py  "${hosts[*]}" "$si" "$nsi" > rankfile.$JOB_ID
       cat rankfile.$JOB_ID
 
-      mpiexec -H $H -rf rankfile.$JOB_ID -mca rmaps_rank_file_physical 1 -np $nsi -v -report-bindings -display-map -display-allocation ./wrf.exe  > run.log 2> run.err || true &
+      mpiexec -H $H -rf rankfile.$JOB_ID -mca rmaps_rank_file_physical 1 -np $nsi -v -report-bindings -display-map -display-allocation ./wrf.exe || true &
       si=$((si + nsi))
       sleep 20
 
     else
-      mpiexec -np $nsi -v ./wrf.exe  > run.log 2> run.err || true  &
+      mpiexec -np $nsi -v ./wrf.exe || true  &
     fi
   else
     echo "serial run"
-    ./wrf.exe > run.log 2> run.err &
-    
-
+    ./wrf.exe &
   fi
   echo 
   echo
@@ -93,7 +89,7 @@ done
 
 if [ -z $SGE_STDOUT_PATH ]
 then
- echo "job runs in background"
+  echo 
 else
   wait
 fi
