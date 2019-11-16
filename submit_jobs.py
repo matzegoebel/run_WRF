@@ -152,7 +152,7 @@ vmem_pool = 2000 #virtual memory to request per slot if pooling is used
 vmem_buffer = 1.2 #buffer factor for virtual memory
 
 # runtime 
-#TODO: make gridpoint dependent or so; make second res
+#TODO: make gridpoint dependent; make second res
 rt = None #None or job runtime in seconds
 rt_buffer = 1.5 #buffer factor to multiply rt with
 runtime_per_step = { 62.5 : 3., 100: 3., 125. : 3. , 250. : 1., 500: 0.5, 1000: 0.3, 2000.: 0.3, 4000.: 0.3}# if rt is None: runtime per time step in seconds for different dx
@@ -322,7 +322,7 @@ for i in range(len(combs)):
 
         if r >= args["pbl_res"]:
             args["km_opt"] = 4
-            iofile = '"MESO_IO.txt"' #TODO: more general!
+            iofile = '"MESO_IO.txt"'
             pbl_scheme = args["bl_pbl_physics"]
         else:
             pbl_scheme = 0
@@ -465,6 +465,9 @@ for i in range(len(combs)):
             print(comm)
             if not options.check_args:
                 os.system(comm)
+                ID_path = "{}/WRF_{}".format(run_path, IDr)
+                os.system("tail -n 1 {}/init.log".format(ID_path))
+                os.system("cat {}/init.err".format(ID_path))
             IDs = []
             rtr = []
             vmem = []

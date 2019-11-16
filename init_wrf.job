@@ -40,8 +40,7 @@ wrf_case_dir="${build_dir}/test/$ideal_case"
 cd $wrf_case_dir
 
 echo
-echo "Copy files"
-echo $run_dir
+echo "Copy files to $run_dir"
 rm $run_dir -rf
 mkdir -p $run_dir
 cd $run_dir
@@ -65,8 +64,8 @@ rm -f $input_sounding_org
 cp ${input_sounding_org}_${input_sounding} ${input_sounding_org}
 
 #redirect logs to file and stdout
-exec 1> >(tee "init.log")
-exec 2> >(tee "init.err")
+exec 1> "init.log"
+exec 2> "init.err"
 
 echo
 echo "create namelist"
@@ -93,5 +92,3 @@ then
   cat rsl.error.0000
   source ${code_dir}/search_replace.sh namelist.input namelist.input nproc_x $nx nproc_y $ny
 fi
-
-
