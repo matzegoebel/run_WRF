@@ -31,7 +31,7 @@ parser.add_argument("-o", "--outdir",
                     help="Subdirectory for WRF output. Default defined in script. Only effective during initialization.")
 parser.add_argument("-d", "--debug",
                     action="store_true", dest="debug", default = False,
-                    help="Run wrf in debugging mode")
+                    help="Run wrf in debugging mode. Just adds '_debug' to the build directory.")
 parser.add_argument("-q", "--qsub",
                     action="store_true", dest="use_qsub", default = False,
                     help="Use qsub to submit jobs")
@@ -40,7 +40,7 @@ parser.add_argument("-t", "--test",
                     help="Only test python script (no jobs sumitted)")
 parser.add_argument("-p", "--pool",
                     action="store_true", dest="pool_jobs", default = False,
-                    help="Gather jobs before submitting")
+                    help="Gather jobs before submitting with SGE. Needed if different jobs shall be run on the some node (potentially filling up the whole node)")
 parser.add_argument("-m", "--mail",
                     action="store", dest="mail", type=str, default = "ea",
                     help="If using qsub, defines when mail is sent. Either 'n' for no mails, or a combination of 'b' (beginning of job), 'e' (end), 'a' (abort)', 's' (suspended). Default: 'ea'")
@@ -49,6 +49,9 @@ parser.add_argument("-m", "--mail",
 options = parser.parse_args()
 if (not options.init) and (options.outdir is not None):
     print("WARNING: option -o ignored when not in initialization mode!\n")
+
+if options.pool_jobs and (not options.use_qsub):
+    raise ValueError("Pooling can only be used with --qsub option")
 #%%
 '''Simulations settings'''
 
@@ -134,7 +137,6 @@ output_streams = {0: ["wrfout", 30], 7: ["fastout", 10], 8 : ["meanout", 30]}
 '''Settings for resource requirements of SGE jobs'''
 cluster_name = "leo" #this name should appear in the variable $HOSTNAME to detect if cluster settings should be used
 queue = "std.q" #queue for SGE
-use_rankfiles = False #use rankfiles to pin SGE jobs to certain hosts (necessary if whole nodes shall be filled up)
 
 split_output_res = 0 #resolution below which to split output in one timestep per file
 
@@ -149,7 +151,8 @@ vmem_pool = 2000 #virtual memory to request per slot if pooling is used
 
 vmem_buffer = 1.2 #buffer factor for virtual memory
 
-# runtime
+# runtime 
+#TODO: make gridpoint dependent or so; make second res
 rt = None #None or job runtime in seconds
 rt_buffer = 1.5 #buffer factor to multiply rt with
 runtime_per_step = { 62.5 : 3., 100: 3., 125. : 3. , 250. : 1., 500: 0.5, 1000: 0.3, 2000.: 0.3, 4000.: 0.3}# if rt is None: runtime per time step in seconds for different dx
@@ -171,11 +174,8 @@ if (("HOSTNAME" in os.environ) and (cluster_name in os.environ["HOSTNAME"])):
     pool_size = 28 #number of cores per pool if job pooling is used
 else:
     cluster = False
-    use_rankfiles = False
     max_nslotsy = 2
     max_nslotsx = 4
-    pool_size = 8
-
 
 if not os.path.isdir(outpath):
     os.makedirs(outpath)
@@ -321,7 +321,7 @@ for i in range(len(combs)):
 
         if r >= args["pbl_res"]:
             args["km_opt"] = 4
-            iofile = '"MESO_IO.txt"'
+            iofile = '"MESO_IO.txt"' #TODO: more general!
             pbl_scheme = args["bl_pbl_physics"]
         else:
             pbl_scheme = 0
@@ -524,12 +524,12 @@ for i in range(len(combs)):
                 wrf_dir = " ".join([str(wd) for wd in wrf_dir])
                 vmemp = int(sum(vmem)/len(vmem))
                 if options.pool_jobs:
-                    job_name = "pool_" + "_".join(dx_p_set)
+                    job_name = "pool_" + "_".join(IDs)
                 else:
                     job_name = IDr
                 jobs = " ".join(IDs)
 
-                comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, use_rankfiles=use_rankfiles, run_path=run_path, cluster=int(cluster))
+                comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool=int(options.pool_jobs), run_path=run_path, cluster=int(cluster))
                 if options.use_qsub:
                     comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                     comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -v {} run_wrf.job".format(queue, job_name, rtp, vmemp, slot_comm, options.mail, comm_args_str)

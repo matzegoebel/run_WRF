@@ -37,7 +37,7 @@ si=0
 pool=false
 if (( ${#jobs[@]} > 1 ))
 then
-  if [ $use_rankfiles == "True" ]
+  if [ ${pool_jobs} == 1 ]
   then
     pool=true
     qs=$(qstat -t)
