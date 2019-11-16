@@ -542,7 +542,7 @@ for i in range(len(combs)):
                         job_name = IDr
                     jobs = " ".join(IDs)
     
-                    comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool=int(options.pool_jobs), run_path=run_path, cluster=int(cluster))
+                    comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool_jobs=int(options.pool_jobs), run_path=run_path, cluster=int(cluster))
                     if options.use_qsub:
                         comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                         comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -v {} run_wrf.job".format(queue, job_name, rtp, vmemp, slot_comm, options.mail, comm_args_str)
