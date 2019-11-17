@@ -133,6 +133,8 @@ all_pert = False
 
 #indices for output streams and their respective name and output interval (min); 0 is the standard output stream
 output_streams = {0: ["wrfout", 30], 7: ["fastout", 10], 8 : ["meanout", 30]}
+# filename where output variables for standard and auxiliary streams are modified:
+a["iofields_filename"] = 0 # if 0: use LES_IO.txt and MESO_IO.txt for LES simulations and simulations with PBL scheme respectively
 
 
 #%%
@@ -168,17 +170,18 @@ even_split = False #1, force equal split between processors
 '''Slot configurations for personal computer and cluster'''
 
 #dx_ind = [62.5, 125, 250] #INACTIVE; resolutions which have their own job pools (if pooling is used)
+reduce_pool = True #reduce pool size to the actual uses number of slots; do not use if you do not want to share the node with others
 
 if (("HOSTNAME" in os.environ) and (cluster_name in os.environ["HOSTNAME"])):
     cluster = True
     max_nslotsy = 2
     max_nslotsx = 7
     pool_size = 28 #number of cores per pool if job pooling is used
-    reduce_pool = True #reduce pool size to the actual uses number of slots; do not use if you do not want to share the node with others
 else:
     cluster = False
     max_nslotsy = 2
     max_nslotsx = 4
+    pool_size = 16
 
 if not os.path.isdir(outpath):
     os.makedirs(outpath)
@@ -324,16 +327,17 @@ for i in range(len(combs)):
 
         if r >= args["pbl_res"]:
             args["km_opt"] = 4
-            iofile = '"MESO_IO.txt"'
+            if ("iofields_filename" in args) and (args["iofields_filename"]==0):
+                args["iofields_filename"] = '"MESO_IO.txt"'
             pbl_scheme = args["bl_pbl_physics"]
         else:
             pbl_scheme = 0
             args["km_opt"] = 2
             args["sf_sfclay_physics"] = 1
-            iofile = '"LES_IO.txt"'
+            if ("iofields_filename" in args) and (args["iofields_filename"]==0):
+                args["iofields_filename"] = '"LES_IO.txt"'
 
         args["bl_pbl_physics"] = pbl_scheme
-
         if pbl_scheme in [5, 6]:
             args["bl_mynn_tkebudget"] = 1
         else:
@@ -383,7 +387,7 @@ for i in range(len(combs)):
         args_str["init_pert"] = misc.bool_to_fort(args_str["init_pert"])
         args_str["const_sw"] = misc.bool_to_fort(args_str["const_sw"])
         args_str = str(args_str).replace("{","").replace("}","").replace("'","").replace(":","").replace(",","")
-        args_str = args_str +  " iofields_filename " + iofile
+        args_str = args_str +  " iofields_filename " + args["iofields_filename"]
         args_str += " eta_levels " + eta_levels
 
         if vmem_init > 25e3:
