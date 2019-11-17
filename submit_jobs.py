@@ -52,6 +52,8 @@ if (not options.init) and (options.outdir is not None):
 
 if options.pool_jobs and (not options.use_qsub):
     raise ValueError("Pooling can only be used with --qsub option")
+if len(glob.glob(os.getcwd() + "/submit_jobs.py")) == 0:
+    raise RuntimeError("Script must be started from within its directory!")
 #%%
 '''Simulations settings'''
 
@@ -65,7 +67,7 @@ if options.outdir is not None:
 
 outpath = os.path.join(os.environ["wrf_res"], outdir, "") #WRF output path
 run_path = os.environ["wrf_runs"] #path where run directories of simulations will be created
-build_path = os.environ["wrf_builds"]
+build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
 
@@ -151,7 +153,7 @@ vmem_pool = 2000 #virtual memory to request per slot if pooling is used
 
 vmem_buffer = 1.2 #buffer factor for virtual memory
 
-# runtime 
+# runtime
 #TODO: make gridpoint dependent; make second res
 rt = None #None or job runtime in seconds
 rt_buffer = 1.5 #buffer factor to multiply rt with
@@ -520,20 +522,20 @@ for i in range(len(combs)):
                     dx_p = dx_p[:-1]
                     resched_i = True
                     dx_p_set = [str(int(rs)) for rs in set(dx_p)]
-                
+
                 iterate = True
                 while iterate:
                     iterate = False
                     print("Submit IDs: {}".format(IDs))
                     print("with total cores: {}".format(sum(nslots)))
-                    
+
                     if options.pool_jobs:
                         nperhost =  pool_size
                         if reduce_pool:
                             nperhost_sge = np.array([1, *np.arange(2,29,2)])
-                            nperhost = nperhost_sge[(nperhost_sge >= sum(nslots)).argmax()] #select available nperhost that is greater and closest to the number of slots 
+                            nperhost = nperhost_sge[(nperhost_sge >= sum(nslots)).argmax()] #select available nperhost that is greater and closest to the number of slots
                         slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
-                            
+
                     rtp = max(rtr)
                     rtp = "{:02d}:{:02d}:00".format(math.floor(rtp), math.ceil((rtp - math.floor(rtp))*60))
                     nslots = " ".join([str(ns) for ns in nslots])
@@ -544,7 +546,7 @@ for i in range(len(combs)):
                     else:
                         job_name = IDr
                     jobs = " ".join(IDs)
-    
+
                     comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool_jobs=int(options.pool_jobs), run_path=run_path, cluster=int(cluster))
                     if options.use_qsub:
                         comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
@@ -552,9 +554,9 @@ for i in range(len(combs)):
                     else:
                         for p, v in comm_args.items():
                             os.environ[p] = str(v)
-    
+
                         comm = "bash run_wrf.job"
-    
+
                     pi = 0
                     if resched_i:
                         IDs = [IDr]

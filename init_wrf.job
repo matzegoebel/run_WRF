@@ -17,6 +17,7 @@ then
 
 else
   echo "start cluster job"
+  module purge
   module load intel/18.0u1 netcdf-4
 
   #~ if [ -d $SCRATCH/parallel_studio_2019 ]
