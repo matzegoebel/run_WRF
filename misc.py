@@ -13,6 +13,8 @@ import itertools
 import numpy as np
 import pandas as pd
 import math
+import os
+
 
 
 def find_nproc(n, min_n_per_proc=25, even_split=False):

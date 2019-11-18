@@ -57,11 +57,11 @@ if len(glob.glob(os.getcwd() + "/submit_jobs.py")) == 0:
 #%%
 '''Simulations settings'''
 
-wrf_dir_pre = "WRF" #prefix for WRF build directory (_debug and _mpi will be added later)
-ideal_case = "em_les" #idealized WRF case
-runID = "test" #name for this simulation series
+wrf_dir_pre = "WRFscm" #prefix for WRF build directory (_debug and _mpi will be added later)
+ideal_case = "em_scm_xy" #idealized WRF case
+runID = "fluxdelay" #name for this simulation series
 
-outdir = "test/qbudget" #subdirectory for WRF output if not set in command line
+outdir = "test/fluxdelay/" #subdirectory for WRF output if not set in command line
 if options.outdir is not None:
     outdir = options.outdir
 
@@ -109,7 +109,7 @@ a["dz0"] = 20 #10, height of first model level (m)
 a["dz_method"] = 0 #method for creating vertical grid as defined in vertical_grid.py
 a["dt"] = None #1 #time step (s), if None calculated as dt = 6 s/m *dx/1000
 
-a["input_sounding"] = "schlemmer_stable" #name of input sounding to use (should be named input_sounding_name)
+a["input_sounding"] = "nowind" #name of input sounding to use (should be named input_sounding_name)
 
 a["isotropic_res"] = 100 #resolution below which mixing is isotropic
 a["pbl_res"] = 500 #resolution above which to use PBL scheme (m)
@@ -127,15 +127,16 @@ a["slope_rad"] = 1
 #custom namelist parameters (not available in official WRF)
 a["topo"] = "flat"#, "cos"] #topography type
 a["spec_sw"] = None  # specified constant shortwave radiation
-a["pert_res"] = 4000 #resolution below which initial perturbations are used
+a["pert_res"] = 4000 #resolution (m) below which initial perturbations are used
 no_pert = False
 all_pert = False
 
-#indices for output streams and their respective name and output interval (min); 0 is the standard output stream
-output_streams = {0: ["wrfout", 30], 7: ["fastout", 10], 8 : ["meanout", 30]}
+#indices for output streams and their respective name and output interval (min)
+# 0 is the standard output stream
+output_streams = {0: ["wrfout", 30], 7: ["fastout", 10], 8 : ["meanout", 30], }
 # filename where output variables for standard and auxiliary streams are modified:
 a["iofields_filename"] = 0 # if 0: use LES_IO.txt and MESO_IO.txt for LES simulations and simulations with PBL scheme respectively
-
+a["restart_interval"] = 240 #restart interval (min)
 
 #%%
 '''Settings for resource requirements of SGE jobs'''
@@ -481,13 +482,14 @@ for i in range(len(combs)):
         else:
             if options.restart:
                 wdir = "{}/WRF_{}/".format(run_path,IDr)
-                rstfiles = glob.glob(wdir + "wrfrst*")
-                if len(rstfiles) == 0:
-                    raise RuntimeError("No restart files found!")
-                rstf = sorted(rstfiles)[-1].split("/")[-1].split("_")[-2:]
-                start_time_rst = datetime.datetime.fromisoformat("_".join(rstf))
+                rstfiles = os.popen("ls -t {}/wrfrst*".format(wdir)).read()
+                if rstfiles == "":
+                    print("WARNING: no restart files found")
+
+                restart_time = rstfiles.split("\n")[0].split("/")[-1].split("_")[-2:]
+                start_time_rst = datetime.datetime.fromisoformat("_".join(restart_time))
                 end_time_rst = datetime.datetime.fromisoformat(end_time)
-                rst_date, rst_time = rstf
+                rst_date, rst_time = restart_time
                 rst_date = rst_date.split("-")
                 rst_time = rst_time.split(":")
                 run_h = int((end_time_rst - start_time_rst).total_seconds()/3600)
