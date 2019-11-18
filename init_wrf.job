@@ -60,9 +60,17 @@ $trans ${build_dir}/main/ideal.exe .
 #~ $trans ${build_dir}/run/qr_acr* .
 cp -u -r $wrf_case_dir/* $run_dir
 
-input_sounding_org="input_sounding"
-rm -f $input_sounding_org
-cp ${input_sounding_org}_${input_sounding} ${input_sounding_org}
+if [ -n "${input_sounding}" ]
+then
+  input_sounding_org="input_sounding"
+  input_sounding=${input_sounding_org}_${input_sounding}
+  rm -f ${input_sounding_org}
+  cp ${input_sounding} ${input_sounding_org}
+else
+  input_sounding="input_sounding" 
+fi
+
+echo "use input sounding: ${input_sounding}"
 
 #redirect logs to file and stdout
 exec 1> "init.log"

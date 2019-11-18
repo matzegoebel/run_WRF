@@ -11,7 +11,7 @@ When run in parallel mode, the script assumes the name of the parallel build dir
 
 The log output is written to `init.log/init.err` and `run.log/run.err` in the respective simulation folder for initialization and simulation mode, respectively. The subdirectory for the simulation output can be specified in the script or with the `-o` option.
 
-When run on a cluster the `-q` flag allows submitting the jobs with SGE. Email settings for SGE can be set with the  `-m` option (set your email address in the script beforehand).
+When run on a cluster the `-q` flag allows submitting the jobs with SGE. Email settings for SGE can be set with the  `-m` option (set your email address in the job scripts `init_wrf.job` and `run_wrf.job` beforehand).
  
 In addition, the script makes it easy to set the vertical and horizontal domain and request job resources like virtual memory, runtime and number of CPUs. To control which modules are loaded for cluster jobs, take a look at `init_wrf.job` and `run_wrf.job`.
 

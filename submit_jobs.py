@@ -70,10 +70,12 @@ run_path = os.environ["wrf_runs"] #path where run directories of simulations wil
 build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
+param_grid = odict(mp_physics=[1, 2],
+           res={"dx" : [100,4000], "bl_pbl_physics": [0,1], "dz0" : [10,50], "nz" : [350,60]})
 
 # names of parameter values for output filenames
 param_names = {"mp_physics" : ["kessler", "lin"],
-               "c1"         : ["LES", "MYJ"]}
+               "res"         : ["LES", "MYJ"]}
 param_combs, param_grid_flat, composite_params = misc.grid_combinations(param_grid)
 
 #Set additional namelist parameters (only applies if they are not present in param_grid)
@@ -305,6 +307,7 @@ for i in range(len(combs)):
             args["auxhist{}_interval".format(stream)] = out_int
         else:
             args["history_interval_m"] = out_int
+            args["history_interval"] = out_int
 
     if options.init:
         if "spec_hfx" in args:
@@ -362,8 +365,9 @@ for i in range(len(combs)):
                 args["init_pert"] = False
 
         # delete non-namelist parameters
-        del_args =  ["dx", "nz", "dz0","dz_method", "gridpoints", "lx", "ly", "spec_hfx", "spec_sw","composite_name",
-                    "pert_res", "input_sounding", "repi", "n_rep", "isotropic_res", "pbl_res", "dt"]
+        del_args =   ["dx", "nz", "dz0","dz_method", "gridpoints", "lx", "ly", "spec_hfx", "spec_sw",
+                    "pert_res", "input_sounding", "repi", "n_rep", "isotropic_res", "pbl_res", "dt",
+                    *[p + "_idx" for p in composite_params.keys()]]
         args_df = args.copy()
         for del_arg in del_args:
             if del_arg in args_df:

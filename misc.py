@@ -111,7 +111,7 @@ def grid_combinations(param_grid):
     d = copy.deepcopy(param_grid)
     param_grid_flat = copy.deepcopy(param_grid)
     params = []
-    composite_params = []
+    composite_params = {}
     for param,val in d.items():
         if type(val) == dict:
             val_list = list(val.values())
@@ -120,7 +120,8 @@ def grid_combinations(param_grid):
                 raise ValueError("All parameter ranges that belong to the same composite must have equal lengths!")
             val_list.append(np.arange(lens[0]))
             params.extend([*val.keys(), param + "_idx"])
-            composite_params.extend(val.keys())
+            composite_params[param] = list(val.keys())
+
             d[param] = transpose_list(val_list)
             for k in val.keys():
                 param_grid_flat[k] = val[k]

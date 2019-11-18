@@ -88,9 +88,7 @@ do
   echo
 done
 
-if [ -z $SGE_STDOUT_PATH ]
+if [ -n "${SGE_STDOUT_PATH}" ]
 then
-  echo 
-else
   wait
 fi
