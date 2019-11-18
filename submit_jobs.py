@@ -71,22 +71,14 @@ build_path = os.environ["wrf_builds"] #path where different versions of the comp
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
 
-# param_grid = dict(
-#              dx=[4000, 2000, 1000, 500, 250, 125, 62.5],# hor. grid spacings in meter
-#             input_sounding=["schlemmer_stable","schlemmer_unstable"],
-#             topo=["cos", "flat"])
-
-#param_grid = odict(
-#            c1={"dx" : [125,4000,4000,4000], "bl_pbl_physics": [0,1,5,7], "dz0" : [10,50,50,50], "nz" : [350,60,60,60], "composite_name": ["LES", "MYJ", "MYNN", "ACM2"]})
-param_grid = odict(
-            c1={"dx" : [4000], "bl_pbl_physics": [7], "dz0" : [50], "nz" : [60], "composite_name": ["ACM2"]})
-
+# names of parameter values for output filenames
+param_names = {"mp_physics" : ["kessler", "lin"],
+               "c1"         : ["LES", "MYJ"]}
 param_combs, param_grid_flat, composite_params = misc.grid_combinations(param_grid)
-a = {}
 
 #Set additional namelist parameters (only applies if they are not present in param_grid)
 #any namelist parameters and some additional ones can be used
-
+a = {}
 start_time = "2018-06-20_00:00:00" #"2018-06-20_20:00:00"
 end_time = "2018-06-21_00:00:00" #"2018-06-23_00:00:00"
 
@@ -112,7 +104,7 @@ a["dt"] = None #1 #time step (s), if None calculated as dt = 6 s/m *dx/1000
 a["input_sounding"] = "nowind" #name of input sounding to use (should be named input_sounding_name)
 
 a["isotropic_res"] = 100 #resolution below which mixing is isotropic
-a["pbl_res"] = 500 #resolution above which to use PBL scheme (m)
+a["pbl_res"] = 500 #resolution above which to use PBL scheme (m); this also changes km_opt
 a["spec_hfx"] = None #None specified surface heat flux instead of radiation
 
 #standard namelist parameters
@@ -175,13 +167,14 @@ reduce_pool = True #reduce pool size to the actual uses number of slots; do not 
 
 if (("HOSTNAME" in os.environ) and (cluster_name in os.environ["HOSTNAME"])):
     cluster = True
-    max_nslotsy = 2
-    max_nslotsx = 7
+    #maximum number of slots that will be requested for the x and y directions
+    max_nslotsy = None
+    max_nslotsx = None
     pool_size = 28 #number of cores per pool if job pooling is used
 else:
     cluster = False
-    max_nslotsy = 2
-    max_nslotsx = 4
+    max_nslotsy = None
+    max_nslotsx = None
     pool_size = 16
 
 if not os.path.isdir(outpath):
@@ -285,8 +278,11 @@ for i in range(len(combs)):
     if (nx == 1) and (ny == 1):
         nx = -1
         ny = -1
-    nx = min(max_nslotsx, nx)
-    ny = min(max_nslotsy, ny)
+
+    if max_nslotsx is not None:
+        nx = min(max_nslotsx, nx)
+    if max_nslotsy is not None:
+        ny = min(max_nslotsy, ny)
 
     nslotsi = nx*ny
     nslots.append(nslotsi)
@@ -388,7 +384,8 @@ for i in range(len(combs)):
         args_str["init_pert"] = misc.bool_to_fort(args_str["init_pert"])
         args_str["const_sw"] = misc.bool_to_fort(args_str["const_sw"])
         args_str = str(args_str).replace("{","").replace("}","").replace("'","").replace(":","").replace(",","")
-        args_str = args_str +  " iofields_filename " + args["iofields_filename"]
+        if "iofields_filename" in args:
+            args_str = args_str +  " iofields_filename " + args["iofields_filename"]
         args_str += " eta_levels " + eta_levels
 
         if vmem_init > 25e3:
@@ -427,9 +424,18 @@ for i in range(len(combs)):
 
     #create output ID for current configuration
     IDi = param_comb.copy()
-    for p in IDi.keys():
-        if (p in composite_params) and (p != "composite_name"):
-            del IDi[p]
+    for p, v in param_grid.items():
+        if type(v) == dict:
+            for pc in v.keys():
+                del IDi[pc]
+        if p in param_names:
+            if type(v) == dict:
+                idx = IDi[p + "_idx"]
+                del IDi[p + "_idx"]
+            else:
+                idx = param_grid[p].index(IDi[p])
+            IDi[p] = param_names[p][idx]
+
     IDi = "_".join(IDi.values.astype(str))
     IDi =  runID + "_" + IDi
 

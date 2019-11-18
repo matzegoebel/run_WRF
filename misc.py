@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import math
 import os
+from collections import OrderedDict as odict
 
 
 
@@ -114,7 +115,11 @@ def grid_combinations(param_grid):
     for param,val in d.items():
         if type(val) == dict:
             val_list = list(val.values())
-            params.extend(val.keys())
+            lens = np.array([len(l) for l in val_list])
+            if (lens[0] != lens).any():
+                raise ValueError("All parameter ranges that belong to the same composite must have equal lengths!")
+            val_list.append(np.arange(lens[0]))
+            params.extend([*val.keys(), param + "_idx"])
             composite_params.extend(val.keys())
             d[param] = transpose_list(val_list)
             for k in val.keys():
@@ -126,6 +131,6 @@ def grid_combinations(param_grid):
     combs = list(itertools.product(*d.values()))
     for i,comb in enumerate(combs):
         c = flatten_list(comb)
-        combs[i] = dict(zip(params,c))
+        combs[i] = odict(zip(params,c))
 
     return pd.DataFrame(combs), param_grid_flat, composite_params
