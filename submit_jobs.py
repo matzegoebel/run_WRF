@@ -73,8 +73,8 @@ build_path = os.environ["wrf_builds"] #path where different versions of the comp
 param_grid = odict(mp_physics=[1, 2],
            res={"dx" : [100,4000], "bl_pbl_physics": [0,1], "dz0" : [10,50], "nz" : [350,60]})
 
-# names of parameter values for output filenames
-param_names = {"mp_physics" : ["kessler", "lin"],
+# names of parameter values for output filenames; either dictionaries or lists (not for composite parameters)
+param_names = {"mp_physics" : {1: "kessler", 2: "lin"},
                "res"         : ["LES", "MYJ"]}
 param_combs, param_grid_flat, composite_params = misc.grid_combinations(param_grid)
 
@@ -437,12 +437,15 @@ for i in range(len(combs)):
             for pc in v.keys():
                 del IDi[pc]
         if p in param_names:
+            namep = param_names[p]
             if type(v) == dict:
-                idx = IDi[p + "_idx"]
+                IDi[p] = namep[IDi[p + "_idx"]]
                 del IDi[p + "_idx"]
             else:
-                idx = param_grid[p].index(IDi[p])
-            IDi[p] = param_names[p][idx]
+                if type(namep) == dict:
+                    IDi[p] = namep[IDi[p]]
+                else:
+                    IDi[p] = namep[param_grid[p].index(IDi[p])]
 
     IDi = "_".join(IDi.values.astype(str))
     IDi =  runID + "_" + IDi
