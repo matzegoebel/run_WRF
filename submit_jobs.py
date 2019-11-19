@@ -234,7 +234,7 @@ else:
     print("Run WRF simulations")
 
 print("Configs:")
-print("\n".join(str(param_combs).split("\n")[:-1]))
+print(param_combs)
 print("-"*40)
 for i in range(len(combs)):
     args = combs.loc[i].dropna().to_dict()
