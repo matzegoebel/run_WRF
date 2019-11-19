@@ -40,7 +40,6 @@ run_dir="${run_path}/WRF_$JOB_NAME"
 wrf_case_dir="${build_dir}/test/$ideal_case"
 cd $wrf_case_dir
 
-echo
 echo "Copy files to $run_dir"
 rm $run_dir -rf
 mkdir -p $run_dir

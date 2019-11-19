@@ -44,6 +44,9 @@ parser.add_argument("-p", "--pool",
 parser.add_argument("-m", "--mail",
                     action="store", dest="mail", type=str, default = "ea",
                     help="If using qsub, defines when mail is sent. Either 'n' for no mails, or a combination of 'b' (beginning of job), 'e' (end), 'a' (abort)', 's' (suspended). Default: 'ea'")
+parser.add_argument("-v", "--verbose",
+                    action="store_true", dest="verbose",default=False,
+                    help="Verbose mode")
 
 
 options = parser.parse_args()
@@ -224,11 +227,18 @@ for param, val in a.items():
 
 
 #%%
+if options.init:
+    print("Initialize WRF simulations")
+else:
+    print("Run WRF simulations")
 
+print("Configs:")
+print("\n".join(str(param_combs).split("\n")[:-1]))
+print("-"*40)
 for i in range(len(combs)):
     args = combs.loc[i].dropna().to_dict()
     param_comb = param_combs.loc[i]
-    print("Config:")
+    print("\n\nConfig:")
     print("\n".join(str(param_comb).split("\n")[:-1]))
 
     r = args["dx"]
@@ -403,10 +413,14 @@ for i in range(len(combs)):
 
         args["nslots"] = nslotsi
 
-    if rt is not None:
-        rtri = rt/3600 #runtime in hours
+    if options.use_qsub:
+        if rt is not None:
+            rtri = rt/3600 #runtime in hours
+        else:
+            rtri = runtime_per_step[r] * run_hours/dt * rt_buffer
     else:
-        rtri = runtime_per_step[r] * run_hours/dt * rt_buffer
+        rtri = None
+
     args["rtr"] = rtri
     args["nx"] = nx
     args["ny"] = ny
@@ -486,16 +500,14 @@ for i in range(len(combs)):
                 os.environ["JOB_NAME"] = IDr
                 comm = "bash init_wrf.job '{}' ".format(args_str)
 
-            print(comm)
+            if options.verbose:
+                print(comm)
             if not options.check_args:
                 os.system(comm)
                 ID_path = "{}/WRF_{}".format(run_path, IDr)
                 os.system("tail -n 1 {}/init.log".format(ID_path))
                 os.system("cat {}/init.err".format(ID_path))
-            IDs = []
-            rtr = []
-            vmem = []
-            nslots = []
+
         else:
             if options.restart:
                 wdir = "{}/WRF_{}/".format(run_path,IDr)
@@ -559,11 +571,7 @@ for i in range(len(combs)):
                             nperhost = nperhost_sge[(nperhost_sge >= sum(nslots)).argmax()] #select available nperhost that is greater and closest to the number of slots
                         slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
 
-                    rtp = max(rtr)
-                    rtp = "{:02d}:{:02d}:00".format(math.floor(rtp), math.ceil((rtp - math.floor(rtp))*60))
-                    nslots = " ".join([str(ns) for ns in nslots])
                     wrf_dir = " ".join([str(wd) for wd in wrf_dir])
-                    vmemp = int(sum(vmem)/len(vmem))
                     if options.pool_jobs:
                         job_name = "pool_" + "_".join(IDs)
                     else:
@@ -572,6 +580,10 @@ for i in range(len(combs)):
 
                     comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool_jobs=int(options.pool_jobs), run_path=run_path, cluster=int(cluster))
                     if options.use_qsub:
+                        rtp = max(rtr)
+                        rtp = "{:02d}:{:02d}:00".format(math.floor(rtp), math.ceil((rtp - math.floor(rtp))*60))
+                        nslots = " ".join([str(ns) for ns in nslots])
+                        vmemp = int(sum(vmem)/len(vmem))
                         comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                         comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -v {} run_wrf.job".format(queue, job_name, rtp, vmemp, slot_comm, options.mail, comm_args_str)
                     else:
@@ -598,8 +610,8 @@ for i in range(len(combs)):
                         nslots = []
                         wrf_dir = []
                         dx_p = []
-
-                    print(comm)
+                    if options.verbose:
+                        print(comm)
                     if not options.check_args:
                         os.system(comm)
 
