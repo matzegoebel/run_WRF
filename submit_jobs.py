@@ -73,11 +73,12 @@ run_path = os.environ["wrf_runs"] #path where run directories of simulations wil
 build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
-param_grid = odict(mp_physics=[1, 2],
-           res={"dx" : [100,4000], "bl_pbl_physics": [0,1], "dz0" : [10,50], "nz" : [350,60]})
+param_grid = odict(sf_sfclay_physics=[1, 2, 5])
+ #          res={"dx" : [100,4000], "bl_pbl_physics": [0,1], "dz0" : [10,50], "nz" : [350,60]})
 
 # names of parameter values for output filenames; either dictionaries or lists (not for composite parameters)
 param_names = {"mp_physics" : {1: "kessler", 2: "lin"},
+               "sf_sfclay_physics" : {1 : "mm5", 2: "eta", 5 : "mynn"},
                "res"         : ["LES", "MYJ"]}
 param_combs, param_grid_flat, composite_params = misc.grid_combinations(param_grid)
 
@@ -242,7 +243,7 @@ for i in range(len(combs)):
     print("\n".join(str(param_comb).split("\n")[:-1]))
 
     r = args["dx"]
-    dx_p.append(r)
+    #dx_p.append(r)
     args["dy"] = r
     args["dx"] = r
     if args["topo"] == "flat":
@@ -536,7 +537,7 @@ for i in range(len(combs)):
 
             #split_res = False
             last_id = False
-            dx_p_set = [str(int(rs)) for rs in set(dx_p)]
+ #           dx_p_set = [str(int(rs)) for rs in set(dx_p)]
 #            if (np.in1d(dx_ind, dx_p).any()) and (len(dx_p_set) > 1):
 #                split_res = True
             if (rep == n_rep+repi-1) and (i == len(combs) - 1):
@@ -554,9 +555,9 @@ for i in range(len(combs)):
                     vmem = vmem[:-1]
                     rtr = rtr[:-1]
                     IDs = IDs[:-1]
-                    dx_p = dx_p[:-1]
+                  #  dx_p = dx_p[:-1]
                     resched_i = True
-                    dx_p_set = [str(int(rs)) for rs in set(dx_p)]
+                #    dx_p_set = [str(int(rs)) for rs in set(dx_p)]
 
                 iterate = True
                 while iterate:
@@ -599,7 +600,7 @@ for i in range(len(combs)):
                         vmem = [vmemi]
                         nslots = [nslotsi]
                         wrf_dir = [wrf_dir_i]
-                        dx_p = [r]
+                       # dx_p = [r]
                         if last_id:
                             iterate = True
                             last_id = False
