@@ -326,16 +326,18 @@ for i in range(len(combs)):
             args["tke_drag_coefficient"] = 0.
 
         if r >= args["pbl_res"]:
-            args["km_opt"] = 4
             if ("iofields_filename" in args) and (args["iofields_filename"]==0):
                 args["iofields_filename"] = '"MESO_IO.txt"'
             pbl_scheme = args["bl_pbl_physics"]
+            if "km_opt" not in args:
+                args["km_opt"] = 4
         else:
-            pbl_scheme = 0
-            args["km_opt"] = 2
-            args["sf_sfclay_physics"] = 1
             if ("iofields_filename" in args) and (args["iofields_filename"]==0):
                 args["iofields_filename"] = '"LES_IO.txt"'
+            pbl_scheme = 0
+
+            if "km_opt" not in args:
+                args["km_opt"] = 2
 
         args["bl_pbl_physics"] = pbl_scheme
         if pbl_scheme in [5, 6]:
@@ -347,14 +349,16 @@ for i in range(len(combs)):
             args["scalar_pblmix"] = 0
 
         #choose surface layer scheme that is compatible with PBL scheme
-        if pbl_scheme in [1,2,3,4,5,7,10]:
-            sfclay_scheme = pbl_scheme
-        elif pbl_scheme == 6:
-            sfclay_scheme = 5
-        else:
-            sfclay_scheme = 1
+        if "sf_sfclay_physics" not in args:
+            if pbl_scheme in [1,2,3,4,5,7,10]:
+                sfclay_scheme = pbl_scheme
+            elif pbl_scheme == 6:
+                sfclay_scheme = 5
+            else:
+                sfclay_scheme = 1
 
-        args["sf_sfclay_physics"] = sfclay_scheme
+
+            args["sf_sfclay_physics"] = sfclay_scheme
 
         if "init_pert" not in args:
             if no_pert:
