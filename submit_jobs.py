@@ -154,11 +154,12 @@ vmem_pool = 2000 #virtual memory to request per slot if pooling is used
 
 vmem_buffer = 1.2 #buffer factor for virtual memory
 
-# runtime
+# runtime: specify either rt or runtime_per_step or None
+# if None: runtime is estimated from short test run
 #TODO: make gridpoint dependent; make second res
 rt = None #None or job runtime in seconds
 rt_buffer = 1.5 #buffer factor to multiply rt with
-runtime_per_step = { 62.5 : 3., 100: 3., 125. : 3. , 250. : 1., 500: 0.5, 1000: 0.3, 2000.: 0.3, 4000.: 0.3}# if rt is None: runtime per time step in seconds for different dx
+runtime_per_step = None#{ 62.5 : 3., 100: 3., 125. : 3. , 250. : 1., 500: 0.5, 1000: 0.3, 2000.: 0.3, 4000.: 0.3}
 
 # slots
 nslots_dict = {} #set number of slots for each resolution
@@ -414,15 +415,20 @@ for i in range(len(combs)):
 
         args["nslots"] = nslotsi
 
-    if options.use_qsub:
+    elif options.use_qsub:
+        rt_test = False
         if rt is not None:
             rtri = rt/3600 #runtime in hours
-        else:
+        elif (runtime_per_step is not None) and (r in runtime_per_step):
             rtri = runtime_per_step[r] * run_hours/dt * rt_buffer
-    else:
-        rtri = None
+        else:
+            rtri = 180
+            rt_test = True
+            args["n_rep"] = 1
+            args["repi"] = 0
 
-    args["rtr"] = rtri
+        args["rtr"] = rtri
+
     args["nx"] = nx
     args["ny"] = ny
     for arg, val in args.items():
