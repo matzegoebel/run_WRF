@@ -216,9 +216,7 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=True):
         f = open(run_dir + "/run.log")
     else:
         raise FileNotFoundError("No log file found!")
-    if timing is None:
-        timing = pd.DataFrame(columns=["nx", "ny", "ide", "jde", "timing"])
-        counter = 0
+
     log = f.readlines()
     settings = []
     if "WRF V" in "".join(log[4:15]): #check that it is no init run
@@ -244,10 +242,20 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=True):
                 _, _, ide, _, jde  = [l for l in line[:-1].split(" ") if l != ""]
                 settings.extend([int(ide), int(jde)])
         timing_ID = np.array(timing_ID)
+        if timing is None:
+            columns = ["nx", "ny", "ide", "jde", "timing"]
+            if all_times:
+                columns.append("time")
+                ind = np.arange(len(timing_ID))
+            else:
+                ind = [0]
+
+            timing = pd.DataFrame(columns=columns, index=ind)
+            counter = 0
         if len(timing_ID) > 0:
             if all_times:
-                timing.iloc[counter:counter+len(timing_ID), -1] = times
-                timing.iloc[counter:counter+len(timing_ID), -2] = timing_ID
+                timing.loc[counter:counter+len(timing_ID), "time"] = times
+                timing.loc[counter:counter+len(timing_ID), "timing"] = timing_ID
                 timing.iloc[counter:counter+len(timing_ID), -7:-2] = settings
                 counter += len(timing_ID)
             else:

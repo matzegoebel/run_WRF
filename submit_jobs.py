@@ -135,13 +135,12 @@ output_streams = {0: ["wrfout", 30], 7: ["fastout", 10], 8 : ["meanout", 30], }
 # filename where output variables for standard and auxiliary streams are modified:
 a["iofields_filename"] = 0 # if 0: use LES_IO.txt and MESO_IO.txt for LES simulations and simulations with PBL scheme respectively
 a["restart_interval"] = 240 #restart interval (min)
+split_output_res = 0 #resolution below which to split output in one timestep per file
 
 #%%
 '''Settings for resource requirements of SGE jobs'''
 cluster_name = "leo" #this name should appear in the variable $HOSTNAME to detect if cluster settings should be used
 queue = "std.q" #queue for SGE
-
-split_output_res = 0 #resolution below which to split output in one timestep per file
 
 #virtual memory: numbers need adjustment
 #TODO: approach is not optimized yet!
@@ -157,8 +156,11 @@ vmem_buffer = 1.2 #buffer factor for virtual memory
 # runtime: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from short test run
 #TODO: make gridpoint dependent; make second res
+# if qsub: run for a few minutes; check runtime and vmem and resubmit
 rt = None #None or job runtime in seconds
 rt_buffer = 1.5 #buffer factor to multiply rt with
+
+# if rt is None: runtime per time step in seconds for different dx
 runtime_per_step = None#{ 62.5 : 3., 100: 3., 125. : 3. , 250. : 1., 500: 0.5, 1000: 0.3, 2000.: 0.3, 4000.: 0.3}
 
 # slots
