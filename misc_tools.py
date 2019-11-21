@@ -74,18 +74,6 @@ def transpose_list(l):
     return list(map(list, zip(*l)))
 
 def flatten_list(l):
-    """Flattens list-like variables. Works for lists, tuples and numpy arrays."""
-    flat_l = []
-    for item in l:
-        if type(item) in [list, tuple, np.ndarray]:
-            flat_item = flatten_list(item)
-            flat_l.extend(flat_item)
-        else:
-            flat_l.append(item)
-
-    return flat_l
-
-def flatten_list(l):
     '''Flattens list. Works for list elements that are lists or tuples'''
     flat_l = []
     for item in l:
@@ -97,6 +85,11 @@ def flatten_list(l):
 
     return flat_l
 
+def make_list(o):
+    if type(o) not in [tuple, list, dict, np.ndarray]:
+        o = [o]
+    return o
+
 def overprint(message):
     print("\r", message, end="")
 
@@ -104,7 +97,7 @@ def elapsed_time(start):
     time_diff = datetime.now() - start
     return time_diff.total_seconds()
 
-def print_progress(start, counter=None, length=None, message="Elapsed time", prog=True):
+def print_progress(start=None, counter=None, length=None, message="Elapsed time", prog=True):
     '''
     Print progress and elapsed time since start date.
     '''
@@ -114,12 +107,12 @@ def print_progress(start, counter=None, length=None, message="Elapsed time", pro
             msg = "Progress: {} %    ".format(round(float(counter)/length*100,2))
         else:
             msg = "Progress: {}/{}   ".format(counter, length)
-
-    etime = elapsed_time(start)
-    hours, remainder = divmod(etime, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    overprint(msg + "%s: %s hours %s minutes %s seconds" % (message, int(hours),int(minutes),round(seconds)))
-
+    if start is not None:
+        etime = elapsed_time(start)
+        hours, remainder = divmod(etime, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        msg += "%s: %s hours %s minutes %s seconds" % (message, int(hours),int(minutes),round(seconds))
+    overprint(msg)
 
 def grid_combinations(param_grid):
     """
@@ -172,16 +165,17 @@ def grid_combinations(param_grid):
 
     return pd.DataFrame(combs), param_grid_flat, composite_params
 
-def get_runtime_all(id_filter, dirs, subdir="", all_times=True, levels=None, remove=None, length=1e7, verbose=True):
-
+def get_runtime_all(id_filter, dirs, subdir="", all_times=True, levels=8, remove=None, length=1e7, verbose=False):
+    dirs =  make_list(dirs)
     dirs = [os.path.expanduser(d) for d in dirs]
-    runs = [glob.glob(d + "/wrf/runs/" + subdir + "/WRF_*{}*".format(id_filter)) for d in dirs]
+    runs = [glob.glob(d + subdir + "/WRF_*{}*".format(id_filter)) for d in dirs]
     runs = flatten_list(runs)
-    if levels is not None:
-        nlevels = len(levels)
+    if remove is None:
+        remove = []
+    if type(levels) == list:
         columns = levels.copy()
-    else:
-        columns = []
+    elif type(levels) == int:
+        columns = list(np.arange(levels))
     columns.extend(["nx", "ny", "ide", "jde", "timing"])
     index = None
     if all_times:
@@ -194,9 +188,9 @@ def get_runtime_all(id_filter, dirs, subdir="", all_times=True, levels=None, rem
             print_progress(counter=j, length=len(runs))
         ID = r.split("/")[-1][4:]
         IDl = [i for i in ID.split("_") if i not in remove]
-        if len(IDl) != nlevels:
-            print("{} does not have not the correct ID length".format(ID))
-            continue
+        # if len(IDl) != nlevels:
+        #     print("{} does not have not the correct ID length".format(ID))
+        #     continue
         for i,a in enumerate(IDl):
             try:
                 a = float(a)
@@ -205,7 +199,13 @@ def get_runtime_all(id_filter, dirs, subdir="", all_times=True, levels=None, rem
                 IDl[i] = a
             except:
                 pass
-            _, counter = get_runtime(r, timing=timing, counter=counter, all_times=all_times)
+
+        _, new_counter = get_runtime(r, timing=timing, counter=counter, all_times=all_times)
+        timing.iloc[counter:new_counter, :len(IDl)] = IDl
+        counter = new_counter
+
+    timing = timing.dropna(axis=0,how="all")
+    timing = timing.dropna(axis=1,how="all")
     return timing
 
 def get_runtime(run_dir, timing=None, counter=None, all_times=True):
@@ -218,8 +218,8 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=True):
         raise FileNotFoundError("No log file found!")
 
     log = f.readlines()
-    settings = []
-    if "WRF V" in "".join(log[4:15]): #check that it is no init run
+    settings = {}
+    if "WRF V" in "".join(log[:15]): #check that it is no init run
         timing_ID = []
         times = []
         for line in log:
@@ -235,12 +235,16 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=True):
                     time = line[line.index("time"):line.index("on domain")][5:-1]
                     times.append(time)
             elif "Ntasks" in line:
-                nx = int(line[line.index("X")+1: line.index(",")].replace(" ", ""))
-                ny = int(line[line.index("Y")+1: line.index("\n")].replace(" ", ""))
-                settings.extend([nx, ny])
+                settings["nx"] = int(line[line.index("X")+1: line.index(",")].replace(" ", ""))
+                settings["ny"] = int(line[line.index("Y")+1: line.index("\n")].replace(" ", ""))
             elif "ids,ide" in line:
-                _, _, ide, _, jde  = [l for l in line[:-1].split(" ") if l != ""]
-                settings.extend([int(ide), int(jde)])
+                _, _, settings["ide"], _, settings["jde"]  = [l for l in line[:-1].split(" ") if l != ""]
+            elif ("WRF TILE" in line) and ("ide" not in settings):
+                settings["ide"] = int(line[line.index("IE")+2: line.index("JS")])
+                settings["jde"] = int(line[line.index("JE")+2:])
+        if "nx" not in settings:
+            settings["nx"] = 1
+            settings["ny"] = 1
         timing_ID = np.array(timing_ID)
         if timing is None:
             columns = ["nx", "ny", "ide", "jde", "timing"]
@@ -254,12 +258,14 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=True):
             counter = 0
         if len(timing_ID) > 0:
             if all_times:
-                timing.loc[counter:counter+len(timing_ID), "time"] = times
-                timing.loc[counter:counter+len(timing_ID), "timing"] = timing_ID
-                timing.iloc[counter:counter+len(timing_ID), -7:-2] = settings
+                timing.loc[counter:counter+len(timing_ID)-1, "time"] = times
+                timing.loc[counter:counter+len(timing_ID)-1, "timing"] = timing_ID
+                timing.loc[counter:counter+len(timing_ID)-1, settings.keys()] = list(settings.values())
+               # timing.iloc[counter:counter+len(timing_ID), -7:-2] = settings
                 counter += len(timing_ID)
             else:
-                timing.loc[counter] = [*settings, np.nanmean(timing_ID)]
+                timing.loc[counter, settings.keys()] = list(settings.values())
+                timing.loc[counter, "timing"] = np.nanmean(timing_ID)
                 counter += 1
         else:
             counter += 1
