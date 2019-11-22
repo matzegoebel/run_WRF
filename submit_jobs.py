@@ -38,6 +38,9 @@ parser.add_argument("-q", "--qsub",
 parser.add_argument("-t", "--test",
                     action="store_true", dest="check_args", default = False,
                     help="Only test python script (no jobs sumitted)")
+parser.add_argument("-T", "--check_runtime",
+                    action="store_true", dest="check_rt", default = False,
+                    help="Start short test runs to determine runtime of simulations, for which no identical simulations exist yet (only with qsub option)")
 parser.add_argument("-p", "--pool",
                     action="store_true", dest="pool_jobs", default = False,
                     help="Gather jobs before submitting with SGE. Needed if different jobs shall be run on the some node (potentially filling up the whole node)")
@@ -55,6 +58,14 @@ if (not options.init) and (options.outdir is not None):
 
 if options.pool_jobs and (not options.use_qsub):
     raise ValueError("Pooling can only be used with --qsub option")
+if options.check_rt and (not options.use_qsub):
+    raise ValueError("Runtime checking can only be used with --qsub option")
+if options.check_rt and options.init:
+    raise ValueError("Runtime checking cannot be used in initialization mode")
+if options.check_rt and options.pool_jobs:
+    raise ValueError("Runtime checking cannot be used with pooling")
+if options.check_rt and options.restart:
+    raise ValueError("Runtime checking cannot be used with restart runs")
 if len(glob.glob(os.getcwd() + "/submit_jobs.py")) == 0:
     raise RuntimeError("Script must be started from within its directory!")
 #%%
@@ -162,7 +173,9 @@ rt_buffer = 1.5 #buffer factor to multiply rt with
 
 # if rt is None: runtime per time step in seconds for different dx
 runtime_per_step = None#{ 62.5 : 3., 100: 3., 125. : 3. , 250. : 1., 500: 0.5, 1000: 0.3, 2000.: 0.3, 4000.: 0.3}
-rt_search_paths = [run_path, run_path + "/old"] #paths to search for log files when runtime is not specified
+#paths to search for log files to determine runtime if not specified
+rt_search_paths = [run_path, run_path + "/old"] 
+rt_check = 180 #runtime (s) of test jobs  for --check_rt option
 
 # slots
 nslots_dict = {} #set number of slots for each resolution
@@ -440,16 +453,19 @@ for i in range(len(combs)):
         args["nslots"] = nslotsi
 
     elif options.use_qsub:
-        rtri = None
+        runtime_per_step = None
+        
         if rt is not None:
-            rtri = rt/3600 #runtime in hours
+            runtime_per_step = rt/3600*dt/run_hours #runtime per time step
         elif (runtime_per_step is not None) and (r in runtime_per_step):
-            rtri = runtime_per_step[r] * run_hours/dt * rt_buffer
-        else:
+            runtime_per_step = runtime_per_step[r]
+        
+        if options.check_rt or (runtime_per_step is None):
             print("Search for runtime values in previous runs.")
             timing = misc_tools.get_runtime_all(IDi, rt_search_paths, all_times=False, levels=len(param_combs.keys())+2)
             valid_ids = []
-            for i_p, p in enumerate(timing["path"]):
+            for i_p in range(len(timing)):
+                p = timing.loc[i_p, "path"]
                 namelist_diff = os.popen("diff -B -w  --suppress-common-lines -y {}/namelist.input\
                                          {}/WRF_{}_{}/namelist.input".format(p, run_path, IDi, args["repi"])).read()
                 namelist_diff = namelist_diff.replace(" ","").replace("\t","").split("\n")
@@ -471,12 +487,19 @@ for i in range(len(combs)):
                     valid_ids.append(i_p)
                     print("{} has same namelist parameters".format(p))
             if len(valid_ids) > 0:
-                rtri = timing.iloc[valid_ids]["timing"].mean() * run_hours/dt * rt_buffer
-                print("Use runtime: {}s ".format(rtri))
-            else:
-                print("No valid previous runs found. Do test run.")
+                runtime_per_step = timing.iloc[valid_ids]["timing"].mean()
+                if options.check_rt:
+                    print("Previous runs found. No test run needed.")
+                else:
+                    print("Use runtime per time step: {0:.5f} s ".format(runtime_per_step))
 
-        args["rtr"] = rtri
+            elif options.check_rt:
+                print("No valid previous runs found. Do test run.")
+                args["n_rep"] = 1
+            else:
+                print("No runtime specified and no previous runs found. Skipping...")
+                continue
+        args["rt_per_timestep"] = runtime_per_step
 
     args["nx"] = nx
     args["ny"] = ny
@@ -558,10 +581,9 @@ for i in range(len(combs)):
                 rst_date, rst_time = restart_time
                 rst_date = rst_date.split("-")
                 rst_time = rst_time.split(":")
-                run_h = int((end_time_rst - start_time_rst).total_seconds()/3600)
-                if run_h == 0:
+                run_hours = int((end_time_rst - start_time_rst).total_seconds()/3600)
+                if run_hours == 0:
                     continue
-                rtri = runtime_per_step[r] * run_h/dt * rt_buffer
                 rst_opt = "restart .true. start_year {} start_month {} start_day {} start_hour {} start_minute {} start_second {} run_hours {}".format(*rst_date, *rst_time, run_h)
                 os.makedirs("{}/bk/".format(outpath), exist_ok=True) #move previous output in backup directory
                 bk_files = glob.glob("{}/bk/*{}".format(outpath, IDr))
@@ -569,7 +591,14 @@ for i in range(len(combs)):
                     raise FileExistsError("Backup files for restart already present. Double check!")
                 os.system("mv {}/*{} {}/bk/".format(outpath, IDr, outpath))
                 os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input {1}".format(wdir, rst_opt))
-            rtr.append(rtri)
+            
+            rtri = None
+            if options.use_qsub:
+                if options.check_rt:
+                    rtri = rt_check/3600
+                else:   
+                    rtri = runtime_per_step * run_hours/dt * rt_buffer
+                    rtr.append(rtri)
 
             #split_res = False
             last_id = False
