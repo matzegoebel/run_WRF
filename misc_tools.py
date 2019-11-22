@@ -174,9 +174,10 @@ def get_runtime_all(id_filter, dirs, subdir="", all_times=True, levels=8, remove
         remove = []
     if type(levels) == list:
         columns = levels.copy()
+        levels = len(levels)
     elif type(levels) == int:
         columns = list(np.arange(levels))
-    columns.extend(["nx", "ny", "ide", "jde", "timing"])
+    columns.extend(["path", "nx", "ny", "ide", "jde", "timing"])
     index = None
     if all_times:
         index = np.arange(int(length))
@@ -188,9 +189,9 @@ def get_runtime_all(id_filter, dirs, subdir="", all_times=True, levels=8, remove
             print_progress(counter=j, length=len(runs))
         ID = r.split("/")[-1][4:]
         IDl = [i for i in ID.split("_") if i not in remove]
-        # if len(IDl) != nlevels:
-        #     print("{} does not have not the correct ID length".format(ID))
-        #     continue
+        if len(IDl) > levels:
+            print("{} does not have not the correct id length".format(ID))
+            continue
         for i,a in enumerate(IDl):
             try:
                 a = float(a)
@@ -202,6 +203,7 @@ def get_runtime_all(id_filter, dirs, subdir="", all_times=True, levels=8, remove
 
         _, new_counter = get_runtime(r, timing=timing, counter=counter, all_times=all_times)
         timing.iloc[counter:new_counter, :len(IDl)] = IDl
+        timing.loc[counter:new_counter-1, "path"] = r
         counter = new_counter
 
     timing = timing.dropna(axis=0,how="all")

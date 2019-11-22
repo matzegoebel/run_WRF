@@ -15,7 +15,7 @@ import pandas as pd
 import datetime
 import argparse
 import glob
-import misc
+import misc_tools
 from collections import OrderedDict as odict
 
 
@@ -80,7 +80,7 @@ param_grid = odict(sf_sfclay_physics=[1, 2, 5])
 param_names = {"mp_physics" : {1: "kessler", 2: "lin"},
                "sf_sfclay_physics" : {1 : "mm5", 2: "eta", 5 : "mynn"},
                "res"         : ["LES", "MYJ"]}
-param_combs, param_grid_flat, composite_params = misc.grid_combinations(param_grid)
+param_combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid)
 
 #Set additional namelist parameters (only applies if they are not present in param_grid)
 #any namelist parameters and some additional ones can be used
@@ -162,6 +162,7 @@ rt_buffer = 1.5 #buffer factor to multiply rt with
 
 # if rt is None: runtime per time step in seconds for different dx
 runtime_per_step = None#{ 62.5 : 3., 100: 3., 125. : 3. , 250. : 1., 500: 0.5, 1000: 0.3, 2000.: 0.3, 4000.: 0.3}
+rt_search_paths = [run_path, run_path + "/old"] #paths to search for log files when runtime is not specified
 
 # slots
 nslots_dict = {} #set number of slots for each resolution
@@ -242,6 +243,27 @@ print("-"*40)
 for i in range(len(combs)):
     args = combs.loc[i].dropna().to_dict()
     param_comb = param_combs.loc[i]
+    #create output ID for current configuration
+    IDi = param_comb.copy()
+    for p, v in param_grid.items():
+        if type(v) == dict:
+            for pc in v.keys():
+                del IDi[pc]
+        if p in param_names:
+            namep = param_names[p]
+            if type(v) == dict:
+                IDi[p] = namep[IDi[p + "_idx"]]
+                del IDi[p + "_idx"]
+            else:
+                if type(namep) == dict:
+                    IDi[p] = namep[IDi[p]]
+                else:
+                    IDi[p] = namep[param_grid[p].index(IDi[p])]
+
+
+    IDi = "_".join(IDi.values.astype(str))
+    IDi =  runID + "_" + IDi
+
     print("\n\nConfig:")
     print("\n".join(str(param_comb).split("\n")[:-1]))
 
@@ -289,8 +311,8 @@ for i in range(len(combs)):
     if (nslots_dict is not None) and (r in nslots_dict) and (nslots_dict[r] is not None):
         nx, ny = nslots_dict[r]
     else:
-        nx = misc.find_nproc(args["e_we"]-1, min_n_per_proc=min_n_per_proc, even_split=even_split )
-        ny = misc.find_nproc(args["e_sn"]-1, min_n_per_proc=min_n_per_proc, even_split=even_split )
+        nx = misc_tools.find_nproc(args["e_we"]-1, min_n_per_proc=min_n_per_proc, even_split=even_split )
+        ny = misc_tools.find_nproc(args["e_sn"]-1, min_n_per_proc=min_n_per_proc, even_split=even_split )
     if (nx == 1) and (ny == 1):
         nx = -1
         ny = -1
@@ -403,8 +425,8 @@ for i in range(len(combs)):
         args_str = args_df.astype(new_dtypes).iloc[0].to_dict()
 
         #add a few more parameters
-        args_str["init_pert"] = misc.bool_to_fort(args_str["init_pert"])
-        args_str["const_sw"] = misc.bool_to_fort(args_str["const_sw"])
+        args_str["init_pert"] = misc_tools.bool_to_fort(args_str["init_pert"])
+        args_str["const_sw"] = misc_tools.bool_to_fort(args_str["const_sw"])
         args_str = str(args_str).replace("{","").replace("}","").replace("'","").replace(":","").replace(",","")
         if "iofields_filename" in args:
             args_str = args_str +  " iofields_filename " + args["iofields_filename"]
@@ -418,16 +440,41 @@ for i in range(len(combs)):
         args["nslots"] = nslotsi
 
     elif options.use_qsub:
-        rt_test = False
+        rtri = None
         if rt is not None:
             rtri = rt/3600 #runtime in hours
         elif (runtime_per_step is not None) and (r in runtime_per_step):
             rtri = runtime_per_step[r] * run_hours/dt * rt_buffer
         else:
-            rtri = 180
-            rt_test = True
-            args["n_rep"] = 1
-            args["repi"] = 0
+            print("Search for runtime values in previous runs.")
+            timing = misc_tools.get_runtime_all(IDi, rt_search_paths, all_times=False, levels=len(param_combs.keys())+2)
+            valid_ids = []
+            for i_p, p in enumerate(timing["path"]):
+                namelist_diff = os.popen("diff -B -w  --suppress-common-lines -y {}/namelist.input\
+                                         {}/WRF_{}_{}/namelist.input".format(p, run_path, IDi, args["repi"])).read()
+                namelist_diff = namelist_diff.replace(" ","").replace("\t","").split("\n")
+                important_diffs = []
+                for diff in namelist_diff:
+                    if diff == "":
+                        continue
+                    old, new = diff.split("|")
+                    if  (old[0] == "!") and (new[0] == "!"):
+                        continue
+                    for ignore_param in ["start_year", "start_month","start_day", "start_hour",
+                                          "start_minute","run_hours", "_outname"]:
+                        if ignore_param + "=" in diff:
+                            continue
+                    important_diffs.append(diff)
+                if len(important_diffs) > 0:
+                    print("{} has different namelist parameters".format(p))
+                else:
+                    valid_ids.append(i_p)
+                    print("{} has same namelist parameters".format(p))
+            if len(valid_ids) > 0:
+                rtri = timing.iloc[valid_ids]["timing"].mean() * run_hours/dt * rt_buffer
+                print("Use runtime: {}s ".format(rtri))
+            else:
+                print("No valid previous runs found. Do test run.")
 
         args["rtr"] = rtri
 
@@ -453,25 +500,6 @@ for i in range(len(combs)):
         vmemi = max(vmem_min, int(vmem_per_grid_point*args["e_we"]*args["e_sn"]))
     vmem.append(vmemi)
 
-    #create output ID for current configuration
-    IDi = param_comb.copy()
-    for p, v in param_grid.items():
-        if type(v) == dict:
-            for pc in v.keys():
-                del IDi[pc]
-        if p in param_names:
-            namep = param_names[p]
-            if type(v) == dict:
-                IDi[p] = namep[IDi[p + "_idx"]]
-                del IDi[p + "_idx"]
-            else:
-                if type(namep) == dict:
-                    IDi[p] = namep[IDi[p]]
-                else:
-                    IDi[p] = namep[param_grid[p].index(IDi[p])]
-
-    IDi = "_".join(IDi.values.astype(str))
-    IDi =  runID + "_" + IDi
 
     repi = args["repi"]
     n_rep = args["n_rep"]
