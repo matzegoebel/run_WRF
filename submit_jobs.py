@@ -435,6 +435,7 @@ for i in range(len(combs)):
                     print("WARNING: no restart files found")
 
                 restart_time = rstfiles.split("\n")[0].split("/")[-1].split("_")[-2:]
+                print("Restart run from {}".format(" ".join(restart_time)))
                 start_time_rst = datetime.datetime.fromisoformat("_".join(restart_time))
                 end_time_rst = datetime.datetime.fromisoformat(conf.end_time)
                 rst_date, rst_time = restart_time
