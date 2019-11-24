@@ -165,6 +165,52 @@ def grid_combinations(param_grid):
 
     return pd.DataFrame(combs), param_grid_flat, composite_params
 
+def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
+    """
+    Creates ID for output files. Param_names can be used to replace parameter values.
+    
+    Parameters
+    ----------
+    param_comb : pandas Dataframe
+        current parameter configuration
+    param_grid : dictionary of lists or dictionaries
+        input dictionary containing the parameter values
+    param_names : dictionary of lists or dictionaries
+        names of parameter values for output filenames
+    runID : str or None
+        General ID for the requested simulation series used as prefix in filenames
+    
+    Returns
+    -------
+    ID : str
+        output ID
+
+    """  
+    ID = param_comb.copy()
+    for p, v in param_grid.items():
+        if type(v) == dict:
+            if param_names is None:
+                raise ValueError("param_names cannot be None if composite parameters are used!")
+            for pc in v.keys():
+                del ID[pc]
+        if (param_names is not None) and (p in param_names):
+            namep = param_names[p]
+            if type(v) == dict:
+                ID[p] = namep[ID[p + "_idx"]]
+                del ID[p + "_idx"]
+            else:
+                if type(namep) == dict:
+                    ID[p] = namep[ID[p]]
+                else:
+                    ID[p] = namep[param_grid[p].index(ID[p])]
+
+    ID_str = "_".join(ID.values.astype(str))
+    if runID is not None:
+        ID_str =  runID + "_" + ID_str
+
+    return ID_str, ID
+
+
 def get_runtime_all(id_filter, dirs, subdir="", all_times=True, levels=8, remove=None, length=1e7, verbose=False):
     dirs =  make_list(dirs)
     dirs = [os.path.expanduser(d) for d in dirs]

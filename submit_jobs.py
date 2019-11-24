@@ -69,6 +69,8 @@ if options.check_rt and options.pool_jobs:
     raise ValueError("Runtime checking cannot be used with pooling")
 if options.check_rt and options.restart:
     raise ValueError("Runtime checking cannot be used with restart runs")
+if options.init and options.restart:
+    raise ValueError("For restart runs no initialization is needed!")
 if len(glob.glob(os.getcwd() + "/submit_jobs.py")) == 0:
     raise RuntimeError("Script must be started from within its directory!")
 
@@ -84,8 +86,6 @@ if not os.path.isdir(conf.outpath):
     os.makedirs(conf.outpath)
     
 outpath_esc = conf.outpath.replace("/", "\/") #need to escape slashes
-if options.restart:
-    init = False
 
 start_time_dt = datetime.datetime.fromisoformat(conf.start_time)
 end_time_dt = datetime.datetime.fromisoformat(conf.end_time)
@@ -134,26 +134,8 @@ for i in range(len(combs)):
     args = combs.loc[i].dropna().to_dict()
     param_comb = param_combs.loc[i]
     #create output ID for current configuration
-    IDi = param_comb.copy()
-    for p, v in conf.param_grid.items():
-        if type(v) == dict:
-            for pc in v.keys():
-                del IDi[pc]
-        if p in conf.param_names:
-            namep = conf.param_names[p]
-            if type(v) == dict:
-                IDi[p] = namep[IDi[p + "_idx"]]
-                del IDi[p + "_idx"]
-            else:
-                if type(namep) == dict:
-                    IDi[p] = namep[IDi[p]]
-                else:
-                    IDi[p] = namep[conf.param_grid[p].index(IDi[p])]
 
-
-    IDi = "_".join(IDi.values.astype(str))
-    IDi =  conf.runID + "_" + IDi
-
+    IDi, IDi_d = misc_tools.output_id_from_config(param_comb, conf.param_grid, conf.param_names, conf.runID)
     print("\n\nConfig:")
     print("\n".join(str(param_comb).split("\n")[:-1]))
 
@@ -312,12 +294,13 @@ for i in range(len(combs)):
             if (typ == float) and (args_df[arg].dropna() == args_df[arg].dropna().astype(int)).all():
                 typ = int
             new_dtypes[arg] = typ
-        args_str = args_df.astype(new_dtypes).iloc[0].to_dict()
+        args_dict = args_df.astype(new_dtypes).iloc[0].to_dict()
 
         #add a few more parameters
         args_str["init_pert"] = misc_tools.bool_to_fort(args_str["init_pert"])
         args_str["const_sw"] = misc_tools.bool_to_fort(args_str["const_sw"])
-        args_str = str(args_str).replace("{","").replace("}","").replace("'","").replace(":","").replace(",","")
+
+        args_str = " ".join(["{} {}".format(param, val) for param, val in args_dict.items()])
         if "iofields_filename" in args:
             args_str = args_str +  " iofields_filename " + args["iofields_filename"]
         args_str += " eta_levels " + eta_levels
@@ -461,12 +444,16 @@ for i in range(len(combs)):
                 if run_hours == 0:
                     continue
                 rst_opt = "restart .true. start_year {} start_month {} start_day {}\
-                start_hour {} start_minute {} start_second {} run_hours {}".format(*rst_date, *rst_time, conf.run_h)
-                os.makedirs("{}/bk/".format(conf.outpath), exist_ok=True) #move previous output in backup directory
-                bk_files = glob.glob("{}/bk/*{}".format(conf.outpath, IDr))
-                if len(bk_files) != 0:
-                    raise FileExistsError("Backup files for restart already present. Double check!")
-                os.system("mv {}/*{} {}/bk/".format(conf.outpath, IDr, conf.outpath))
+                start_hour {} start_minute {} start_second {} run_hours {}".format(*rst_date, *rst_time, run_hours)
+                os.makedirs("{}/rst/".format(conf.outpath), exist_ok=True) #move previous output in backup directory
+                outfiles = [glob.glob("{}/{}_{}".format(conf.outpath, stream[0], IDr)) for stream in conf.output_streams.values()]
+                for f in misc_tools.flatten_list(outfiles):
+                    fname = f.split("/")[-1]
+                    rst_ind = 0
+                    while os.path.isfile("{}/rst/{}_rst_{}".format(conf.outpath, fname, rst_ind)):
+                        rst_ind += 1
+                    os.rename(f, "{}/rst/{}_rst_{}".format(conf.outpath, fname, rst_ind))
+                os.environ["code_dir"] = os.path.curdir
                 os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input {1}".format(wdir, rst_opt))
             
             rtri = None
@@ -520,12 +507,11 @@ for i in range(len(combs)):
                     else:
                         job_name = IDr
                     jobs = " ".join(IDs)
-
+                    nslots = " ".join([str(ns) for ns in nslots])
                     comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool_jobs=int(options.pool_jobs), run_path=conf.run_path, cluster=int(conf.cluster))
                     if options.use_qsub:
                         rtp = max(rtr)
                         rtp = "{:02d}:{:02d}:00".format(math.floor(rtp), math.ceil((rtp - math.floor(rtp))*60))
-                        nslots = " ".join([str(ns) for ns in nslots])
                         vmemp = int(sum(vmem)/len(vmem))
                         comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                         comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -v {} run_wrf.job".format(conf.queue, job_name, rtp, vmemp, slot_comm, options.mail, comm_args_str)
