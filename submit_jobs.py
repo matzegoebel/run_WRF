@@ -297,9 +297,8 @@ for i in range(len(combs)):
         args_dict = args_df.astype(new_dtypes).iloc[0].to_dict()
 
         #add a few more parameters
-        args_str["init_pert"] = misc_tools.bool_to_fort(args_str["init_pert"])
-        args_str["const_sw"] = misc_tools.bool_to_fort(args_str["const_sw"])
-
+        args_dict["init_pert"] = misc_tools.bool_to_fort(args_dict["init_pert"])
+        args_dict["const_sw"] = misc_tools.bool_to_fort(args_dict["const_sw"])
         args_str = " ".join(["{} {}".format(param, val) for param, val in args_dict.items()])
         if "iofields_filename" in args:
             args_str = args_str +  " iofields_filename " + args["iofields_filename"]
