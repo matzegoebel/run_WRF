@@ -35,8 +35,8 @@ param_names = {"mp_physics" : {1: "kessler", 2: "lin"},
 
 #Set additional namelist parameters (only applies if they are not present in param_grid)
 #any namelist parameters and some additional ones can be used
-start_time = "2018-06-20_00:00:00" #"2018-06-20_20:00:00"
-end_time = "2018-06-21_00:00:00" #"2018-06-23_00:00:00"
+start_time = "2018-06-20_00:00:00" #"2018-06-20_20:00:00"; format %Y-%m-%d_%H:%M:%S
+end_time = "2018-06-21_00:00:00" #"2018-06-23_00:00:00"; format %Y-%m-%d_%H:%M:%S
 
 params["n_rep"] = 1 #number of repetitions for each configuration
 params["repi"] = 0#start id for reps

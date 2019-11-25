@@ -80,15 +80,16 @@ param_combs, param_grid_flat, composite_params = misc_tools.grid_combinations(co
 
 if options.outdir is not None:
     conf.outdir = options.outdir
-    
+
 conf.outpath = os.path.join(os.environ["wrf_res"], conf.outdir, "") #WRF output path
 if not os.path.isdir(conf.outpath):
     os.makedirs(conf.outpath)
-    
+
 outpath_esc = conf.outpath.replace("/", "\/") #need to escape slashes
 
-start_time_dt = datetime.datetime.fromisoformat(conf.start_time)
-end_time_dt = datetime.datetime.fromisoformat(conf.end_time)
+date_format = '%Y-%m-%d_%H:%M:%S'
+start_time_dt = datetime.datetime.strptime(conf.start_time,date_format)
+end_time_dt = datetime.datetime.strptime(conf.end_time,date_format)
 start_d, start_t = conf.start_time.split("_")
 start_d = start_d.split("-")
 start_t = start_t.split(":")
@@ -406,7 +407,8 @@ for i in range(len(combs)):
 
             args_str = args_str + hist_paths
             comm_args =dict(wrfv=wrf_dir_i, ideal_case=conf.ideal_case, input_sounding=args["input_sounding"],
-                            sleep=rep, nx=nx, ny=ny, wrf_args=args_str, run_path=conf.run_path, build_path=conf.build_path,qsub=int(options.use_qsub))
+                            sleep=rep, nx=nx, ny=ny, wrf_args=args_str, run_path=conf.run_path, build_path=conf.build_path,
+                            qsub=int(options.use_qsub), cluster=int(conf.cluster))
             if options.use_qsub:
                 comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                 comm = r"qsub -q {} -l h_vmem={}M -m {} -N {} -v {} init_wrf.job".format(init_queue, vmem_init, options.mail, IDr, comm_args_str)
@@ -435,8 +437,8 @@ for i in range(len(combs)):
 
                 restart_time = rstfiles.split("\n")[0].split("/")[-1].split("_")[-2:]
                 print("Restart run from {}".format(" ".join(restart_time)))
-                start_time_rst = datetime.datetime.fromisoformat("_".join(restart_time))
-                end_time_rst = datetime.datetime.fromisoformat(conf.end_time)
+                start_time_rst = datetime.datetime.strptime("_".join(restart_time), date_format)
+                end_time_rst = datetime.datetime.strptime(conf.end_time, date_format)
                 rst_date, rst_time = restart_time
                 rst_date = rst_date.split("-")
                 rst_time = rst_time.split(":")
