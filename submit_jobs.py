@@ -478,7 +478,7 @@ for i in range(len(combs)):
                 print("")
                 resched_i = False
                 #if pool is already too large: cut out last job, which is rescheduled afterwards
-                if (sum(nslots) > conf.pool_size):
+                if options.pool_jobs and (sum(nslots) > conf.pool_size):
                     if len(nslots) == 1:
                         raise ValueError("Pool size ({}) smaller than number of slots of current job ({})!".format(conf.pool_size, nslots[0]))
                     nslots = nslots[:-1]
@@ -502,12 +502,10 @@ for i in range(len(combs)):
                             nperhost_sge = np.array([1, *np.arange(2,29,2)])
                             nperhost = nperhost_sge[(nperhost_sge >= sum(nslots)).argmax()] #select available nperhost that is greater and closest to the number of slots
                         slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
-
-                    wrf_dir = " ".join([str(wd) for wd in wrf_dir])
-                    if options.pool_jobs:
                         job_name = "pool_" + "_".join(IDs)
                     else:
                         job_name = IDr
+                    wrf_dir = " ".join([str(wd) for wd in wrf_dir])
                     jobs = " ".join(IDs)
                     nslots = " ".join([str(ns) for ns in nslots])
                     comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool_jobs=int(options.pool_jobs), run_path=conf.run_path, cluster=int(conf.cluster))
