@@ -75,6 +75,8 @@ if len(glob.glob(os.getcwd() + "/submit_jobs.py")) == 0:
     raise RuntimeError("Script must be started from within its directory!")
 
 #%%
+if options.config_file[-3:] == ".py":
+    options.config_file = options.config_file[:-3]
 conf = importlib.import_module("configs.{}".format(options.config_file))
 param_combs, param_grid_flat, composite_params = misc_tools.grid_combinations(conf.param_grid)
 
@@ -423,10 +425,11 @@ for i in range(len(combs)):
             if options.verbose:
                 print(comm)
             if not options.check_args:
-                os.system(comm)
-                ID_path = "{}/WRF_{}".format(conf.run_path, IDr)
-                os.system("tail -n 1 {}/init.log".format(ID_path))
-                os.system("cat {}/init.err".format(ID_path))
+                err = os.system(comm)
+                if err == 0:
+                    ID_path = "{}/WRF_{}".format(conf.run_path, IDr)
+                    os.system("tail -n 1 {}/init.log".format(ID_path))
+                    os.system("cat {}/init.err".format(ID_path))
 
         else:
             if options.restart:

@@ -44,27 +44,25 @@ echo "Copy files to $run_dir"
 rm $run_dir -rf
 mkdir -p $run_dir
 cd $run_dir
-
-trans="cp" #"ln -sf"
-$trans ${build_dir}/run/RRTM* .
-$trans ${build_dir}/run/LANDUSE.TBL .
-$trans ${build_dir}/run/SOILPARM.TBL .
-$trans ${build_dir}/run/VEGPARM.TBL .
-$trans ${build_dir}/run/GENPARM.TBL .
-$trans ${build_dir}/run/ozone* .
-$trans ${build_dir}/run/p3* .
-$trans ${build_dir}/main/wrf.exe .
-$trans ${build_dir}/main/ideal.exe .
-#~ $trans ${build_dir}/run/freezeH2O.dat .
-#~ $trans ${build_dir}/run/qr_acr* .
-cp -u -r $wrf_case_dir/* $run_dir
+#from ideal case directory for input sounding and namelist files
+cp -r $wrf_case_dir/* .
+#from run directory for data files needed by physics modules; symbolic links sufficient
+cp -s -n ${build_dir}/run/* .
+#binaries from main
+cp -f -b ${build_dir}/main/wrf.exe ${build_dir}/main/ideal.exe .
 
 if [ -n "${input_sounding}" ]
 then
   input_sounding_org="input_sounding"
   input_sounding=${input_sounding_org}_${input_sounding}
   rm -f ${input_sounding_org}
-  cp ${input_sounding} ${input_sounding_org}
+  if [ -f ${input_sounding} ]
+  then
+    cp ${input_sounding} ${input_sounding_org}
+  else
+    echo "Input sounding ${input_sounding} not available! Exit..."
+    exit 1
+  fi
 else
   input_sounding="input_sounding" 
 fi
