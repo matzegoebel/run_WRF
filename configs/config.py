@@ -111,7 +111,7 @@ vmem_buffer = 1.2 #buffer factor for virtual memory
 # if None: runtime is estimated from short test run
 #TODO: make gridpoint dependent; make second res
 # if qsub: run for a few minutes; check runtime and vmem and resubmit
-rt = None #None or job runtime in seconds
+rt = None #None or job runtime in seconds; buffer not used
 rt_buffer = 1.5 #buffer factor to multiply rt with
 
 # if rt is None: runtime per time step in seconds for different dx

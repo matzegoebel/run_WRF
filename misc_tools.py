@@ -321,3 +321,37 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=True):
             counter += 1
     f.close()
     return timing, counter
+
+def get_runtime_id(ID, rt_search_paths, run_path, nlevels, repi=0):
+
+    print("Search for runtime values in previous runs.")
+    timing = get_runtime_all(ID, rt_search_paths, all_times=False, levels=nlevels+2)
+    valid_ids = []
+    for i_p in range(len(timing)):
+        p = timing.loc[i_p, "path"]
+        namelist_diff = os.popen("diff -B -w  --suppress-common-lines -y {}/namelist.input\
+                                 {}/WRF_{}_{}/namelist.input".format(p, run_path, ID, repi)).read()
+        namelist_diff = namelist_diff.replace(" ","").replace("\t","").split("\n")
+        important_diffs = []
+        for diff in namelist_diff:
+            if diff == "":
+                continue
+            old, new = diff.split("|")
+            if  (old[0] == "!") and (new[0] == "!"):
+                continue
+            for ignore_param in ["start_year", "start_month","start_day", "start_hour",
+                                  "start_minute","run_hours", "_outname"]:
+                if ignore_param + "=" in diff:
+                    continue
+            important_diffs.append(diff)
+        if len(important_diffs) > 0:
+            print("{} has different namelist parameters".format(p))
+        else:
+            valid_ids.append(i_p)
+            print("{} has same namelist parameters".format(p))
+
+
+    if len(valid_ids) > 0:
+       return timing.iloc[valid_ids]["timing"].mean()
+
+

@@ -295,38 +295,12 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
                 runtime_per_step = conf.runtime_per_step_dict[r]
 
             if check_rt or (runtime_per_step is None):
-                print("Search for runtime values in previous runs.")
-                timing = misc_tools.get_runtime_all(IDi,conf.rt_search_paths, all_times=False, levels=len(param_combs.keys())+2)
-                valid_ids = []
-                for i_p in range(len(timing)):
-                    p = timing.loc[i_p, "path"]
-                    namelist_diff = os.popen("diff -B -w  --suppress-common-lines -y {}/namelist.input\
-                                             {}/WRF_{}_{}/namelist.input".format(p, conf.run_path, IDi, args["repi"])).read()
-                    namelist_diff = namelist_diff.replace(" ","").replace("\t","").split("\n")
-                    important_diffs = []
-                    for diff in namelist_diff:
-                        if diff == "":
-                            continue
-                        old, new = diff.split("|")
-                        if  (old[0] == "!") and (new[0] == "!"):
-                            continue
-                        for ignore_param in ["start_year", "start_month","start_day", "start_hour",
-                                              "start_minute","run_hours", "_outname"]:
-                            if ignore_param + "=" in diff:
-                                continue
-                        important_diffs.append(diff)
-                    if len(important_diffs) > 0:
-                        print("{} has different namelist parameters".format(p))
-                    else:
-                        valid_ids.append(i_p)
-                        print("{} has same namelist parameters".format(p))
-                if len(valid_ids) > 0:
-                    runtime_per_step = timing.iloc[valid_ids]["timing"].mean()
+                runtime_per_step = misc_tools.get_runtime_id(IDi, conf.rt_search_paths, conf.run_path, len(param_combs.keys()), args["repi"])
+                if runtime_per_step is not None:
                     if check_rt:
                         print("Previous runs found. No test run needed.")
                     else:
                         print("Use runtime per time step: {0:.5f} s ".format(runtime_per_step))
-
                 elif check_rt:
                     print("No valid previous runs found. Do test run.")
                     args["n_rep"] = 1
