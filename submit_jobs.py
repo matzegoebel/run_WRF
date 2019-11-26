@@ -199,7 +199,20 @@ for i in range(len(combs)):
 
     nslotsi = nx*ny
     nslots.append(nslotsi)
+    args["nx"] = nx
+    args["ny"] = ny
 
+    if options.debug:
+        wrf_dir_i = conf.wrf_dir_pre + "_debug"
+        slot_comm = ""
+    elif nslotsi > 1:
+        wrf_dir_i = conf.wrf_dir_pre + "_mpi"
+        slot_comm = "-pe openmpi-fillup {}".format(nslotsi)
+    else:
+        wrf_dir_i = conf.wrf_dir_pre
+        slot_comm = ""
+
+    wrf_dir.append(wrf_dir_i)
     args["e_vert"] = args["nz"]
     eta, dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
                                                       dz0=args["dz0"], plot=False, table=False)
@@ -280,11 +293,13 @@ for i in range(len(combs)):
                 args["init_pert"] = False
 
         # delete non-namelist parameters
-        del_args =   ["dx", "nz", "dz0","dz_method", "gridpoints", "lx", "ly", "spec_hfx", "spec_sw",
-                    "pert_res", "input_sounding", "repi", "n_rep", "isotropic_res", "pbl_res", "dt",
-                    *[p + "_idx" for p in composite_params.keys()]]
+        del_args = [*conf.del_args, *[p + "_idx" for p in composite_params.keys()]]
+        with open("{}/{}/test/{}/namelist.input".format(conf.build_path, wrf_dir_i, conf.ideal_case)) as namelist_file:
+            namelist = namelist_file.read().replace(" ", "").replace("\t","")
         args_df = args.copy()
         for del_arg in del_args:
+            if "\n"+del_arg+"=" in namelist:
+                raise RuntimeError("Parameter {} used in submit_jobs.py already defined in namelist.input! Rename this parameter!".format(del_arg))
             if del_arg in args_df:
                 del args_df[del_arg]
 
@@ -362,28 +377,15 @@ for i in range(len(combs)):
                 continue
         args["rt_per_timestep"] = runtime_per_step
 
-    args["nx"] = nx
-    args["ny"] = ny
+
     for arg, val in args.items():
         combs.loc[i, arg] = val #not needed; just for completeness of dataframe
 
-    if options.debug:
-        wrf_dir_i = conf.wrf_dir_pre + "_debug"
-        slot_comm = ""
-    elif nslotsi > 1:
-        wrf_dir_i = conf.wrf_dir_pre + "_mpi"
-        slot_comm = "-pe openmpi-fillup {}".format(nslotsi)
-    else:
-        wrf_dir_i = conf.wrf_dir_pre
-        slot_comm = ""
-
-    wrf_dir.append(wrf_dir_i)
     if options.pool_jobs:
         vmemi = conf.vmem_pool
     else:
         vmemi = max(conf.vmem_min, int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"]))
     vmem.append(vmemi)
-
 
     repi = args["repi"]
     n_rep = args["n_rep"]

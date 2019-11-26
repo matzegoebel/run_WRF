@@ -87,6 +87,9 @@ params["iofields_filename"] = 0 # if 0: use LES_IO.txt and MESO_IO.txt for LES s
 params["restart_interval"] = 240 #restart interval (min)
 split_output_res = 0 #resolution below which to split output in one timestep per file
 
+# non-namelist parameters that will not be included in namelist file
+del_args =  ["nz", "dz0","dz_method", "gridpoints", "lx", "ly", "spec_hfx",
+            "input_sounding", "repi", "n_rep", "isotropic_res", "pbl_res", "dt"]
 #%%
 '''Settings for resource requirements of SGE jobs'''
 cluster_name = "leo" #this name should appear in the variable $HOSTNAME to detect if cluster settings should be used
