@@ -283,16 +283,18 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=True):
                     time = line[line.index("time"):line.index("on domain")][5:-1]
                     times.append(time)
             elif "Ntasks" in line:
-                settings["nx"] = int(line[line.index("X")+1: line.index(",")].replace(" ", ""))
-                settings["ny"] = int(line[line.index("Y")+1: line.index("\n")].replace(" ", ""))
+                settings["nx"] = line[line.index("X")+1: line.index(",")].replace(" ", "")
+                settings["ny"] = line[line.index("Y")+1: line.index("\n")].replace(" ", "")
             elif "ids,ide" in line:
                 _, _, settings["ide"], _, settings["jde"]  = [l for l in line[:-1].split(" ") if l != ""]
             elif ("WRF TILE" in line) and ("ide" not in settings):
-                settings["ide"] = int(line[line.index("IE")+2: line.index("JS")])
-                settings["jde"] = int(line[line.index("JE")+2:])
+                settings["ide"] = line[line.index("IE")+2: line.index("JS")]
+                settings["jde"] = line[line.index("JE")+2:]
         if "nx" not in settings:
             settings["nx"] = 1
             settings["ny"] = 1
+        for k, val in settings.items():
+            settings[k] = int(val)
         timing_ID = np.array(timing_ID)
         if timing is None:
             columns = ["nx", "ny", "ide", "jde", "timing"]

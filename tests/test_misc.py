@@ -11,7 +11,7 @@ import numpy as np
 
 def test_get_runtime():
     timing, counter = misc_tools.get_runtime("../", all_times=True)
-    assert counter == 10079
+    assert counter == 100799
     assert timing.notna().all().all()
     timing_m, _ = misc_tools.get_runtime("../", all_times=False)
     np.testing.assert_allclose( timing_m["timing"].values[0], timing["timing"].mean())
