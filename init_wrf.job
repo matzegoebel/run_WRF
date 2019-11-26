@@ -44,10 +44,11 @@ echo "Copy files to $run_dir"
 rm $run_dir -rf
 mkdir -p $run_dir
 cd $run_dir
-#from ideal case directory for input sounding and namelist files
-cp -r $wrf_case_dir/* .
 #from run directory for data files needed by physics modules; symbolic links sufficient
-cp -s -n ${build_dir}/run/* .
+cp -s ${build_dir}/run/* .
+rm -f namelist.input input_sounding
+#from ideal case directory for input sounding and namelist files
+cp -r -n $wrf_case_dir/* .
 #binaries from main
 cp -f -b ${build_dir}/main/wrf.exe ${build_dir}/main/ideal.exe .
 
