@@ -295,12 +295,14 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
                 runtime_per_step = conf.runtime_per_step_dict[r]
 
             if check_rt or (runtime_per_step is None):
-                runtime_per_step = misc_tools.get_runtime_id(IDi, conf.rt_search_paths, conf.run_path, len(param_combs.keys()), args["repi"])
+                run_dir =  "{}/WRF_{}_{}".format(conf.run_path, IDi, args["repi"])
+                runtime_per_step = misc_tools.get_runtime_id(run_dir, conf.rt_search_paths)
                 if runtime_per_step is not None:
                     if check_rt:
                         print("Previous runs found. No test run needed.")
                     else:
-                        print("Use runtime per time step: {0:.5f} s ".format(runtime_per_step))
+                        print("Runtime per time step: {0:.5f} s, (std: {1:.5f} s)".format(*runtime_per_step))
+                        runtime_per_step = runtime_per_step[0]
                 elif check_rt:
                     print("No valid previous runs found. Do test run.")
                     args["n_rep"] = 1

@@ -17,6 +17,7 @@ import os
 from collections import OrderedDict as odict
 import glob
 from datetime import datetime
+import subprocess as sp
 
 
 def find_nproc(n, min_n_per_proc=25, even_split=False):
@@ -211,31 +212,64 @@ def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
     return ID_str, ID
 
 
-def get_runtime_all(id_filter, dirs, subdir="", all_times=True, levels=8, remove=None, length=1e7, verbose=False):
-    dirs =  make_list(dirs)
-    dirs = [os.path.expanduser(d) for d in dirs]
-    runs = [glob.glob(d + subdir + "/WRF_*{}*".format(id_filter)) for d in dirs]
-    runs = flatten_list(runs)
+def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, levels=None, remove=None, verbose=False):
+    """
+    Get runtime per timestep from all given run directories or for all directories in dirs that pass the filter id_filter.
+
+    Parameters
+    ----------
+    runs : list of str, optional
+        List of directory paths that contain log outputs. The default is None.
+    id_filter : TYPE, optional
+        Filter to apply to directories in dirs when runs is None. The default is None.
+    dirs : list of str, optional
+        Directories to search in, when runs is None. The default is None.
+    all_times : bool, optional
+        Output information for all timestamps instead of averaging. The default is False.
+    levels : list of str, optional
+        Names of the parameters used to construct the filenames. The default is None.
+    remove : list of str, optional
+        Parameter values to remove from filenames. The default is None.
+    verbose : bool, optional
+        Verbose output. The default is False.
+
+    Returns
+    -------
+    timing : pandas DataFrame
+        Information about timing, number of MPI slots and domain size for all given runs.
+    """
+    if runs is None:
+        dirs =  make_list(dirs)
+        dirs = [os.path.expanduser(d) for d in dirs]
+        runs = [glob.glob(d + "/WRF_*{}*".format(id_filter)) for d in dirs]
+        runs = flatten_list(runs)
     if remove is None:
         remove = []
-    if type(levels) == list:
-        columns = levels.copy()
-        levels = len(levels)
-    elif type(levels) == int:
-        columns = list(np.arange(levels))
-    columns.extend(["path", "nx", "ny", "ide", "jde", "timing"])
+    if levels is not None:
+        nlevels = len(levels)
+        columns = list(levels.copy())
+    else:
+        IDs = [r.split("/")[-1][4:] for r in runs]
+        IDls = [[i for i in ID.split("_") if i not in remove] for ID in IDs]
+        nlevels = max([len(ID) for ID in IDls])
+        columns = list(np.arange(nlevels))
+
+    columns.extend(["path", "nx", "ny", "ide", "jde", "timing", "timing_sd"])
     index = None
     if all_times:
-        index = np.arange(int(length))
+        #estimate number of lines in all files
+        runs_mpi = [r for r in runs if os.path.isfile(r + "/rsl.error.0000")]
+        runs_serial = [r for r in runs if os.path.isfile(r + "/run.log") and not os.path.isfile(r + "/rsl.error.0000")]
+        num_lines = [sum(1 for line in open(r + "/rsl.error.0000")) for r in runs_mpi]
+        num_lines.extend([sum(1 for line in open(r + "/run.log")) for r in runs_serial])
+        index = np.arange(sum(num_lines))
         columns.append("time")
     timing = pd.DataFrame(columns=columns, index=index)
     counter = 0
-    for j,r in enumerate(runs):
-        if verbose:
-            print_progress(counter=j, length=len(runs))
-        ID = r.split("/")[-1][4:]
+
+    for j,(r, ID) in enumerate(zip(runs, IDs)):
         IDl = [i for i in ID.split("_") if i not in remove]
-        if len(IDl) > levels:
+        if len(IDl) > nlevels:
             print("{} does not have not the correct id length".format(ID))
             continue
         for i,a in enumerate(IDl):
@@ -251,12 +285,42 @@ def get_runtime_all(id_filter, dirs, subdir="", all_times=True, levels=8, remove
         timing.iloc[counter:new_counter, :len(IDl)] = IDl
         timing.loc[counter:new_counter-1, "path"] = r
         counter = new_counter
+        if verbose:
+            print_progress(counter=j+1, length=len(runs))
 
     timing = timing.dropna(axis=0,how="all")
     timing = timing.dropna(axis=1,how="all")
     return timing
 
-def get_runtime(run_dir, timing=None, counter=None, all_times=True):
+def get_runtime(run_dir, timing=None, counter=None, all_times=False):
+    """
+    Get runtime, MPI slot and domain size information from log file in run_dir.
+    This information is written to timing starting from counter or, if not given, a new Dataframe is created.
+
+    Parameters
+    ----------
+    run_dir : str
+        Path of directory.
+    timing : pandas DataFrame, optional
+        DataFrame to write information to. The default is None.
+    counter : int, optional
+        Index at which to start writing information in timing. The default is None.
+    all_times : bool, optional
+        Output all timestamps instead of averaging. The default is False.
+
+    Raises
+    ------
+    FileNotFoundError
+        No log file found.
+
+    Returns
+    -------
+    timing : pandas DataFrame
+        Updated timing data.
+    counter : int
+        Current counter for writing.
+
+    """
 
     if os.path.isfile(run_dir + "/rsl.error.0000"):
         f = open(run_dir + "/rsl.error.0000")
@@ -316,43 +380,114 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=True):
             else:
                 timing.loc[counter, settings.keys()] = list(settings.values())
                 timing.loc[counter, "timing"] = np.nanmean(timing_ID)
+                timing.loc[counter, "timing_sd"] = np.nanstd(timing_ID)
                 counter += 1
         else:
             counter += 1
     f.close()
     return timing, counter
 
-def get_runtime_id(ID, rt_search_paths, run_path, nlevels, repi=0):
+def get_runtime_id(run_dir, rt_search_paths):
+    """
+    Look for simulations in rt_search_paths with identical namelist file as the one in
+    run_dir (except for irrelevant parameters defined in ignore_params in the code).
+    Then collect the runtime per time step for these simulations and return it.
 
+    Parameters
+    ----------
+    run_dir : str
+        Path to the reference directory.
+    rt_search_paths : str of list of str
+        Paths, in which to search for identical simulations.
+
+    Returns
+    -------
+    tuple of floats
+        runtime per timestep (s), mean and standard deviation
+
+    """
+    rt_search_paths = make_list(rt_search_paths)
     print("Search for runtime values in previous runs.")
-    timing = get_runtime_all(ID, rt_search_paths, all_times=False, levels=nlevels+2)
-    valid_ids = []
-    for i_p in range(len(timing)):
-        p = timing.loc[i_p, "path"]
-        namelist_diff = os.popen("diff -B -w  --suppress-common-lines -y {}/namelist.input\
-                                 {}/WRF_{}_{}/namelist.input".format(p, run_path, ID, repi)).read()
-        namelist_diff = namelist_diff.replace(" ","").replace("\t","").split("\n")
-        important_diffs = []
-        for diff in namelist_diff:
-            if diff == "":
-                continue
-            old, new = diff.split("|")
-            if  (old[0] == "!") and (new[0] == "!"):
-                continue
-            for ignore_param in ["start_year", "start_month","start_day", "start_hour",
-                                  "start_minute","run_hours", "_outname"]:
-                if ignore_param + "=" in diff:
-                    continue
-            important_diffs.append(diff)
-        if len(important_diffs) > 0:
-            print("{} has different namelist parameters".format(p))
-        else:
-            valid_ids.append(i_p)
-            print("{} has same namelist parameters".format(p))
+    ignore_params = ["start_year", "start_month","start_day", "start_hour",
+                     "start_minute","run_hours", "_outname"]
+    identical_runs = []
+    for search_path in rt_search_paths:
+        search_path += "/"
+        runs_all = next(os.walk(search_path))[1]
+        runs = []
+        for r in runs_all:
+            r_files = os.listdir(search_path + r)
+            if ("namelist.input" in r_files) and (("run.log" in r_files) or ("rsl.error.0000" in r_files)):
+                runs.append(search_path + r)
+        namelist_ref = namelist_to_dict("{}/namelist.input".format(run_dir))
+        for r in runs:
+            namelist_r = namelist_to_dict("{}/namelist.input".format(r))
+            identical = True
+            params = list(set([*namelist_r.keys(), *namelist_ref.keys()]))
+            for param in params:
+                if param not in ignore_params:
+                    if (param not in namelist_r) or (param not in namelist_ref) or (namelist_ref[param] != namelist_r[param]):
+                        identical = False
+                        break
+            if identical:
+                identical_runs.append(r)
+                print("{} has same namelist parameters".format(r))
+
+    if len(identical_runs) > 0:
+        timing = get_runtime_all(runs=identical_runs, dirs=rt_search_paths, all_times=False)
+        return timing["timing"].mean(), timing["timing_sd"].mean()
 
 
-    if len(valid_ids) > 0:
-       return timing.iloc[valid_ids]["timing"].mean()
+#%%
+
+def namelist_to_dict(path, verbose=False):
+    """Convert namelist file to dictionary."""
+    with open(path) as f:
+        namelist_str = f.read().replace(" ", "").replace("\t", "").split("\n")
+    namelist_dict = {}
+    for line in namelist_str:
+        if line != "":
+            if verbose:
+                print("\n" + line)
+            param_val = get_namelist_param_val(line, verbose=verbose)
+            if param_val is not None:
+                namelist_dict[param_val[0]] = param_val[1]
+    return namelist_dict
+
+def get_namelist_param_val(line, verbose=False):
+    """Get parameter name and value from line in namelist file."""
+    line = line.replace(" ", "")
+    line = line.replace("\t", "")
+    if "=" not in line:
+        if verbose:
+            print("Line contains not parameters")
+        return
+    elif line[0] == "!":
+        if verbose:
+            print("Line is commented out")
+        return
+    else:
+        if "!" in line:
+            line = line[:line.index("!")]
+
+        param, val = line.split("=")
+        val = mod_namelist_val(val)
+        if verbose:
+            print(param, val)
+
+    return param, val
+
+def mod_namelist_val(val):
+    """Remove unnecessary dots and commas from namelist value and use only one type of quotation marks."""
+    val = val.replace('"', "'")
+    if val[-1] == ",":
+        val = val[:-1]
+    if val[-1] == ".":
+        val = val[:-1]
+    return val
+
+
+#%%
 
 def prepare_restart(wdir, ID, outpath, output_streams, end_time, date_format='%Y-%m-%d_%H:%M:%S'):
     rstfiles = os.popen("ls -t {}/wrfrst*".format(wdir)).read()
@@ -361,7 +496,7 @@ def prepare_restart(wdir, ID, outpath, output_streams, end_time, date_format='%Y
 
     restart_time = rstfiles.split("\n")[0].split("/")[-1].split("_")[-2:]
     print("Restart run from {}".format(" ".join(restart_time)))
-    start_time_rst = datetime.datetime.strptime("_".join(restart_time), date_format)
+    start_time_rst = datetime.strptime("_".join(restart_time), date_format)
     rst_date, rst_time = restart_time
     rst_date = rst_date.split("-")
     rst_time = rst_time.split(":")

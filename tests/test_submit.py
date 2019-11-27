@@ -20,3 +20,6 @@ def test_submit_jobs():
     with pytest.raises(RuntimeError):
         submit_jobs(config_file="test.config_test_del_args", init=True)
 
+#test run and restart run, check name list changes
+#test check_rt
+#delete output

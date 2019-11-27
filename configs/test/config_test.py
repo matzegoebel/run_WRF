@@ -18,10 +18,10 @@ params = {} #parameter dict for params not used in param_grid
 
 wrf_dir_pre = "WRFscm" #prefix for WRF build directory (_debug and _mpi will be added later)
 ideal_case = "em_scm_xy" #idealized WRF case
-runID = "fluxdelay" #name for this simulation series
+runID = "pytest" #name for this simulation series
 
 outpath = os.environ["wrf_res"]#WRF output path root
-outdir = "test/fluxdelay/" #subdirectory for WRF output if not set in command line
+outdir = "test/pytest/" #subdirectory for WRF output if not set in command line
 run_path = os.environ["wrf_runs"] #path where run directories of simulations will be created
 build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
 
