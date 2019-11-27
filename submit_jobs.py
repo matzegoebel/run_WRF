@@ -367,32 +367,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
             else:
                 if restart:
                     wdir = "{}/WRF_{}/".format(conf.run_path,IDr)
-                    rstfiles = os.popen("ls -t {}/wrfrst*".format(wdir)).read()
-                    if rstfiles == "":
-                        print("WARNING: no restart files found")
-
-                    restart_time = rstfiles.split("\n")[0].split("/")[-1].split("_")[-2:]
-                    print("Restart run from {}".format(" ".join(restart_time)))
-                    start_time_rst = datetime.datetime.strptime("_".join(restart_time), date_format)
-                    end_time_rst = datetime.datetime.strptime(conf.end_time, date_format)
-                    rst_date, rst_time = restart_time
-                    rst_date = rst_date.split("-")
-                    rst_time = rst_time.split(":")
-                    run_hours = int((end_time_rst - start_time_rst).total_seconds()/3600)
+                    run_hours = misc_tools.prepare_restart(wdir, IDr, conf.outpath, conf.output_streams, end_time_dt, date_format=date_format)
                     if run_hours == 0:
                         continue
-                    rst_opt = "restart .true. start_year {} start_month {} start_day {}\
-                    start_hour {} start_minute {} start_second {} run_hours {}".format(*rst_date, *rst_time, run_hours)
-                    os.makedirs("{}/rst/".format(conf.outpath), exist_ok=True) #move previous output in backup directory
-                    outfiles = [glob.glob("{}/{}_{}".format(conf.outpath, stream[0], IDr)) for stream in conf.output_streams.values()]
-                    for f in misc_tools.flatten_list(outfiles):
-                        fname = f.split("/")[-1]
-                        rst_ind = 0
-                        while os.path.isfile("{}/rst/{}_rst_{}".format(conf.outpath, fname, rst_ind)):
-                            rst_ind += 1
-                        os.rename(f, "{}/rst/{}_rst_{}".format(conf.outpath, fname, rst_ind))
-                    os.environ["code_dir"] = os.path.curdir
-                    os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input {1}".format(wdir, rst_opt))
 
                 rtri = None
                 if use_qsub:

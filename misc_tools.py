@@ -354,4 +354,30 @@ def get_runtime_id(ID, rt_search_paths, run_path, nlevels, repi=0):
     if len(valid_ids) > 0:
        return timing.iloc[valid_ids]["timing"].mean()
 
+def prepare_restart(wdir, ID, outpath, output_streams, end_time, date_format='%Y-%m-%d_%H:%M:%S'):
+    rstfiles = os.popen("ls -t {}/wrfrst*".format(wdir)).read()
+    if rstfiles == "":
+        print("WARNING: no restart files found")
+
+    restart_time = rstfiles.split("\n")[0].split("/")[-1].split("_")[-2:]
+    print("Restart run from {}".format(" ".join(restart_time)))
+    start_time_rst = datetime.datetime.strptime("_".join(restart_time), date_format)
+    rst_date, rst_time = restart_time
+    rst_date = rst_date.split("-")
+    rst_time = rst_time.split(":")
+    run_hours = int((end_time - start_time_rst).total_seconds()/3600)
+
+    rst_opt = "restart .true. start_year {} start_month {} start_day {}\
+    start_hour {} start_minute {} start_second {} run_hours {}".format(*rst_date, *rst_time, run_hours)
+    os.makedirs("{}/rst/".format(outpath), exist_ok=True) #move previous output in backup directory
+    outfiles = [glob.glob("{}/{}_{}".format(outpath, stream[0], ID)) for stream in output_streams.values()]
+    for f in flatten_list(outfiles):
+        fname = f.split("/")[-1]
+        rst_ind = 0
+        while os.path.isfile("{}/rst/{}_rst_{}".format(outpath, fname, rst_ind)):
+            rst_ind += 1
+        os.rename(f, "{}/rst/{}_rst_{}".format(outpath, fname, rst_ind))
+    os.environ["code_dir"] = os.path.curdir
+    os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input {1}".format(wdir, rst_opt))
+
 
