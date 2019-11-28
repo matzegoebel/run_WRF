@@ -39,7 +39,6 @@ start_time = "2018-06-20_00:00:00" #"2018-06-20_20:00:00"; format %Y-%m-%d_%H:%M
 end_time = "2018-06-21_00:00:00" #"2018-06-23_00:00:00"; format %Y-%m-%d_%H:%M:%S
 
 params["n_rep"] = 1 #number of repetitions for each configuration
-params["repi"] = 0#start id for reps
 
 #horizontal grid
 params["dx"] = 500 #horizontal grid spacing (m)

@@ -77,6 +77,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
         conf.params["start_" + n] = di
     for di,n in zip(end_d + end_t, ["year","month","day","hour","minute","second"] ):
         conf.params["end_" + n] = di
+    conf.params["run_hours"] = 0 #use end time not run_hours
 
     #combine param grid and additional settings
     combs = param_combs.copy()
@@ -100,6 +101,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
         #create output ID for current configuration
 
         IDi, IDi_d = misc_tools.output_id_from_config(param_comb, conf.param_grid, conf.param_names, conf.runID)
+        run_dir =  "{}/WRF_{}".format(conf.run_path, IDi)
+
         print("\n\nConfig:")
         print("\n".join(str(param_comb).split("\n")[:-1]))
 
@@ -296,8 +299,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
                 runtime_per_step = conf.runtime_per_step_dict[r]
 
             if check_rt or (runtime_per_step is None):
-                run_dir =  "{}/WRF_{}_{}".format(conf.run_path, IDi, args["repi"])
-                runtime_per_step = misc_tools.get_runtime_id(run_dir, conf.rt_search_paths)
+                run_dir_0 = run_dir + "_0" #use rep 0 as reference
+                runtime_per_step = misc_tools.get_runtime_id(run_dir_0, conf.rt_search_paths)
                 if runtime_per_step is not None:
                     if check_rt:
                         print("Previous runs found. No test run needed.")
@@ -322,14 +325,34 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
             vmemi = max(conf.vmem_min, int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"]))
         vmem.append(vmemi)
 
-        repi = args["repi"]
         n_rep = args["n_rep"]
-        for rep in range(repi, n_rep+repi): #repetion loop
+        for rep in range(n_rep): #repetion loop
             IDr = IDi + "_" + str(rep)
             IDs.append(IDr)
+            run_dir_r = run_dir + "_" + str(rep)
 
             if init:
-                print("")
+                if os.path.isdir(run_dir_r):
+                    if exist == "s":
+                        print("Run directory already exists.")
+                        if os.path.isfile(run_dir_r + "/wrfinput_d01"):
+                            print("Initialization was complete.\nSkipping...")
+                            continue
+                        else:
+                            print("However, WRF initialization was not successfully carried out.\nRedoing initialization...")
+                    elif exist == "o":
+                        print("Overwriting...")
+                    elif exist == "b":
+                        print("Creating backup...")
+                        bk_dir =  "{}/bak/".format(conf.run_path)
+                        run_dir_bk =  "{}/WRF_{}_bak_".format(bk_dir, IDr)
+                        os.makedirs(bk_dir, exist_ok=True)
+                        bk_ind = 0
+                        while os.path.isdir(run_dir_bk + str(bk_ind)):
+                            bk_ind += 1
+                        os.rename(run_dir_r, run_dir_bk + str(bk_ind))
+                    else:
+                        raise ValueError("Value '{}' for -e option not defined!".format(exist))
 
                 hist_paths = r""
                 for stream, (outfile, _) in conf.output_streams.items():
@@ -363,9 +386,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
                 if not check_args:
                     err = os.system(comm)
                     if err == 0:
-                        ID_path = "{}/WRF_{}".format(conf.run_path, IDr)
-                        os.system("tail -n 1 {}/init.log".format(ID_path))
-                        os.system("cat {}/init.err".format(ID_path))
+                        ID_path = "{}/WRF_{}/".format(conf.run_path, IDr)
+                        initlog = open(ID_path + "init.log").read()
+                        print(initlog.split("\n")[-2].strip())
+                        initerr = open(ID_path + "init.err").read()
+                        print(initerr)
 
             else:
                 if restart:
@@ -374,6 +399,31 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
                     run_hours = misc_tools.prepare_restart(wdir, IDr, conf.outpath, stream_names, end_time_dt)
                     if run_hours == 0:
                         continue
+                else:
+                    outfiles = ["{}/{}_{}".format(conf.outpath, outfile, IDr) for _, (outfile, _) in conf.output_streams.items()]
+                    outfiles = [o for o in outfiles if os.path.isfile(o)]
+                    if len(outfiles) > 0:
+                        print("Output files already exist.")
+                        if exist == "s":
+                                print("Skipping...")
+                                continue
+                        elif exist == "o":
+                            print("Overwriting...")
+                        elif exist == "b":
+                            print("Creating backup...")
+                            bk_dir =  "{}/bak/".format(conf.outpath)
+                            os.makedirs(bk_dir, exist_ok=True)
+                            for outfile in outfiles:
+                                outfile_name = outfile.split("/")[-1]
+                                outfile_bk = "{}/{}_bak_".format(bk_dir, outfile_name)
+                                bk_ind = 0
+                                while os.path.isfile(outfile_bk + str(bk_ind)):
+                                    bk_ind += 1
+                                os.rename(outfile, outfile_bk + str(bk_ind))
+                        else:
+                            raise ValueError("Value '{}' for -e option not defined!".format(exist))
+
+
 
                 rtri = None
                 if use_qsub:
@@ -388,7 +438,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
      #           dx_p_set = [str(int(rs)) for rs in set(dx_p)]
     #            if (np.in1d(dx_ind, dx_p).any()) and (len(dx_p_set) > 1):
     #                split_res = True
-                if (rep == n_rep+repi-1) and (i == len(combs) - 1):
+                if (rep == n_rep-1) and (i == len(combs) - 1):
                     last_id = True
 
                 if (sum(nslots) >= conf.pool_size) or (not pool_jobs) or conf.last_id: #submit current pool of jobs
@@ -485,6 +535,9 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--outdir",
                         action="store", dest="outdir", default = defaults["outdir"],
                         help="Subdirectory for WRF output. Default defined in script. Only effective during initialization.")
+    parser.add_argument("-e", "--exist",
+                        action="store", dest="exist", default = defaults["exist"], choices=["s", "o", "b"],
+                        help="What to do if output already exists: Skip run ('s'), overwrite ('o') or backup files ('b'). Default is skip.")
     parser.add_argument("-d", "--debug",
                         action="store_true", dest="debug", default = defaults["debug"],
                         help="Run wrf in debugging mode. Just adds '_debug' to the build directory.")

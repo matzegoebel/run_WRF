@@ -17,6 +17,8 @@ With the `-c` option you can specify an alternative config file (default is `con
 
 The log output is written to `init.log/init.err` and `run.log/run.err` in the respective simulation folder for initialization and simulation mode, respectively. The subdirectory for the simulation output can be specified in the script or with the `-o` option.
 
+If the simulation folder (in init mode) or the output files (in simulation mode) already exist, the desired action can be specified with the `-e` option: Skipping this run (`-e s`), overwriting (`-e o`) or backing up the data (`-e b`).
+
 When run on a cluster, the `-q` flag allows submitting the jobs with SGE. Email settings for SGE can be set with the  `-m` option (set your email address in the job scripts `init_wrf.job` and `run_wrf.job` beforehand). To control which modules are loaded for cluster jobs, take a look at `init_wrf.job` and `run_wrf.job`.
 
 If a simulation aborts, simply run `submit_jobs.py -r`. This restarts the simulations from the most recent restart files. The original output is moved to a backup folder called `rst`. An unlimited number of restarts is possible. To concatenate the files from the original and the restarted runs (with overlap removed), use the script `concat_restart.py` after all runs are finished.
