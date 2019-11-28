@@ -489,23 +489,48 @@ def mod_namelist_val(val):
 
 #%%
 
-def prepare_restart(wdir, ID, outpath, output_streams, end_time, date_format='%Y-%m-%d_%H:%M:%S'):
+def prepare_restart(wdir, outpath, output_streams, end_time):
+
+    """
+    Prepare restart runs.
+
+    Search for restart files, select the most recent one and adapt the namelist file of the simulation.
+    The output of the previous simulation is backed up in a folder called rst.
+
+    Parameters
+    ----------
+    wdir : str
+        Path of the simulation folder that contains the restart files.
+    outpath : str
+        Directory where simulation output is placed.
+    output_streams : list
+        List of output stream names.
+    end_time : datetime.datetime
+        End time of simulation.
+
+    Returns
+    -------
+    run_hours : datetime.datetime
+        Start time of restart run.
+    """
+
     rstfiles = os.popen("ls -t {}/wrfrst*".format(wdir)).read()
     if rstfiles == "":
         print("WARNING: no restart files found")
 
+    ID = "_".join(wdir.split("/")[-1].split("_")[1:])
     restart_time = rstfiles.split("\n")[0].split("/")[-1].split("_")[-2:]
     print("Restart run from {}".format(" ".join(restart_time)))
-    start_time_rst = datetime.strptime("_".join(restart_time), date_format)
+    start_time_rst = datetime.strptime("_".join(restart_time), '%Y-%m-%d_%H:%M:%S')
     rst_date, rst_time = restart_time
     rst_date = rst_date.split("-")
     rst_time = rst_time.split(":")
-    run_hours = int((end_time - start_time_rst).total_seconds()/3600)
+    run_hours = (end_time - start_time_rst).total_seconds()/3600
 
     rst_opt = "restart .true. start_year {} start_month {} start_day {}\
     start_hour {} start_minute {} start_second {} run_hours {}".format(*rst_date, *rst_time, run_hours)
     os.makedirs("{}/rst/".format(outpath), exist_ok=True) #move previous output in backup directory
-    outfiles = [glob.glob("{}/{}_{}".format(outpath, stream[0], ID)) for stream in output_streams.values()]
+    outfiles = [glob.glob("{}/{}_{}".format(outpath, stream, ID)) for stream in output_streams]
     for f in flatten_list(outfiles):
         fname = f.split("/")[-1]
         rst_ind = 0
@@ -513,6 +538,8 @@ def prepare_restart(wdir, ID, outpath, output_streams, end_time, date_format='%Y
             rst_ind += 1
         os.rename(f, "{}/rst/{}_rst_{}".format(outpath, fname, rst_ind))
     os.environ["code_dir"] = os.path.curdir
-    os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input {1}".format(wdir, rst_opt))
+    err = os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input {1}".format(wdir, rst_opt))
+    if err != 0:
+        raise RuntimeError("Error in preparing restart run! Failed to modify namelist values!")
 
-
+    return run_hours

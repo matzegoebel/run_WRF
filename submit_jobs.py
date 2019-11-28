@@ -63,7 +63,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
     end_d = end_d.split("-")
     end_t = end_t.split(":")
 
-    run_hours = int((end_time_dt - start_time_dt).total_seconds()/3600)
+    run_hours = (end_time_dt - start_time_dt).total_seconds()/3600
 
     IDs = []
     rtr = []
@@ -75,6 +75,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
 
     for di,n in zip(start_d + start_t, ["year","month","day","hour","minute","second"] ):
         conf.params["start_" + n] = di
+    for di,n in zip(end_d + end_t, ["year","month","day","hour","minute","second"] ):
+        conf.params["end_" + n] = di
 
     #combine param grid and additional settings
     combs = param_combs.copy()
@@ -117,7 +119,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
         else:
             args["mix_isotropic"] = 0
 
-        args["run_hours"] = run_hours
         if "dt" not in args:
             args["dt"] = r/1000*6 #wrf rule of thumb
         dt = args["dt"]
@@ -369,7 +370,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
             else:
                 if restart:
                     wdir = "{}/WRF_{}/".format(conf.run_path,IDr)
-                    run_hours = misc_tools.prepare_restart(wdir, IDr, conf.outpath, conf.output_streams, end_time_dt, date_format=date_format)
+                    stream_names = [stream[0] for stream in conf.output_streams.values()]
+                    run_hours = misc_tools.prepare_restart(wdir, IDr, conf.outpath, stream_names, end_time_dt)
                     if run_hours == 0:
                         continue
 
