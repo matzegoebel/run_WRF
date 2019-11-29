@@ -17,10 +17,11 @@ import os
 from collections import OrderedDict as odict
 import glob
 from datetime import datetime
-import subprocess as sp
 from io import StringIO
 import sys
+import get_namelist
 
+#%%nproc
 
 def find_nproc(n, min_n_per_proc=25, even_split=False):
     """
@@ -41,7 +42,6 @@ def find_nproc(n, min_n_per_proc=25, even_split=False):
         number of processors.
 
     """
-
     if n <= min_n_per_proc:
         return 1
     elif even_split:
@@ -52,13 +52,7 @@ def find_nproc(n, min_n_per_proc=25, even_split=False):
         return math.floor(n/min_n_per_proc)
 
 
-def bool_to_fort(b):
-    """Convert python boolean to fortran boolean (as str)."""
-    if b:
-        return ".true."
-    else:
-        return ".false."
-
+#%%general helpful functions
 def transpose_list(l):
     """
     Transpose list of lists.
@@ -77,7 +71,7 @@ def transpose_list(l):
     return list(map(list, zip(*l)))
 
 def flatten_list(l):
-    '''Flattens list. Works for list elements that are lists or tuples'''
+    """Flattens list. Works for list elements that are lists or tuples."""
     flat_l = []
     for item in l:
         if type(item) in [list, tuple, np.ndarray]:
@@ -101,9 +95,7 @@ def elapsed_time(start):
     return time_diff.total_seconds()
 
 def print_progress(start=None, counter=None, length=None, message="Elapsed time", prog=True):
-    '''
-    Print progress and elapsed time since start date.
-    '''
+    """Print progress and elapsed time since start date."""
     msg = ""
     if prog != False:
         if prog == "%":
@@ -116,6 +108,8 @@ def print_progress(start=None, counter=None, length=None, message="Elapsed time"
         minutes, seconds = divmod(remainder, 60)
         msg += "%s: %s hours %s minutes %s seconds" % (message, int(hours),int(minutes),round(seconds))
     overprint(msg)
+
+#%%config grid related
 
 def grid_combinations(param_grid):
     """
@@ -170,8 +164,8 @@ def grid_combinations(param_grid):
 
 def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
     """
-    Creates ID for output files. Param_names can be used to replace parameter values.
-    
+    Create ID for output files. Param_names can be used to replace parameter values.
+
     Parameters
     ----------
     param_comb : pandas Dataframe
@@ -182,13 +176,13 @@ def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
         names of parameter values for output filenames
     runID : str or None
         General ID for the requested simulation series used as prefix in filenames
-    
+
     Returns
     -------
     ID : str
         output ID
 
-    """  
+    """
     ID = param_comb.copy()
     for p, v in param_grid.items():
         if type(v) == dict:
@@ -213,7 +207,7 @@ def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
 
     return ID_str, ID
 
-
+#%%runtime
 def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, levels=None, remove=None, verbose=False):
     """
     Get runtime per timestep from all given run directories or for all directories in dirs that pass the filter id_filter.
@@ -297,6 +291,7 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
 def get_runtime(run_dir, timing=None, counter=None, all_times=False):
     """
     Get runtime, MPI slot and domain size information from log file in run_dir.
+
     This information is written to timing starting from counter or, if not given, a new Dataframe is created.
 
     Parameters
@@ -323,7 +318,6 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=False):
         Current counter for writing.
 
     """
-
     if os.path.isfile(run_dir + "/rsl.error.0000"):
         f = open(run_dir + "/rsl.error.0000")
     elif os.path.isfile(run_dir + "/run.log"):
@@ -421,9 +415,9 @@ def get_runtime_id(run_dir, rt_search_paths):
             r_files = os.listdir(search_path + r)
             if ("namelist.input" in r_files) and (("run.log" in r_files) or ("rsl.error.0000" in r_files)):
                 runs.append(search_path + r)
-        namelist_ref = namelist_to_dict("{}/namelist.input".format(run_dir))
+        namelist_ref = get_namelist.namelist_to_dict("{}/namelist.input".format(run_dir))
         for r in runs:
-            namelist_r = namelist_to_dict("{}/namelist.input".format(r))
+            namelist_r = get_namelist.namelist_to_dict("{}/namelist.input".format(r))
             identical = True
             params = list(set([*namelist_r.keys(), *namelist_ref.keys()]))
             for param in params:
@@ -440,59 +434,11 @@ def get_runtime_id(run_dir, rt_search_paths):
         return timing["timing"].mean(), timing["timing_sd"].mean()
 
 
-#%%
-
-def namelist_to_dict(path, verbose=False):
-    """Convert namelist file to dictionary."""
-    with open(path) as f:
-        namelist_str = f.read().replace(" ", "").replace("\t", "").split("\n")
-    namelist_dict = {}
-    for line in namelist_str:
-        if line != "":
-            if verbose:
-                print("\n" + line)
-            param_val = get_namelist_param_val(line, verbose=verbose)
-            if param_val is not None:
-                namelist_dict[param_val[0]] = param_val[1]
-    return namelist_dict
-
-def get_namelist_param_val(line, verbose=False):
-    """Get parameter name and value from line in namelist file."""
-    line = line.replace(" ", "")
-    line = line.replace("\t", "")
-    if "=" not in line:
-        if verbose:
-            print("Line contains not parameters")
-        return
-    elif line[0] == "!":
-        if verbose:
-            print("Line is commented out")
-        return
-    else:
-        if "!" in line:
-            line = line[:line.index("!")]
-
-        param, val = line.split("=")
-        val = mod_namelist_val(val)
-        if verbose:
-            print(param, val)
-
-    return param, val
-
-def mod_namelist_val(val):
-    """Remove unnecessary dots and commas from namelist value and use only one type of quotation marks."""
-    val = val.replace('"', "'")
-    if val[-1] == ",":
-        val = val[:-1]
-    if val[-1] == ".":
-        val = val[:-1]
-    return val
 
 
-#%%
+#%%restart
 
 def prepare_restart(wdir, outpath, output_streams, end_time):
-
     """
     Prepare restart runs.
 
@@ -515,7 +461,6 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
     run_hours : datetime.datetime
         Start time of restart run.
     """
-
     rstfiles = os.popen("ls -t {}/wrfrst*".format(wdir)).read()
     if rstfiles == "":
         print("WARNING: no restart files found")
@@ -551,6 +496,8 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
 
 
 class Capturing(list):
+    """Class to use for capturing print output of python function."""
+
     def __enter__(self):
         self._stdout = sys.stdout
         sys.stdout = self._stringio = StringIO()

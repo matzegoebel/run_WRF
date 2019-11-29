@@ -19,15 +19,21 @@ import time
 
 
 def test_submit_jobs():
-    os.chdir("..")
 
-    submit_jobs(check_args=True, init=True, config_file="test.config_test")
+    for add in ["_mpi", ""]:
+        target_dir = "{}/{}{}/test/{}/".format(conf.build_path, conf.wrf_dir_pre, add, conf.ideal_case)
+        shutil.copy("test_data/IO_test.txt", target_dir)
+        shutil.copy("test_data/namelists/namelist.input" + add, target_dir + "namelist.input")
+
+    os.chdir("..")
+    submit_jobs(check_args=True, init=True, verbose=False, config_file="test.config_test")
     combs = submit_jobs(check_args=True, config_file="test.config_test")
     with pytest.raises(RuntimeError):
         submit_jobs(config_file="test.config_test_del_args", init=True)
 
     nruns = len(combs)
-    submit_jobs(init=True, config_file="test.config_test")
+    submit_jobs(init=True, config_file="test.config_test", exist="o")
+    submit_jobs(init=False, wait=True, config_file="test.config_test", exist="o")
 
     #test behaviour if output exists
     for run in os.listdir(conf.run_path):
@@ -35,17 +41,17 @@ def test_submit_jobs():
         if os.path.isfile(file):
             os.remove(file)
     exist_message = (("s", "Redoing initialization..."), ("s", "Skipping..."), ("o", "Overwriting..."), ("b", "Creating backup..."))
-    success = 'wrf: SUCCESS COMPLETE IDEAL INIT'
+    success = {True : 'wrf: SUCCESS COMPLETE IDEAL INIT', False : 'd01 2018-06-20_02:00:00 wrf: SUCCESS COMPLETE WRF'}
     for init in [True, False]:
         for i, (exist, message) in enumerate(exist_message):
-            print(exist, message)
-            with Capturing() as output:
-                submit_jobs(init=init, exist=exist, wait=True, config_file="test.config_test")
-            count = Counter(output)
             if init or i > 0:
+                print(exist, message)
+                with Capturing() as output:
+                    submit_jobs(init=init, exist=exist, wait=True, config_file="test.config_test")
+                count = Counter(output)
                 assert count[message] == nruns
-            if "Skipping" not in message:
-                assert count[success[init]] == nruns
+                if "Skipping..." not in message:
+                    assert count[success[init]] == nruns
 
     with pytest.raises(ValueError, match="Value 'a' for -e option not defined!"):
         submit_jobs(init=True, exist="a", config_file="test.config_test")
@@ -54,13 +60,14 @@ def test_submit_jobs():
     time.sleep(5)
 
 
-    shutil.rmtree(conf.run_path)
-    shutil.rmtree(conf.outpath)
+    shutil.rmtree(os.environ["wrf_res"] + "/test/pytest")
+    shutil.rmtree(os.environ["wrf_runs"] + "/pytest")
+
 
 
 
 #test run and restart run, check name list changes
 #test check_rt
 # check if bak is created
-
+#check grid combs
 #check if wrf successful in log or as parameter form submit_jobs?

@@ -55,6 +55,8 @@ params["nz"] = 122 #176, number of vertical levels
 params["dz0"] = 20 #10, height of first model level (m)
 params["dz_method"] = 0 #method for creating vertical grid as defined in vertical_grid.py
 params["dt"] = None #1 #time step (s), if None calculated as dt = 6 s/m *dx/1000
+#minimum time between radiation calls (min); if radt is not specified: radt=max(radt_min, 10*dt)
+params["radt_min"] = 1
 
 params["input_sounding"] = "" #name of input sounding to use (should be named input_sounding_name)
 
@@ -65,6 +67,7 @@ params["spec_hfx"] = None #None specified surface heat flux instead of radiation
 #standard namelist parameters
 params["mp_physics"] = 2
 params["bl_pbl_physics"] = 6
+params["bl_mynn_tkebudget"] = 1
 params["bl_mynn_edmf"] = 1
 params["bl_mynn_edmf_tke"] = 1
 params["scalar_pblmix"] = 1
@@ -72,23 +75,26 @@ params["topo_shading"] = 1
 params["slope_rad"] = 1
 
 #custom namelist parameters (not available in official WRF)
-params["topo"] = "flat"#, "cos"] #topography type
+params["topo"] = 0#, "cos"] #topography type
 params["spec_sw"] = None  # specified constant shortwave radiation
 params["pert_res"] = 4000 #resolution (m) below which initial perturbations are used
 no_pert = False
 all_pert = False
 
-#indices for output streams and their respective name and output interval (min)
+#indices for output streams and their respective name and output interval (minutes, floats allowed)
 # 0 is the standard output stream
-output_streams = {0: ["wrfout", 30], 7: ["fastout", 10], 8 : ["meanout", 30], }
+output_streams = {0: ["wrfout", 30.], 7: ["fastout", 10.], 8 : ["meanout", 30.], }
 # filename where output variables for standard and auxiliary streams are modified:
 params["iofields_filename"] = 0 # if 0: use LES_IO.txt and MESO_IO.txt for LES simulations and simulations with PBL scheme respectively
 params["restart_interval"] = 240 #restart interval (min)
 split_output_res = 0 #resolution below which to split output in one timestep per file
 
+
 # non-namelist parameters that will not be included in namelist file
 del_args =   ["nz", "dz0","dz_method", "gridpoints", "lx", "ly", "spec_hfx", "spec_sw",
-            "pert_res", "input_sounding", "repi", "n_rep", "isotropic_res", "pbl_res", "dt"]
+            "pert_res", "input_sounding", "repi", "n_rep", "isotropic_res", "pbl_res", "dt", "radt_min"]
+
+
 
 #%%
 '''Settings for resource requirements of SGE jobs'''
@@ -108,7 +114,6 @@ vmem_buffer = 1.2 #buffer factor for virtual memory
 
 # runtime: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from short test run
-#TODO: make gridpoint dependent; make second res
 # if qsub: run for a few minutes; check runtime and vmem and resubmit
 rt = None #None or job runtime in seconds; buffer not used
 rt_buffer = 1.5 #buffer factor to multiply rt with
@@ -116,7 +121,7 @@ rt_buffer = 1.5 #buffer factor to multiply rt with
 # if rt is None: runtime per time step in seconds for different dx
 runtime_per_step_dict = None#{ 62.5 : 3., 100: 3., 125. : 3. , 250. : 1., 500: 0.5, 1000: 0.3, 2000.: 0.3, 4000.: 0.3}
 #paths to search for log files to determine runtime if not specified
-rt_search_paths = [run_path, run_path + "/old"] 
+rt_search_paths = [run_path]
 rt_check = 180 #runtime (s) of test jobs  for --check_rt option
 
 # slots
@@ -127,7 +132,6 @@ even_split = False #1, force equal split between processors
 #%%
 '''Slot configurations for personal computer and cluster'''
 
-#dx_ind = [62.5, 125, 250] #INACTIVE; resolutions which have their own job pools (if pooling is used)
 reduce_pool = True #reduce pool size to the actual uses number of slots; do not use if you do not want to share the node with others
 
 if (("HOSTNAME" in os.environ) and (cluster_name in os.environ["HOSTNAME"])):
@@ -141,5 +145,34 @@ else:
     max_nslotsy = None
     max_nslotsx = None
     pool_size = 16
+
+
+
+#%%
+
+param_combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid)
+
+#combine param grid and additional settings
+combs = param_combs.copy()
+for param, val in params.items():
+    if param not in combs:
+        combs[param] = val
+
+#%%
+
+for i, c in combs.iterrows():
+    if ("iofields_filename" in c) and (c["iofields_filename"]==0):
+        if c["dx"] < c["pbl_res"]:
+            combs.loc[i, "iofields_filename"] = '"LES_IO.txt"'
+        else:
+            combs.loc[i, "iofields_filename"] = '"MESO_IO.txt"'
+
+    if "init_pert" not in c:
+        if (not no_pert) and (all_pert or (c["dx"] < c["pert_res"])):
+             combs.loc[i, "init_pert"] = ".true."
+        else:
+             combs.loc[i, "init_pert"] = ".false."
+
+
 
 

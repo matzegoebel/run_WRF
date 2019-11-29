@@ -16,17 +16,20 @@ else
   infile=${infile}_old
 fi
 
+
 raise=false
 while [[ $# -gt 0 ]]
 do
   if grep -x -q "\s*$1\s*=.*" ${outfile}
   then
     line=$(grep "\s$1\s*=" ${outfile})
+    echo "${code_dir}/check_namelist_value.py '$line' '$2'"
     value_change=$(python ${code_dir}/check_namelist_value.py "$line" "$2")
     if [ -z "$value_change" ]
     then
       sed  -i -r -e "s/\s$1\s*=.*/ $1 = $2/g" $outfile
     fi
+
   else
     >&2 echo "ERROR: parameter $1 not found in namelist file!"
     raise=true

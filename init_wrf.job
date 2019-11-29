@@ -10,6 +10,9 @@
 
 set -e
 
+#~ t0=$(expr `date +%s%N` / 1000000)
+#~ echo (( t - t0))
+
 if (( cluster==0 ))
 then
   ulimit -s unlimited
@@ -84,6 +87,7 @@ cp namelist.$JOB_NAME namelist.input
 echo
 echo "Running ideal"
 
+#make simulations asynchronous (prevent simultaneous writing to disk)
 echo
 echo "sleep $sleep s"
 echo

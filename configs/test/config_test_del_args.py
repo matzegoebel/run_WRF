@@ -11,22 +11,23 @@ Test settings for automated tests.
 """
 import os
 from collections import OrderedDict as odict
+import misc_tools
 
 #%%
 '''Simulations settings'''
 params = {} #parameter dict for params not used in param_grid
 
-wrf_dir_pre = "WRFscm" #prefix for WRF build directory (_debug and _mpi will be added later)
-ideal_case = "em_scm_xy" #idealized WRF case
-runID = "test_del_args" #name for this simulation series
+wrf_dir_pre = "WRF_test" #prefix for WRF build directory (_debug and _mpi will be added later)
+ideal_case = "em_les" #idealized WRF case
+runID = "pytest" #name for this simulation series
 
 outpath = os.environ["wrf_res"]#WRF output path root
-outdir = "test/pytest/" #subdirectory for WRF output if not set in command line
-run_path = os.environ["wrf_runs"] #path where run directories of simulations will be created
-build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
+outdir = "test/" + runID #subdirectory for WRF output if not set in command line
+run_path = os.environ["wrf_runs"] + "/" + runID #path where run directories of simulations will be created
+build_path = os.environ["wrf_builds"] + "tests" #path where different versions of the compiled WRF model code reside
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
-param_grid = odict(sf_sfclay_physics=[1, 2, 5])
+param_grid = odict(sf_sfclay_physics=[1, 2])
  #          res={"dx" : [100,4000], "bl_pbl_physics": [0,1], "dz0" : [10,50], "nz" : [350,60]})
 
 # names of parameter values for output filenames; either dictionaries or lists (not for composite parameters)
@@ -40,7 +41,6 @@ start_time = "2018-06-20_00:00:00" #"2018-06-20_20:00:00"; format %Y-%m-%d_%H:%M
 end_time = "2018-06-20_02:00:00" #"2018-06-23_00:00:00"; format %Y-%m-%d_%H:%M:%S
 
 params["n_rep"] = 1 #number of repetitions for each configuration
-params["repi"] = 0#start id for reps
 
 #horizontal grid
 params["dx"] = 500 #horizontal grid spacing (m)
@@ -51,12 +51,14 @@ params["gridpoints"] = 2 #16, minimum number of grid points in each direction -1
 force_domain_multiple = True #if use_gridpoints: force domain with x and y extents that are multiples of lx and ly, respectively
 
 #vertical grid
-params["ztop"] = 15000 #15000, top of domain (m)
+params["ztop"] = 5000 #15000, top of domain (m)
 params["zdamp"] = int(params["ztop"]/3) #depth of damping layer (m)
-params["nz"] = 122 #176, number of vertical levels
+params["nz"] = 60 #176, number of vertical levels
 params["dz0"] = 20 #10, height of first model level (m)
 params["dz_method"] = 0 #method for creating vertical grid as defined in vertical_grid.py
 params["dt"] = None #1 #time step (s), if None calculated as dt = 6 s/m *dx/1000
+#minimum time between radiation calls (min); if radt is not specified: radt=max(radt_min, 10*dt)
+params["radt_min"] = 1
 
 params["input_sounding"] = "" #name of input sounding to use (should be named input_sounding_name)
 
@@ -66,26 +68,17 @@ params["spec_hfx"] = None #None specified surface heat flux instead of radiation
 
 #standard namelist parameters
 params["mp_physics"] = 2
-params["bl_pbl_physics"] = 6
-params["bl_mynn_edmf"] = 1
-params["bl_mynn_edmf_tke"] = 1
-params["scalar_pblmix"] = 1
-params["topo_shading"] = 1
-params["slope_rad"] = 1
+params["bl_pbl_physics"] = 1
 
-#custom namelist parameters (not available in official WRF)
-params["topo"] = "flat"#, "cos"] #topography type
-params["spec_sw"] = None  # specified constant shortwave radiation
-params["pert_res"] = 4000 #resolution (m) below which initial perturbations are used
-no_pert = False
-all_pert = False
-
-#indices for output streams and their respective name and output interval (min)
+#indices for output streams and their respective name and output interval (minutes, floats allowed)
 # 0 is the standard output stream
-output_streams = {0: ["wrfout", 30], 7: ["fastout", 10], 8 : ["meanout", 30], }
+output_streams = {0: ["wrfout", 30], 7: ["fastout", 5.5] }
+
 # filename where output variables for standard and auxiliary streams are modified:
-params["iofields_filename"] = 0 # if 0: use LES_IO.txt and MESO_IO.txt for LES simulations and simulations with PBL scheme respectively
+params["iofields_filename"] = "NONE_SPECIFIED"
+
 params["restart_interval"] = 240 #restart interval (min)
+
 split_output_res = 0 #resolution below which to split output in one timestep per file
 
 # non-namelist parameters that will not be included in namelist file
@@ -109,7 +102,6 @@ vmem_buffer = 1.2 #buffer factor for virtual memory
 
 # runtime: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from short test run
-#TODO: make gridpoint dependent; make second res
 # if qsub: run for a few minutes; check runtime and vmem and resubmit
 rt = None #None or job runtime in seconds
 rt_buffer = 1.5 #buffer factor to multiply rt with
@@ -128,7 +120,6 @@ even_split = False #1, force equal split between processors
 #%%
 '''Slot configurations for personal computer and cluster'''
 
-#dx_ind = [62.5, 125, 250] #INACTIVE; resolutions which have their own job pools (if pooling is used)
 reduce_pool = True #reduce pool size to the actual uses number of slots; do not use if you do not want to share the node with others
 
 if (("HOSTNAME" in os.environ) and (cluster_name in os.environ["HOSTNAME"])):
@@ -143,4 +134,12 @@ else:
     max_nslotsx = None
     pool_size = 16
 
+#%%
 
+param_combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid)
+
+#combine param grid and additional settings
+combs = param_combs.copy()
+for param, val in params.items():
+    if param not in combs:
+        combs[param] = val
