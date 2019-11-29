@@ -4,6 +4,8 @@ set -e
 
 infile=$1
 outfile=$2
+verbose=$3
+shift
 shift
 shift
 
@@ -14,9 +16,10 @@ else
   infile=${infile}_old
 fi
 
+raise=false
 while [[ $# -gt 0 ]]
 do
-  if grep -q "\s$1\s*=" ${outfile}
+  if grep -x -q "\s*$1\s*=.*" ${outfile}
   then
     line=$(grep "\s$1\s*=" ${outfile})
     value_change=$(python ${code_dir}/check_namelist_value.py "$line" "$2")
@@ -25,10 +28,20 @@ do
       sed  -i -r -e "s/\s$1\s*=.*/ $1 = $2/g" $outfile
     fi
   else
-    echo "WARNING: parameter $1 not found in namelist file!"
+    >&2 echo "ERROR: parameter $1 not found in namelist file!"
+    raise=true
   fi
   shift
   shift
 done
-echo "Difference between files:"
-diff $infile $outfile | cat
+
+if ( $raise )
+then
+  exit 1
+fi
+
+if [ verbose == 1 ]
+then
+  echo "Difference between files:"
+  diff $infile $outfile | cat
+fi

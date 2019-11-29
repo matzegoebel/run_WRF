@@ -18,16 +18,20 @@ import glob
 import misc_tools
 import importlib
 import inspect
+import time
 
-def submit_jobs(config_file="config", init=False, restart=False, outdir=None, debug=False, use_qsub=False,
-                check_args=False, check_rt=False, pool_jobs=False, mail="ea", verbose=False):
-    #%%
+#%%
+def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_qsub=False,
+                check_args=False, check_rt=False, pool_jobs=False, mail="ea", wait=False, verbose=False):
+
     if (not init) and (outdir is not None):
         print("WARNING: option -o ignored when not in initialization mode!\n")
     if pool_jobs and (not use_qsub):
         raise ValueError("Pooling can only be used with --qsub option")
     if check_rt and (not use_qsub):
         raise ValueError("Runtime checking can only be used with --qsub option")
+    if wait and use_qsub:
+        raise ValueError("Waiting for SGE jobs is not yet implemented")
     if check_rt and init:
         raise ValueError("Runtime checking cannot be used in initialization mode")
     if check_rt and pool_jobs:
@@ -162,8 +166,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
 
         nslotsi = nx*ny
         nslots.append(nslotsi)
-        args["nx"] = nx
-        args["ny"] = ny
 
         if debug:
             wrf_dir_i = conf.wrf_dir_pre + "_debug"
@@ -289,7 +291,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
             else:
                 init_queue = "std.q"
 
-            args["nslots"] = nslotsi
 
         elif use_qsub:
             runtime_per_step = None
@@ -315,9 +316,12 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
                     continue
             args["rt_per_timestep"] = runtime_per_step
 
-
+        #not needed; just for completeness of dataframe:
+        args["nslots"] = nslotsi
+        args["nx"] = nx
+        args["ny"] = ny
         for arg, val in args.items():
-            combs.loc[i, arg] = val #not needed; just for completeness of dataframe
+            combs.loc[i, arg] = val
 
         if pool_jobs:
             vmemi = conf.vmem_pool
@@ -385,12 +389,14 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
                     print(comm)
                 if not check_args:
                     err = os.system(comm)
-                    if err == 0:
-                        ID_path = "{}/WRF_{}/".format(conf.run_path, IDr)
-                        initlog = open(ID_path + "init.log").read()
-                        print(initlog.split("\n")[-2].strip())
-                        initerr = open(ID_path + "init.err").read()
-                        print(initerr)
+                    ID_path = "{}/WRF_{}/".format(conf.run_path, IDr)
+                    initlog = open(ID_path + "init.log").read()
+                    print(initlog.split("\n")[-2].strip())
+                    initerr = open(ID_path + "init.err").read()
+                    print(initerr)
+                    if err != 0:
+                        raise RuntimeError("Initialization failed!")
+
 
             else:
                 if restart:
@@ -475,7 +481,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
                         wrf_dir = " ".join([str(wd) for wd in wrf_dir])
                         jobs = " ".join(IDs)
                         nslots = " ".join([str(ns) for ns in nslots])
-                        comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path, cluster=int(conf.cluster))
+                        comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
+                                        cluster=int(conf.cluster), wait=int(wait))
                         if use_qsub:
                             rtp = max(rtr)
                             rtp = "{:02d}:{:02d}:00".format(math.floor(rtp), math.ceil((rtp - math.floor(rtp))*60))
@@ -511,11 +518,22 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, de
                         if verbose:
                             print(comm)
                         if not check_args:
-                            os.system(comm)
+                            err = os.system(comm)
+                            if wait and err == 0:
+                                rd = run_dir_r + "/"
+                                if os.path.isfile(rd + "rsl.error.0000"):
+                                    runlog = rd + "rsl.error.0000"
+                                else:
+                                    runlog = rd + "run.log"
+                                tail_log = os.popen("tail -n 5 {}".format(runlog)).read()
+                                print(tail_log)
 
                 else:
                     pi += 1
 
+
+
+    return param_combs
 
 
 if __name__ == "__main__":
@@ -556,6 +574,9 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--mail",
                         action="store", dest="mail", type=str, default = defaults["mail"],
                         help="If using qsub, defines when mail is sent. Either 'n' for no mails, or a combination of 'b' (beginning of job), 'e' (end), 'a' (abort)', 's' (suspended). Default: 'ea'")
+    parser.add_argument("-w", "--wait",
+                        action="store_true", dest="wait", default = defaults["wait"],
+                        help="Wait until job is finished before submitting the next.")
     parser.add_argument("-v", "--verbose",
                         action="store_true", dest="verbose",default = defaults["verbose"],
                         help="Verbose mode")

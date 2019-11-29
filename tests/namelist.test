@@ -1,0 +1,8 @@
+ &time_control
+ run_days                            = 0,
+ iofields_filename                   = 'LES_IO.txt'
+ input_2d                            = .false. !use 2d input sounding
+ auxhist7_outname = "test"
+!~  auxhist9_outname                    = '/media/
+ shadlen                             = 25000.   ! max shadow length in meters for topo_shading 1       
+ 

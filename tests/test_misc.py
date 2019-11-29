@@ -6,22 +6,12 @@ Created on Wed Nov 20 17:14:23 2019
 @author: c7071088
 """
 import misc_tools
+from misc_tools import Capturing
 import pytest
 import numpy as np
 import subprocess as sp
 import os
-from io import StringIO
-import sys
 
-class Capturing(list):
-    def __enter__(self):
-        self._stdout = sys.stdout
-        sys.stdout = self._stringio = StringIO()
-        return self
-    def __exit__(self, *args):
-        self.extend(self._stringio.getvalue().splitlines())
-        del self._stringio    # free up some memory
-        sys.stdout = self._stdout
 
 def test_get_runtime():
     timing, counter = misc_tools.get_runtime("WRF_fluxdelay_eta_0", all_times=True)

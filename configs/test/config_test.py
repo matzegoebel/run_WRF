@@ -21,12 +21,12 @@ ideal_case = "em_scm_xy" #idealized WRF case
 runID = "pytest" #name for this simulation series
 
 outpath = os.environ["wrf_res"]#WRF output path root
-outdir = "test/pytest/" #subdirectory for WRF output if not set in command line
-run_path = os.environ["wrf_runs"] #path where run directories of simulations will be created
+outdir = "test/" + runID #subdirectory for WRF output if not set in command line
+run_path = os.environ["wrf_runs"] + "/" + runID #path where run directories of simulations will be created
 build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
-param_grid = odict(sf_sfclay_physics=[1, 2, 5])
+param_grid = odict(sf_sfclay_physics=[1, 2])
  #          res={"dx" : [100,4000], "bl_pbl_physics": [0,1], "dz0" : [10,50], "nz" : [350,60]})
 
 # names of parameter values for output filenames; either dictionaries or lists (not for composite parameters)
@@ -50,9 +50,9 @@ params["gridpoints"] = 2 #16, minimum number of grid points in each direction -1
 force_domain_multiple = True #if use_gridpoints: force domain with x and y extents that are multiples of lx and ly, respectively
 
 #vertical grid
-params["ztop"] = 15000 #15000, top of domain (m)
+params["ztop"] = 5000 #15000, top of domain (m)
 params["zdamp"] = int(params["ztop"]/3) #depth of damping layer (m)
-params["nz"] = 122 #176, number of vertical levels
+params["nz"] = 60 #176, number of vertical levels
 params["dz0"] = 20 #10, height of first model level (m)
 params["dz_method"] = 0 #method for creating vertical grid as defined in vertical_grid.py
 params["dt"] = None #1 #time step (s), if None calculated as dt = 6 s/m *dx/1000
@@ -65,12 +65,7 @@ params["spec_hfx"] = None #None specified surface heat flux instead of radiation
 
 #standard namelist parameters
 params["mp_physics"] = 2
-params["bl_pbl_physics"] = 6
-params["bl_mynn_edmf"] = 1
-params["bl_mynn_edmf_tke"] = 1
-params["scalar_pblmix"] = 1
-params["topo_shading"] = 1
-params["slope_rad"] = 1
+params["bl_pbl_physics"] = 1
 
 #custom namelist parameters (not available in official WRF)
 params["topo"] = "flat"#, "cos"] #topography type
@@ -81,9 +76,10 @@ all_pert = False
 
 #indices for output streams and their respective name and output interval (min)
 # 0 is the standard output stream
-output_streams = {0: ["wrfout", 30], 7: ["fastout", 10], 8 : ["meanout", 30], }
+output_streams = {0: ["wrfout", 10], 7: ["fastout", 10], 8 : ["meanout", 30], }
 # filename where output variables for standard and auxiliary streams are modified:
-params["iofields_filename"] = 0 # if 0: use LES_IO.txt and MESO_IO.txt for LES simulations and simulations with PBL scheme respectively
+# if 0: use LES_IO.txt and MESO_IO.txt for LES simulations and simulations with PBL scheme respectively
+params["iofields_filename"] = "NONE_SPECIFIED"
 params["restart_interval"] = 240 #restart interval (min)
 split_output_res = 0 #resolution below which to split output in one timestep per file
 

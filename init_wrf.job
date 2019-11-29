@@ -78,8 +78,8 @@ echo
 echo "create namelist"
 #echo $wrf_args
 
-source ${code_dir}/search_replace.sh namelist.input namelist.$JOB_NAME $wrf_args
-cp namelist.$JOB_NAME namelist.input 
+source ${code_dir}/search_replace.sh namelist.input namelist.$JOB_NAME 0 $wrf_args
+cp namelist.$JOB_NAME namelist.input
 
 echo
 echo "Running ideal"
@@ -97,5 +97,5 @@ wait
 if ((nx*ny > 1))
 then
   cat rsl.error.0000
-  source ${code_dir}/search_replace.sh namelist.input namelist.input nproc_x $nx nproc_y $ny
+  source ${code_dir}/search_replace.sh namelist.input namelist.input 0 nproc_x $nx nproc_y $ny
 fi

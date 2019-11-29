@@ -23,7 +23,6 @@ fi
 ulimit -s unlimited
 
 code_dir=$(pwd)
-echo ${code_dir}
 
 echo "jobs: $jobs"
 jobs=(${jobs})
@@ -88,7 +87,8 @@ do
   echo
 done
 
-if [ -n "${SGE_STDOUT_PATH}" ]
+# if SGE is used or wait=True is set: wait for job to finish
+if [ -n "${SGE_STDOUT_PATH}" ] || (( $wait==1 ))
 then
   wait
 fi

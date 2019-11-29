@@ -18,6 +18,8 @@ from collections import OrderedDict as odict
 import glob
 from datetime import datetime
 import subprocess as sp
+from io import StringIO
+import sys
 
 
 def find_nproc(n, min_n_per_proc=25, even_split=False):
@@ -538,8 +540,22 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
             rst_ind += 1
         os.rename(f, "{}/rst/{}_rst_{}".format(outpath, fname, rst_ind))
     os.environ["code_dir"] = os.path.curdir
-    err = os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input {1}".format(wdir, rst_opt))
+    err = os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input 0 {1}".format(wdir, rst_opt))
     if err != 0:
         raise RuntimeError("Error in preparing restart run! Failed to modify namelist values!")
 
     return run_hours
+
+
+#%%
+
+
+class Capturing(list):
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio    # free up some memory
+        sys.stdout = self._stdout
