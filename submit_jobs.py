@@ -84,32 +84,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
     outpath_esc = conf.outpath.replace("/", "\/") #need to escape slashes
 
-    date_format = '%Y-%m-%d_%H:%M:%S'
-    start_time_dt = datetime.datetime.strptime(conf.start_time,date_format)
-    end_time_dt = datetime.datetime.strptime(conf.end_time,date_format)
-    start_d, start_t = conf.start_time.split("_")
-    start_d = start_d.split("-")
-    start_t = start_t.split(":")
-    end_d, end_t = conf.end_time.split("_")
-    end_d = end_d.split("-")
-    end_t = end_t.split(":")
-
-    run_hours = (end_time_dt - start_time_dt).total_seconds()/3600
-
     IDs = []
     rtr = []
     wrf_dir = []
     vmem = []
     nslots = []
-
-    #set start and end values
-    for di,n in zip(start_d + start_t, ["year","month","day","hour","minute","second"] ):
-        combs["start_" + n] = di
-    for di,n in zip(end_d + end_t, ["year","month","day","hour","minute","second"] ):
-        combs["end_" + n] = di
-    combs["run_hours"] = 0 #use end time not run_hours
-
-
 
     #%%
     if init:
@@ -133,6 +112,26 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         print("\n\n")
 
         r = args["dx"]
+
+        #start and end times
+        date_format = '%Y-%m-%d_%H:%M:%S'
+        start_time_dt = datetime.datetime.strptime(args["start_time"],date_format)
+        end_time_dt = datetime.datetime.strptime(args["end_time"],date_format)
+        start_d, start_t = args["start_time"].split("_")
+        start_d = start_d.split("-")
+        start_t = start_t.split(":")
+        end_d, end_t = args["end_time"].split("_")
+        end_d = end_d.split("-")
+        end_t = end_t.split(":")
+
+        run_hours = (end_time_dt - start_time_dt).total_seconds()/3600
+
+        for di,n in zip(start_d + start_t, ["year","month","day","hour","minute","second"] ):
+            combs["start_" + n] = di
+        for di,n in zip(end_d + end_t, ["year","month","day","hour","minute","second"] ):
+            combs["end_" + n] = di
+        combs["run_hours"] = 0 #use end time not run_hours
+
 
         #hor. domain
         gp = conf.use_min_gridpoints

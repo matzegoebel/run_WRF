@@ -17,14 +17,14 @@ import misc_tools
 '''Simulations settings'''
 params = {} #parameter dict for params not used in param_grid
 
-wrf_dir_pre = "WRF_test" #prefix for WRF build directory (_debug or _mpi are appended automatically)
+wrf_dir_pre = "WRF" #prefix for WRF build directory (_debug or _mpi are appended automatically)
 ideal_case = "em_les" #idealized WRF case
-runID = "pytest" #name for this simulation series
+runID = "test" #name for this simulation series
 
 outpath = os.environ["wrf_res"] #WRF output path root
-outdir = "test/" + runID #subdirectory for WRF output if not set in command line
-run_path = os.environ["wrf_runs"] + "/" + runID #path where run directories of simulations will be created
-build_path = os.environ["wrf_builds"] + "tests" #path where different versions of the compiled WRF model code reside
+outdir = "test/" #subdirectory for WRF output if not set in command line
+run_path = os.environ["wrf_runs"] #path where run directories of simulations will be created
+build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
 param_grid = odict(mp_physics=[1,2],
@@ -50,8 +50,8 @@ params["lx"] = 1 #horizontal extent in east west (m)
 params["ly"] = 1 #minimum horizontal extent in north south (m)
 #use minimum number of grid points set below: 
 use_min_gridpoints = True #"x", "y", True (for both) or False
-params["min_gridpoints_x"] = 2 #minimum number of grid points in x direction
-params["min_gridpoints_y"] = 2 #minimum number of grid points in y direction
+params["min_gridpoints_x"] = 10 #minimum number of grid points in x direction
+params["min_gridpoints_y"] = 10 #minimum number of grid points in y direction
 #if use_min_gridpoints: force x and y extents to be multiples of lx and ly, respectively
 force_domain_multiple = False #"x", "y", True (for both) or False
 
@@ -77,10 +77,10 @@ params["bl_pbl_physics"] = 2
 
 #indices for output streams and their respective name and output interval (minutes, floats allowed)
 # 0 is the standard output stream
-output_streams = {0: ["wrfout", 30], 7: ["fastout", 5.5] }
+output_streams = {0: ["wrfout", 30] }
 
 # filename where output variables for standard and auxiliary streams are modified:
-params["iofields_filename"] = "IO_test.txt"
+params["iofields_filename"] = None
 
 params["restart_interval"] = 240 #restart interval (min)
 
@@ -107,7 +107,7 @@ vmem_buffer = 1.2 #buffer factor for virtual memory
 
 # runtime: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from previous identical runs if present
-rt = None #None or job runtime in seconds
+rt = 300 #None or job runtime in seconds
 rt_buffer = 1.5 #buffer factor to multiply rt with
 # if rt is None: runtime per time step in seconds for different dx
 runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}
@@ -145,6 +145,5 @@ combs = param_combs.copy()
 for param, val in params.items():
     if param not in combs:
         combs[param] = val
-
 
 #Below you can manually add parameters to the DataFrame combs
