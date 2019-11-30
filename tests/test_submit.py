@@ -64,10 +64,9 @@ def test_submit_jobs():
     shutil.rmtree(os.environ["wrf_runs"] + "/pytest")
 
 
-
+#Domain size must be multiple of lx
 
 #test run and restart run, check name list changes
-#test check_rt
 # check if bak is created
 #check grid combs
 #check if wrf successful in log or as parameter form submit_jobs?

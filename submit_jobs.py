@@ -21,7 +21,7 @@ import inspect
 
 #%%
 def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_qsub=False,
-                check_args=False, check_rt=False, pool_jobs=False, mail="ea", wait=False, verbose=False):
+                check_args=False, pool_jobs=False, mail="ea", wait=False, verbose=False):
     """
     Submit idealized WRF experiments. Refer to README.md for more information.
 
@@ -43,8 +43,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         Use qsub to submit jobs
     check_args : TYPE, optional
         Only test python script (no jobs sumitted)
-    check_rt : TYPE, optional
-        Start short test runs to determine runtime of simulations, for which no identical simulations exist yet (only with qsub option)
     pool_jobs : TYPE, optional
         Gather jobs before submitting with SGE. Needed if different jobs shall be run on the some node (potentially filling up the whole node)
     mail : TYPE, optional
@@ -64,16 +62,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         print("WARNING: option -o ignored when not in initialization mode!\n")
     if pool_jobs and (not use_qsub):
         raise ValueError("Pooling can only be used with --qsub option")
-    if check_rt and (not use_qsub):
-        raise ValueError("Runtime checking can only be used with --qsub option")
     if wait and use_qsub:
         raise ValueError("Waiting for SGE jobs is not yet implemented")
-    if check_rt and init:
-        raise ValueError("Runtime checking cannot be used in initialization mode")
-    if check_rt and pool_jobs:
-        raise ValueError("Runtime checking cannot be used with pooling")
-    if check_rt and restart:
-        raise ValueError("Runtime checking cannot be used with restart runs")
     if init and restart:
         raise ValueError("For restart runs no initialization is needed!")
     if len(glob.glob(os.getcwd() + "/submit_jobs.py")) == 0:
@@ -145,16 +135,25 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         r = args["dx"]
 
         #hor. domain
-        if conf.use_gridpoints:
-            args["e_we"] = max(math.ceil(args["lx"]/r), args["gridpoints"]) + 1
-            lxr = (args["e_we"] -1)*r/args["lx"]
-            if conf.force_domain_multiple:
+        gp = conf.use_min_gridpoints
+        fm = conf.force_domain_multiple
+        if (not gp) or (gp == "y"):
+            args["e_we"] = math.ceil(args["lx"]/r) + 1
+        else:
+            args["e_we"] = max(math.ceil(args["we"]/r), args["min_gridpoints"] - 1) + 1
+            if (fm == True) or (fm == "x"):
+                lxr = (args["e_we"] -1)*r/args["lx"]
                 if lxr != int(lxr):
                     raise Exception("Domain size must be multiple of lx")
-            args["e_sn"] = max(math.ceil(args["ly"]/r), args["gridpoints"]) + 1
-        else:
-            args["e_we"] = math.ceil(args["lx"]/r) + 1
+
+        if (not gp) or (gp == "x"):
             args["e_sn"] = math.ceil(args["ly"]/r) + 1
+        else:         
+            args["e_sn"] = max(math.ceil(args["ly"]/r), args["min_gridpoints"] - 1) + 1
+            if (fm == True) or (fm == "y"):
+                lyr = (args["e_sn"] -1)*r/args["ly"]
+                if lyr != int(lyr):
+                    raise Exception("Domain size must be multiple of ly")
 
         #slots
         if (conf.nslots_dict is not None) and (r in conf.nslots_dict) and (conf.nslots_dict[r] is not None):
@@ -315,19 +314,13 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 runtime_per_step = conf.rt/3600*dt/run_hours #runtime per time step
             elif (conf.runtime_per_step_dict is not None) and (r in conf.runtime_per_step_dict):
                 runtime_per_step = conf.runtime_per_step_dict[r]
-            if check_rt or (runtime_per_step is None):
+            else:
                 #get runtime from previous runs
                 run_dir_0 = run_dir + "_0" #use rep 0 as reference
                 runtime_per_step = misc_tools.get_runtime_id(run_dir_0, conf.rt_search_paths)
                 if runtime_per_step is not None:
-                    if check_rt:
-                        print("Previous runs found. No test run needed.")
-                    else:
-                        print("Runtime per time step: {0:.5f} s, (std: {1:.5f} s)".format(*runtime_per_step))
-                        runtime_per_step = runtime_per_step[0]
-                elif check_rt:
-                    print("No valid previous runs found. Do test run.")
-                    args["n_rep"] = 1
+                    print("Runtime per time step: {0:.5f} s, (std: {1:.5f} s)".format(*runtime_per_step))
+                    runtime_per_step = runtime_per_step[0]
                 else:
                     print("No runtime specified and no previous runs found. Skipping...")
                     continue
@@ -452,11 +445,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
                 rtri = None
                 if use_qsub:
-                    if check_rt:
-                        rtri = conf.rt_check/3600
-                    else:
-                        rtri = runtime_per_step * run_hours/dt * conf.rt_buffer
-                        rtr.append(rtri)
+                    rtri = runtime_per_step * run_hours/dt * conf.rt_buffer
+                    rtr.append(rtri)
 
                 last_id = False
                 if (rep == n_rep-1) and (i == len(combs) - 1):
@@ -570,7 +560,6 @@ if __name__ == "__main__":
                     "debug":          ("-d", "--debug", "store_true"),
                     "use_qsub":       ("-q", "--qsub", "store_true"),
                     "check_args":     ("-t", "--test", "store_true"),
-                    "check_rt":       ("-T", "--check_runtime", "store_true"),
                     "pool_jobs":      ("-p", "--pool", "store_true"),
                     "mail":           ("-m", "--mail", "store"),
                     "wait":           ("-w", "--wait", "store_true"),
