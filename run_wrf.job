@@ -10,6 +10,7 @@ set -e
 
 if (( cluster == 1 ))
 then
+  cluster=true
   module purge
   module load intel/18.0u1 netcdf-4
   #~ if [ -d $SCRATCH/parallel_studio_2019 ]
@@ -18,6 +19,8 @@ then
     #~ export NETCDF="$SCRATCH/netcdf"
     #~ source ${home_dir}/parallel_studio_2019/parallel_studio_xe_2019.4.070/bin/psxevars.sh
   #~ fi
+else
+  cluster=false
 fi
 
 ulimit -s unlimited
@@ -35,11 +38,11 @@ echo
  
 si=0
 pool=false
-if (( ${#jobs[@]} > 1 ))
+if (( ${#jobs[@]} > 1 )) && (( ${pool_jobs} == 1 ))
 then
-  if (( ${pool_jobs} == 1 ))
+  pool=true
+  if $cluster
   then
-    pool=true
     qs=$(qstat -t)
     hosts=$(python ${code_dir}/get_hosts.py "$JOB_ID" "$qs")
     hosts=(${hosts})
@@ -62,7 +65,7 @@ do
   if (( nsi > 1 ))
   then
     echo "parallel"
-    if $pool
+    if $pool and $cluster
     then
       echo "si $si"
       hostsi=${hosts[@]:$si:$nsi}

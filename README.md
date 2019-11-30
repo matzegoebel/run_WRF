@@ -16,13 +16,15 @@ When run in parallel mode, the script assumes the name of the parallel build dir
 
 With the `-c` option you can specify an alternative config file (default is `config`).
 
-The log output is written to `init.log/init.err` and `run.log/run.err` in the respective simulation folder for initialization and simulation mode, respectively. The subdirectory for the simulation output can be specified in the script or with the `-o` option.
+The log output is written to `init.log/init.err` and `run.log/run.err` in the respective simulation folder for initialization and simulation mode, respectively. The subdirectory for the simulation output can be specified in the script or with the `-o` option. Currently, the default config file uses the environment variables `$wrf_builds`, `$wrf_runs` and `$wrf_res` as base directories for WRF build, run and output directories, respectively.
 
 If the simulation folder (in init mode) or the output files (in simulation mode) already exist, the desired action can be specified with the `-e` option: Skipping this run (`-e s`), overwriting (`-e o`) or backing up the data (`-e b`).
 
 When run on a cluster, the `-q` flag allows submitting the jobs with SGE. Email settings for SGE can be set with the  `-m` option (set your email address in the job scripts `init_wrf.job` and `run_wrf.job` beforehand). To control which modules are loaded for cluster jobs, take a look at `init_wrf.job` and `run_wrf.job`.
 
- The package simplifies requesting job resources like virtual memory, runtime and number of CPUs. If the runtime of jobs is not specified in the config file, the program searches for simulations with an identical namelist file (except for some parameters irrelevant to the runtime per time step) and uses the runtime information in the respective log file. For this purpose, you can create short test simulations (with `-q` option) by setting a small value for `rt` and one repitition per configuration (`n_rep=1`) in your config file.
+The package simplifies requesting job resources like virtual memory, runtime and number of CPUs. If the runtime of jobs is not specified in the config file, the program searches for simulations with an identical namelist file (except for some parameters irrelevant to the runtime per time step) and uses the runtime information in the respective log file. For this purpose, you can create short test simulations (with `-q` option) by setting a small value for `rt` and one repitition per configuration (`n_rep=1`) in your config file.
+
+If not using SGE, the simulations are started simultaneously and run in the background, by default. The `-w` option allows to wait for a simulation (or pool of simulations, see below) to finish, before submitting the next. 
 
 If a simulation aborts, simply run `submit_jobs.py -r`. This restarts the simulations from the most recent restart files. The original output is moved to a backup folder called `rst`. An unlimited number of restarts is possible. To concatenate the files from the original and the restarted runs (with overlap removed), use the script `concat_restart.py` after all runs are finished.
 
@@ -31,10 +33,13 @@ The option `-t` allows checking the functioning of the python script without sub
 The `-d` option leads to "_debug" being appended to the build directory name. This is for convenience, when you want to debug `ideal.exe` or `wrf.exe` with `gdb`, subsequently. The respective WRF build, must be configured with `-d` or `-D`. 
 
 If you want to run several simulations on the same cluster node, you can use the `-p` option. This gathers jobs until the specified pool size is reached and pins them to specific slots on the requested node. If you do not want to share the node with other users, you can fill up the whole node by specifying a pool size as large as the available slots on a node.
+This option can also be used without SGE. Combined with the `-w` option, you can ensure that only `pool_size` cores are used simulatenously.
 
 ## Requirements
 The package is written for a Linux environment. For Windows, it may have to be adjusted.
 In addition to the standard library, the Python packages `numpy` and `pandas` are required. To concatenate the output of restarted and original runs, you also need the program `ncks` from the [NCO](http://nco.sourceforge.net/) package and the Python packages `netcdf4-python` and `wrf-python`.
+The package was tested with Python 3.6.
+After downloading or cloning the repository, add the location to your `$PYTHONPATH` environment variable.
 
 ## Testing
 The folder `tests` contains scripts and data for testing the code after changing it.
@@ -42,13 +47,9 @@ Type `pytest` in the command line to run the test suite and see if everything st
 By default, for this to work, the ideal case `em_les` must be compiled in serial and parallel mode and the build directories `WRF_test` and `WRF_test_mpi` must reside in `$wrf_builds/test`.
 
 ## Known problems
-#TODO not yet working for nested runs
+Currently, the script (especially the modification of the namelist files) does not work for nested runs , as it is meant to be used for idealized simulations, only.
 
 ## Getting involved
 Feel free to report [issues](https://git.uibk.ac.at/csat8800/run_wrf/issues) on Gitlab.
 You are also invited to improve the code and implement new features yourself. Your changes can be integrated with a [merge request](https://git.uibk.ac.at/csat8800/run_wrf/merge_requests).
 Especially, further tests for the automated testing suite are appreciated.
-
-#TODO add to PYTHONPATH
-#TODO config.py is copy of config_test.py
-#TODO environment variables wrf_runs,...

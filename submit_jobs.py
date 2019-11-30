@@ -473,13 +473,14 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         print("Submit IDs: {}".format(IDs))
                         print("with total cores: {}".format(sum(nslots)))
 
-                        if pool_jobs:
-                            nperhost =  conf.pool_size
-                            if conf.reduce_pool:
-                                nperhost_sge = np.array([1, *np.arange(2,29,2)])
-                                nperhost = nperhost_sge[(nperhost_sge >= sum(nslots)).argmax()] #select available nperhost that is greater and closest to the number of slots
-                            slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
+                        if pool_jobs and use_qsub:
                             job_name = "pool_" + "_".join(IDs)
+                            if use_qsub:
+                                nperhost =  conf.pool_size
+                                if conf.reduce_pool:
+                                    nperhost_sge = np.array([1, *np.arange(2,29,2)])
+                                    nperhost = nperhost_sge[(nperhost_sge >= sum(nslots)).argmax()] #select available nperhost that is greater and closest to the number of slots
+                                slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
                         else:
                             job_name = IDr
                         wrf_dir = " ".join([str(wd) for wd in wrf_dir])
