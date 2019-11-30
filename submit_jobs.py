@@ -140,7 +140,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         if (not gp) or (gp == "y"):
             args["e_we"] = math.ceil(args["lx"]/r) + 1
         else:
-            args["e_we"] = max(math.ceil(args["we"]/r), args["min_gridpoints"] - 1) + 1
+            args["e_we"] = max(math.ceil(args["lx"]/r), args["min_gridpoints_x"] - 1) + 1
             if (fm == True) or (fm == "x"):
                 lxr = (args["e_we"] -1)*r/args["lx"]
                 if lxr != int(lxr):
@@ -149,7 +149,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         if (not gp) or (gp == "x"):
             args["e_sn"] = math.ceil(args["ly"]/r) + 1
         else:         
-            args["e_sn"] = max(math.ceil(args["ly"]/r), args["min_gridpoints"] - 1) + 1
+            args["e_sn"] = max(math.ceil(args["ly"]/r), args["min_gridpoints_y"] - 1) + 1
             if (fm == True) or (fm == "y"):
                 lyr = (args["e_sn"] -1)*r/args["ly"]
                 if lyr != int(lyr):
@@ -181,7 +181,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         else:
             wrf_dir_i = conf.wrf_dir_pre
             wrf_dir.append(wrf_dir_i)
-
+	
+        #timestep   	
+        if "dt" not in args:
+            args["dt"] = r/1000*6 #wrf rule of thumb
+        dt = args["dt"]
         #set a bunch of namelist parameters
         if init:
             args["dy"] = r
@@ -194,9 +198,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     args["mix_isotropic"] = 0
 
             #timestep
-            if "dt" not in args:
-                args["dt"] = r/1000*6 #wrf rule of thumb
-            dt = args["dt"]
+
             dt_int = math.floor(args["dt"])
             args["time_step"] = dt_int
             args["time_step_fract_num"] = round((args["dt"] - dt_int)*10)

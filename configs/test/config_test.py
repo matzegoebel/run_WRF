@@ -53,7 +53,7 @@ use_min_gridpoints = True #"x", "y", True (for both) or False
 params["min_gridpoints_x"] = 2 #minimum number of grid points in x direction
 params["min_gridpoints_y"] = 2 #minimum number of grid points in y direction
 #if use_min_gridpoints: force x and y extents to be multiples of lx and ly, respectively
-force_domain_multiple = True #"x", "y", True (for both) or False
+force_domain_multiple = False #"x", "y", True (for both) or False
 
 #vertical grid
 params["ztop"] = 5000 #top of domain (m)
@@ -80,14 +80,14 @@ params["bl_pbl_physics"] = 2
 output_streams = {0: ["wrfout", 30], 7: ["fastout", 5.5] }
 
 # filename where output variables for standard and auxiliary streams are modified:
-params["iofields_filename"] = "IO_tests.txt"
+params["iofields_filename"] = None
 
 params["restart_interval"] = 240 #restart interval (min)
 
 split_output_res = 0 #dx (m) below which to split output in one timestep per file
 
 # non-namelist parameters that will not be included in namelist file
-del_args =   ["nz", "dz0","dz_method", "gridpoints", "lx", "ly", "spec_hfx", "input_sounding",
+del_args =   ["nz", "dz0","dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
               "n_rep", "isotropic_res", "pbl_res", "dt", "radt_min"]
 #%%
 '''Settings for resource requirements of SGE jobs'''
