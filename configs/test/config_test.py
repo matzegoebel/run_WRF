@@ -48,7 +48,7 @@ params["n_rep"] = 1 #number of repetitions for each configuration
 params["dx"] = 500 #horizontal grid spacing (m)
 params["lx"] = 1 #horizontal extent in east west (m)
 params["ly"] = 1 #minimum horizontal extent in north south (m)
-#use minimum number of grid points set below: 
+#use minimum number of grid points set below:
 use_min_gridpoints = True #"x", "y", True (for both) or False
 params["min_gridpoints_x"] = 2 #minimum number of grid points in x direction
 params["min_gridpoints_y"] = 2 #minimum number of grid points in y direction
@@ -95,24 +95,28 @@ cluster_name = "leo" #this name should appear in the variable $HOSTNAME to detec
 queue = "std.q" #queue for SGE
 
 #virtual memory: numbers need adjustment
-#TODO: approach is not optimized yet!
 vmem_init_per_grid_point = 0.3 #virtual memory (MB) per horizontal grid point to request for WRF initialization (ideal.exe)
 vmem_init_min = 2000 #minimum virtual memory (MB) for WRF initialization
 
-vmem_per_grid_point = 0.3 #virtual memory (MB) per horizontal grid point to request for running WRF (wrf.exe); will be divided by number of slots
-vmem_min = 600 #minimum virtual memory (MB) for running WRF
+vmem = None #virtual memory per job (MB)  to request for running WRF (wrf.exe)
+
+#if vmem is None:
+vmem_per_grid_point = None #vmem (MB) per horizontal grid point; will be divided by number of slots
+vmem_min = None #minimum virtual memory (MB) for running WRF
+
 vmem_pool = 2000 #virtual memory to request per slot if pooling is used
 
-vmem_buffer = 1.2 #buffer factor for virtual memory
+vmem_buffer = 1.3 #buffer factor for virtual memory
 
 # runtime: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from previous identical runs if present
-rt = None #None or job runtime in seconds
+rt = 600 #None or job runtime in seconds
 rt_buffer = 1.5 #buffer factor to multiply rt with
 # if rt is None: runtime per time step in seconds for different dx
 runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}
-#paths to search for log files to determine runtime if not specified
-rt_search_paths = [run_path]
+
+#paths to search for log files to determine runtime and/or vmem if not specified
+resource_search_paths = [run_path]
 
 # slots
 nslots_dict = {} #set number of slots for each dx

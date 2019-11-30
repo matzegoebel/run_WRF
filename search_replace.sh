@@ -23,7 +23,6 @@ do
   if grep -x -q "\s*$1\s*=.*" ${outfile}
   then
     line=$(grep "\s$1\s*=" ${outfile})
-    echo "${code_dir}/check_namelist_value.py '$line' '$2'"
     value_change=$(python ${code_dir}/check_namelist_value.py "$line" "$2")
     if [ -z "$value_change" ]
     then
@@ -43,7 +42,7 @@ then
   exit 1
 fi
 
-if [ verbose == 1 ]
+if [ $verbose == 1 ]
 then
   echo "Difference between files:"
   diff $infile $outfile | cat

@@ -31,12 +31,23 @@ def test_get_runtime():
     assert timing.iloc[:,-7:].notna().all().all()
 
     with Capturing() as output:
-        rt, sd = misc_tools.get_runtime_id(runs_dir + "WRF_pytest_eta_0", "test_data/runs/")
+        identical_runs = misc_tools.get_identical_runs(runs_dir + "WRF_pytest_eta_0", "test_data/runs/")
+
     assert len(output) == 3
     assert output[1].split("/")[-1] == 'WRF_pytest_2_eta_0 has same namelist parameters'
     assert output[2].split("/")[-1] == 'WRF_pytest_eta_0 has same namelist parameters'
-    assert round(rt,5) == 0.01268
+    vmem = misc_tools.get_vmem(identical_runs)
+    assert vmem == [114.105, 160.0]
 
+def test_job_usage():
+    qstat_file = "test_data/qstat.info"
+    usage = misc_tools.get_job_usage(qstat_file)
+    control = {'cpu': '00:02:00',
+     'mem': '13.13958 GB s',
+     'io': '0.02315 GB',
+     'vmem': '114.105M',
+     'maxvmem': '114.105M'}
+    assert control == usage
 
 def test_namelist_to_dict():
     path = 'test_data/namelists/namelist.test'

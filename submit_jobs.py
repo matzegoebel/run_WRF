@@ -107,7 +107,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         IDi, IDi_d = misc_tools.output_id_from_config(param_comb, conf.param_grid, conf.param_names, conf.runID)
         run_dir =  "{}/WRF_{}".format(conf.run_path, IDi)
 
-        print("\n\nConfig:")
+        print("\n\nConfig:  " + IDi)
         print("\n".join(str(param_comb).split("\n")[:-1]))
         print("\n\n")
 
@@ -127,10 +127,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         run_hours = (end_time_dt - start_time_dt).total_seconds()/3600
 
         for di,n in zip(start_d + start_t, ["year","month","day","hour","minute","second"] ):
-            combs["start_" + n] = di
+            args["start_" + n] = di
         for di,n in zip(end_d + end_t, ["year","month","day","hour","minute","second"] ):
-            combs["end_" + n] = di
-        combs["run_hours"] = 0 #use end time not run_hours
+            args["end_" + n] = di
+        args["run_hours"] = 0 #use end time not run_hours
 
 
         #hor. domain
@@ -147,7 +147,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
         if (not gp) or (gp == "x"):
             args["e_sn"] = math.ceil(args["ly"]/r) + 1
-        else:         
+        else:
             args["e_sn"] = max(math.ceil(args["ly"]/r), args["min_gridpoints_y"] - 1) + 1
             if (fm == True) or (fm == "y"):
                 lyr = (args["e_sn"] -1)*r/args["ly"]
@@ -180,8 +180,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         else:
             wrf_dir_i = conf.wrf_dir_pre
             wrf_dir.append(wrf_dir_i)
-	
-        #timestep   	
+
+        #timestep
         if "dt" not in args:
             args["dt"] = r/1000*6 #wrf rule of thumb
         dt = args["dt"]
@@ -295,7 +295,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             args_str = " ".join(["{} {}".format(param, val) for param, val in args_dict.items()])
 
             if "iofields_filename" in args:
-                args_str = args_str +  " iofields_filename " + args["iofields_filename"]
+                args_str = args_str + """ iofields_filename "'{}'" """.format(args["iofields_filename"])
             args_str += " eta_levels " + eta_levels
 
             #vmem init and SGE queue
@@ -310,29 +310,56 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
         elif use_qsub:
             #get runtime per timestep
+            identical_runs = None
             runtime_per_step = None
             if conf.rt is not None:
                 runtime_per_step = conf.rt/3600*dt/run_hours #runtime per time step
             elif (conf.runtime_per_step_dict is not None) and (r in conf.runtime_per_step_dict):
                 runtime_per_step = conf.runtime_per_step_dict[r]
+                print("Use runtime dict")
             else:
-                #get runtime from previous runs
+                print("Get runtime from previous runs")
                 run_dir_0 = run_dir + "_0" #use rep 0 as reference
-                runtime_per_step = misc_tools.get_runtime_id(run_dir_0, conf.rt_search_paths)
-                if runtime_per_step is not None:
-                    print("Runtime per time step: {0:.5f} s, (std: {1:.5f} s)".format(*runtime_per_step))
-                    runtime_per_step = runtime_per_step[0]
-                else:
+                identical_runs = misc_tools.get_identical_runs(run_dir_0, conf.resource_search_paths)
+                if len(identical_runs) > 0:
+                    timing = misc_tools.get_runtime_all(runs=identical_runs, all_times=False)
+                    if len(timing) > 0:
+                        runtime_per_step, rt_sd = timing["timing"].mean(), timing["timing_sd"].mean()
+                        print("Runtime per time step standard deviation: {0:.5f} s".format(rt_sd))
+
+                if runtime_per_step is None:
                     print("No runtime specified and no previous runs found. Skipping...")
                     continue
             args["rt_per_timestep"] = runtime_per_step
+            print("Runtime per time step: {0:.5f} s".format(runtime_per_step))
 
             #virtual memory
+            vmemi = None
             if pool_jobs:
                 vmemi = conf.vmem_pool
+            elif conf.vmem is not None:
+                vmemi = conf.vmem
+            elif conf.vmem_per_grid_point is not None:
+                print("Use vmem per grid point")
+                vmemi = int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"])
+                if conf.vmem_min is not None:
+                    vmemi = max(vmemi, conf.vmem_min)
             else:
-                vmemi = max(conf.vmem_min, int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"]))
+                print("Get vmem from previous runs")
+                if identical_runs is None:
+                    run_dir_0 = run_dir + "_0" #use rep 0 as reference
+                    identical_runs = misc_tools.get_identical_runs(run_dir_0, conf.resource_search_paths)
+
+                vmemi = misc_tools.get_vmem(identical_runs)
+                if vmemi is None:
+                    print("No vmem specified and no previous runs found. Skipping...")
+                    continue
+                else:
+                    vmemi = max(vmemi)
+
             vmem.append(vmemi)
+            args["vmem"] = vmemi
+            print("Use vmem: {}".format(vmemi))
 
         #not needed; just for completeness of dataframe:
         args["nx"] = nx

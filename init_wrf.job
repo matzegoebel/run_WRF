@@ -81,7 +81,7 @@ echo
 echo "create namelist"
 #echo $wrf_args
 
-source ${code_dir}/search_replace.sh namelist.input namelist.$JOB_NAME 0 $wrf_args
+source ${code_dir}/search_replace.sh namelist.input namelist.$JOB_NAME 1 $wrf_args
 cp namelist.$JOB_NAME namelist.input
 
 echo

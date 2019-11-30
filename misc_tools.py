@@ -23,6 +23,7 @@ import get_namelist
 
 #%%nproc
 
+
 def find_nproc(n, min_n_per_proc=25, even_split=False):
     """
     Find number of processors needed for a given number grid points in WRF.
@@ -276,13 +277,17 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
                 IDl[i] = a
             except:
                 pass
+        try:
+            _, new_counter = get_runtime(r, timing=timing, counter=counter, all_times=all_times)
+            timing.iloc[counter:new_counter, :len(IDl)] = IDl
+            timing.loc[counter:new_counter-1, "path"] = r
+            counter = new_counter
+            if verbose:
+                print_progress(counter=j+1, length=len(runs))
+        except FileNotFoundError:
+            if verbose:
+                print("No log file found")
 
-        _, new_counter = get_runtime(r, timing=timing, counter=counter, all_times=all_times)
-        timing.iloc[counter:new_counter, :len(IDl)] = IDl
-        timing.loc[counter:new_counter-1, "path"] = r
-        counter = new_counter
-        if verbose:
-            print_progress(counter=j+1, length=len(runs))
 
     timing = timing.dropna(axis=0,how="all")
     timing = timing.dropna(axis=1,how="all")
@@ -383,38 +388,38 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=False):
     f.close()
     return timing, counter
 
-def get_runtime_id(run_dir, rt_search_paths):
+def get_identical_runs(run_dir, search_paths):
     """
-    Look for simulations in rt_search_paths with identical namelist file as the one in
+    Look for simulations in search_paths with identical namelist file as the one in
     run_dir (except for irrelevant parameters defined in ignore_params in the code).
-    Then collect the runtime per time step for these simulations and return it.
 
     Parameters
     ----------
     run_dir : str
         Path to the reference directory.
-    rt_search_paths : str of list of str
+    search_paths : str of list of str
         Paths, in which to search for identical simulations.
 
     Returns
     -------
-    tuple of floats
-        runtime per timestep (s), mean and standard deviation
+    identical_runs : list
+        list of runs with identical namelist file
 
     """
-    rt_search_paths = make_list(rt_search_paths)
+    search_paths = make_list(search_paths)
     print("Search for runtime values in previous runs.")
     ignore_params = ["start_year", "start_month","start_day", "start_hour",
                      "start_minute","run_hours", "_outname"]
     identical_runs = []
-    for search_path in rt_search_paths:
+    for search_path in search_paths:
         search_path += "/"
         runs_all = next(os.walk(search_path))[1]
         runs = []
         for r in runs_all:
             r_files = os.listdir(search_path + r)
-            if ("namelist.input" in r_files) and (("run.log" in r_files) or ("rsl.error.0000" in r_files)):
+            if "namelist.input" in r_files:
                 runs.append(search_path + r)
+
         namelist_ref = get_namelist.namelist_to_dict("{}/namelist.input".format(run_dir))
         for r in runs:
             namelist_r = get_namelist.namelist_to_dict("{}/namelist.input".format(r))
@@ -429,12 +434,63 @@ def get_runtime_id(run_dir, rt_search_paths):
                 identical_runs.append(r)
                 print("{} has same namelist parameters".format(r))
 
-    if len(identical_runs) > 0:
-        timing = get_runtime_all(runs=identical_runs, dirs=rt_search_paths, all_times=False)
-        return timing["timing"].mean(), timing["timing_sd"].mean()
+
+    return identical_runs
 
 
+def get_vmem(runs, logfile="qstat.info"):
+    """
+    Get maximum used virtual memory of SGE jobs from log files in the given directories.
 
+    Parameters
+    ----------
+    runs : list of str
+        Directories to search in.
+    logfile : str
+        Name of logfile.
+
+    Returns
+    -------
+    float
+        Maximum virtual memory for all jobs.
+
+    """
+    if len(runs) == 0:
+        return
+    vmem = []
+    for i, r in enumerate(runs):
+        qstat_file = r + "/" + logfile
+        if os.path.isfile(qstat_file):
+            vmem_r = get_job_usage(qstat_file)["maxvmem"]
+            for mag, factor in zip(("M", "G"), (1, 1000)):
+                if mag in vmem_r:
+                    vmem_r_num = float(vmem_r[:vmem_r.index(mag)])*factor
+            vmem.append(vmem_r_num)
+    if len(vmem) > 0:
+        return vmem
+
+
+def get_job_usage(qstat_file):
+    """
+    Get usage statistics from qstat -j $JOB_ID command.
+
+    Parameters
+    ----------
+    qstat_file : str
+        File where command output was saved.
+
+    Returns
+    -------
+    usage : dict
+        Usage statistics.
+
+    """
+    qstat = open(qstat_file).read()
+    usage = qstat[qstat.index("\nusage"):].split("\n")[1]
+    usage = usage[usage.index(":")+1:].strip().split(",")
+    usage = dict([l.strip().split("=") for l in usage])
+
+    return usage
 
 #%%restart
 

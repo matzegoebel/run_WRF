@@ -95,3 +95,8 @@ if [ -n "${SGE_STDOUT_PATH}" ] || (( $wait==1 ))
 then
   wait
 fi
+
+if $cluster
+then
+  qstat -j $JOB_ID > qstat.info
+fi
