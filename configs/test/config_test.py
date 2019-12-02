@@ -117,7 +117,7 @@ rt_init=10
 
 # runtime for wrf.exe: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from previous identical runs if present
-rt_buffer = 1.5 #buffer factor to multiply rt with
+rt_buffer = 2 #buffer factor to multiply rt with
 rt = None #None or job runtime in seconds; buffer not used
 # if rt is None: runtime per time step in seconds for different dx
 runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}

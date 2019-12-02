@@ -97,6 +97,7 @@ def test_submit_jobs():
     count = Counter(output)
     for m in ["Restart run from 2018-06-20 02:00:00", 'd01 2018-06-20_04:00:00 wrf: SUCCESS COMPLETE WRF']:
         assert count[m] == nruns
+
     #check output data
     outd = os.path.join(conf.outpath, conf.outdir)
     outfiles = ['rst', 'bak', 'fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
@@ -122,7 +123,7 @@ def test_submit_jobs():
     count = Counter(output)
     m = "Submit IDs: ['pytest_kessler_0', 'pytest_lin_0']"
     assert count[m] == 1
-    m = "d01 2018-06-20_00:11:00 wrf: SUCCESS COMPLETE WRF"
+    m = "d01 2018-06-20_00:01:00 wrf: SUCCESS COMPLETE WRF"
     assert count[m] == combs["n_rep"].sum()
 
     #test get_rt and vmem, qsub
@@ -144,7 +145,8 @@ def test_submit_jobs():
 
     for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
         shutil.rmtree(d)
-# os.chdir("..")
+
+#os.chdir("..")
 
 
 #TODO
