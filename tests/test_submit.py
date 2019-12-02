@@ -23,8 +23,9 @@ import pandas as pd
 #%%
 
 def test_submit_jobs():
-    shutil.rmtree(os.environ["wrf_res"] + "/test/pytest")
-    shutil.rmtree(os.environ["wrf_runs"] + "/pytest")
+    for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
+        if os.path.isdir(d):
+            shutil.rmtree(d)
 
     for add in ["_mpi", ""]:
         target_dir = "{}/{}{}/test/{}/".format(conf.build_path, conf.wrf_dir_pre, add, conf.ideal_case)
@@ -98,7 +99,7 @@ def test_submit_jobs():
         assert count[m] == nruns
     #check output data
     outd = os.path.join(conf.outpath, conf.outdir)
-    outfiles = ['rst', 'fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
+    outfiles = ['rst', 'bak', 'fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
     assert sorted(os.listdir(outd)) == sorted(outfiles)
     file = Dataset(outd + "/fastout_pytest_lin_0")
     t = wrf.extract_times(file, timeidx=None)
@@ -141,9 +142,8 @@ def test_submit_jobs():
     for m in messages:
         assert count[m] == 1
 
-    shutil.rmtree(os.environ["wrf_res"] + "/test/pytest")
-    shutil.rmtree(os.environ["wrf_runs"] + "/pytest")
-
+    for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
+        shutil.rmtree(d)
 # os.chdir("..")
 
 

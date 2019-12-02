@@ -98,6 +98,9 @@ do
     then
       cat rsl.error.0000 >> run.log
     fi
+    #save resource usage of job
+    qstat -j $JOB_ID > qstat.info
+
   fi
 
   if (( restart == 1 ))
@@ -106,8 +109,3 @@ do
     python -c "import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[$i]}')"
   fi
 done
-
-if $cluster
-then
-  qstat -j $JOB_ID > qstat.info
-fi
