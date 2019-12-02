@@ -23,6 +23,8 @@ import pandas as pd
 #%%
 
 def test_submit_jobs():
+    shutil.rmtree(os.environ["wrf_res"] + "/test/pytest")
+    shutil.rmtree(os.environ["wrf_runs"] + "/pytest")
 
     for add in ["_mpi", ""]:
         target_dir = "{}/{}{}/test/{}/".format(conf.build_path, conf.wrf_dir_pre, add, conf.ideal_case)
