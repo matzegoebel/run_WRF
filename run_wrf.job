@@ -86,11 +86,26 @@ do
   echo
 done
 
-# if SGE is used or wait=True is set: wait for job to finish
-if [ -n "${SGE_STDOUT_PATH}" ] || (( $wait==1 ))
-then
-  wait
-fi
+for (( i=0; i<${#jobs[@]}; i++ ))
+do
+  # if SGE is used or wait=True is set: wait for job to finish
+  if [ -n "${SGE_STDOUT_PATH}" ] || (( $wait==1 ))
+  then
+    wait
+    #append rsl.error.0000 to run.log
+    cd ${run_path}/WRF_${jobs[$i]}
+    if [[ -f rsl.error.0000 ]]
+    then
+      cat rsl.error.0000 >> run.log
+    fi
+  fi
+
+  if (( restart == 1 ))
+  then
+    echo "Concatenate output from original and restarted run"
+    python -c "import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[$i]}')"
+  fi
+done
 
 if $cluster
 then

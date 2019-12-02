@@ -76,7 +76,7 @@ params["bl_pbl_physics"] = 2
 
 #indices for output streams and their respective name and output interval (minutes, floats allowed)
 # 0 is the standard output stream
-output_streams = {0: ["wrfout", 30], 7: ["fastout", 5.5] }
+output_streams = {0: ["wrfout", 30.], 7: ["fastout", 10.] }
 
 # filename where output variables for standard and auxiliary streams are modified:
 params["iofields_filename"] = "IO_test.txt"

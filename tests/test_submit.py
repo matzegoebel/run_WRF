@@ -50,7 +50,7 @@ def test_submit_jobs():
     assert sorted(os.listdir(outd)) == sorted(outfiles)
     file = Dataset(outd + "/fastout_pytest_lin_0")
     t = wrf.extract_times(file, timeidx=None)
-    t_corr = pd.date_range(start="2018-06-20T00:00:00", end='2018-06-20T02:00:00', freq="5.5min")
+    t_corr = pd.date_range(start="2018-06-20T00:00:00", end='2018-06-20T02:00:00', freq="10min")
     assert (t == t_corr).all()
 
     #test behaviour if output exists
@@ -94,6 +94,14 @@ def test_submit_jobs():
     count = Counter(output)
     for m in ["Restart run from 2018-06-20 02:00:00", 'd01 2018-06-20_04:00:00 wrf: SUCCESS COMPLETE WRF']:
         assert count[m] == nruns
+    #check output data
+    outd = os.path.join(conf.outpath, conf.outdir)
+    outfiles = ['rst', 'fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
+    assert sorted(os.listdir(outd)) == sorted(outfiles)
+    file = Dataset(outd + "/fastout_pytest_lin_0")
+    t = wrf.extract_times(file, timeidx=None)
+    t_corr = pd.date_range(start="2018-06-20T00:00:00", end='2018-06-20T04:00:00', freq="10min")
+    assert (t == t_corr).all()
 
     #check repeats
     combs = submit_jobs(init=True, exist="o", config_file="test.config_test_reps")
