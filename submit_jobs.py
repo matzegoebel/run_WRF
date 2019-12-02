@@ -393,10 +393,15 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         if not check_args:
                             err = os.system(comm)
                             if wait:
+                                if restart:
+                                    log_lines = 15
+                                else:
+                                    log_lines = 10
+
                                 for ID in IDs:
                                     print(ID)
                                     run_dir_i = "{}/WRF_{}/".format(conf.run_path, ID)
-                                    print(os.popen("tail -n 5 {}".format(run_dir_i + "run.log")).read())
+                                    print(os.popen("tail -n {} {}".format(log_lines, run_dir_i + "run.log")).read())
                                     print(open(run_dir_i + "run.err").read())
                             if err != 0:
                                 raise RuntimeError("WRF run failed!")

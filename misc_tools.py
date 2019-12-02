@@ -770,7 +770,7 @@ def concat_restart(path, id_filter=""):
     for file in old_files_0:
         ID = file.split("/")[-1]
         ID = ID[:ID.index("rst")-1]
-        print("\nProcess file {}".format(ID))
+        print("Process file {}".format(ID))
         new_file = path + ID
 
         old_files = glob.glob("{}/rst/{}_rst_*".format(path, ID))
@@ -801,7 +801,7 @@ def concat_restart(path, id_filter=""):
                         if err != 0:
                             raise Exception("Error in ncks when reducing {}".format(cfile))
                     else:
-                        print("File is redundant!")
+                        print("File {} is redundant!".format(cfile))
                         continue
                 else:
                     os.system("cp {} {}".format(cfile, cfile + "_cut"))
