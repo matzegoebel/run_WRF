@@ -17,6 +17,7 @@ import configs.test.config_test as conf
 import shutil
 import time
 from netCDF4 import Dataset
+import misc_tools
 import wrf
 import pandas as pd
 #%%
@@ -103,29 +104,40 @@ def test_submit_jobs():
 
 
     #check mpi and pool
-    submit_jobs(init=True, wait=True, exist="o", config_file="test.config_test_mpi")
+    combs = submit_jobs(init=True, wait=True, exist="o", config_file="test.config_test_mpi")
 
     with Capturing() as output:
         submit_jobs(init=False, pool_jobs=True, wait=True, exist="o", config_file="test.config_test_mpi")
     count = Counter(output)
     m = "Submit IDs: ['pytest_kessler_0', 'pytest_lin_0']"
     assert count[m] == 1
-   # assert count[success[False]] == combs["n_rep"].sum()
+    m = "d01 2018-06-20_00:11:00 wrf: SUCCESS COMPLETE WRF"
+    assert count[m] == combs["n_rep"].sum()
 
     #test get_rt and vmem, qsub
-    # with Capturing() as output:
-    #     submit_jobs(init=False, check_args=True, use_qsub=True, exist="o", config_file="test.config_test")
-    # count = Counter(output)
+    for run in os.listdir(conf.run_path):
+        rundir ="{}/{}/".format(conf.run_path, run)
+        shutil.copy("tests/test_data/qstat.info", rundir)
 
+    with Capturing() as output:
+        combs = submit_jobs(init=False, check_args=True, use_qsub=True, exist="o", config_file="test.config_test_mpi")
+    count = Counter(output)
+    messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 148.3365M']
+    for m in messages:
+        assert count[m] == combs["n_rep"].sum()
+    rundirs = [rd + "_0" for rd in combs["run_dir"].values]
+    timing = misc_tools.get_runtime_all(rundirs, all_times=False)["timing"].values
+    messages = ["Runtime per time step: {0:.5f} s".format(t) for t in timing]
+    for m in messages:
+        assert count[m] == 1
 
     shutil.rmtree(os.environ["wrf_res"] + "/test/pytest")
     shutil.rmtree(os.environ["wrf_runs"] + "/pytest")
 
+# os.chdir("..")
 
 
+#TODO
 #Domain size must be multiple of lx
-
-#check name list changes, output
-#test pooling
-#test get_rt and vmem
+#check name list changes
 # test history streams

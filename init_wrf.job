@@ -1,17 +1,27 @@
 #!/bin/bash
 
-#$ -cwd
-#$ -o /scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID_init.out
-#$ -e /scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID_init.err
-#$ -M matthias.goebel@uibk.ac.at
-#$ -l h_rt=00:10:00
-#$ -l h_stack=128M
-
 
 set -e
 
+
 #~ t0=$(expr `date +%s%N` / 1000000)
 #~ echo (( t - t0))
+
+
+code_dir=$(pwd)
+build_dir="${build_path}/$wrfv"
+run_dir="${run_path}/WRF_$JOB_NAME"
+wrf_case_dir="${build_dir}/test/$ideal_case"
+
+echo "Copy files to $run_dir"
+rm $run_dir -rf
+mkdir -p $run_dir
+cd $run_dir
+
+#redirect logs to file
+exec 1> "init.log"
+exec 2> "init.err"
+
 
 if (( cluster==0 ))
 then
@@ -37,16 +47,6 @@ then
 fi
 
 
-code_dir=$(pwd)
-build_dir="${build_path}/$wrfv"
-run_dir="${run_path}/WRF_$JOB_NAME"
-wrf_case_dir="${build_dir}/test/$ideal_case"
-cd $wrf_case_dir
-
-echo "Copy files to $run_dir"
-rm $run_dir -rf
-mkdir -p $run_dir
-cd $run_dir
 #from run directory for data files needed by physics modules; symbolic links sufficient
 cp -s ${build_dir}/run/* .
 rm -f namelist.input input_sounding
@@ -73,10 +73,6 @@ fi
 
 echo "use input sounding: ${input_sounding}"
 
-#redirect logs to file and stdout
-exec 1> "init.log"
-exec 2> "init.err"
-
 echo
 echo "create namelist"
 #echo $wrf_args
@@ -93,13 +89,22 @@ echo "sleep $sleep s"
 echo
 sleep $sleep
 
-
+set +e
 ./ideal.exe
+err=$?
 wait
+set -e
 
 #include information about number of processors in namelist.input
 if (( nx*ny > 1 ))
 then
-  cat rsl.error.0000
+  cat rsl.out.0000
+  if (( err != 0 ))
+  then
+    >&2 cat rsl.error.0000
+  fi
   source ${code_dir}/search_replace.sh namelist.input namelist.input 0 nproc_x $nx nproc_y $ny
 fi
+
+exit $err
+

@@ -85,14 +85,17 @@ def flatten_list(l):
     return flat_l
 
 def make_list(o):
+    """Put object in list if it is not already an iterable."""
     if type(o) not in [tuple, list, dict, np.ndarray]:
         o = [o]
     return o
 
 def overprint(message):
+    """Print over previous print by rewinding the record."""
     print("\r", message, end="")
 
 def elapsed_time(start):
+    """Elapsed time in seconds since start."""
     time_diff = datetime.now() - start
     return time_diff.total_seconds()
 
@@ -110,6 +113,13 @@ def print_progress(start=None, counter=None, length=None, message="Elapsed time"
         minutes, seconds = divmod(remainder, 60)
         msg += "%s: %s hours %s minutes %s seconds" % (message, int(hours),int(minutes),round(seconds))
     overprint(msg)
+
+def format_timedelta(td):
+    """Format td in seconds to HHH:MM:SS"""
+    hours, remainder = divmod(td, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return '{:03}:{:02}:{:02}'.format(int(hours), int(minutes), int(seconds))
+
 
 #%%config grid related
 
@@ -273,10 +283,8 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
     index = None
     if all_times:
         #estimate number of lines in all files
-        runs_mpi = [r for r in runs if os.path.isfile(r + "/rsl.error.0000")]
-        runs_serial = [r for r in runs if os.path.isfile(r + "/run.log") and not os.path.isfile(r + "/rsl.error.0000")]
-        num_lines = [sum(1 for line in open(r + "/rsl.error.0000")) for r in runs_mpi]
-        num_lines.extend([sum(1 for line in open(r + "/run.log")) for r in runs_serial])
+        run_logs= [r  + "/run.log" for r in runs if os.path.isfile(r + "/run.log")]
+        num_lines = [sum(1 for line in open(rl)) for rl in run_logs]
         index = np.arange(sum(num_lines))
         columns.append("time")
     timing = pd.DataFrame(columns=columns, index=index)
@@ -341,16 +349,15 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=False):
         Current counter for writing.
 
     """
-    if os.path.isfile(run_dir + "/rsl.error.0000"):
-        f = open(run_dir + "/rsl.error.0000")
-    elif os.path.isfile(run_dir + "/run.log"):
-        f = open(run_dir + "/run.log")
+    runlog = run_dir + "/run.log"
+    if os.path.isfile(runlog):
+        f = open(runlog)
     else:
         raise FileNotFoundError("No log file found!")
 
     log = f.readlines()
     settings = {}
-    if "WRF V" in "".join(log[:15]): #check that it is no init run
+    if "Timing for main" in "".join(log): #check that it is no init run
         timing_ID = []
         times = []
         for line in log:
@@ -431,10 +438,9 @@ def get_identical_runs(run_dir, search_paths):
     identical_runs = []
     for search_path in search_paths:
         search_path += "/"
-        runs_walk = os.walk(search_path)
-        if len(list(runs_walk)) == 0:
+        if len(list(os.walk(search_path))) == 0:
             continue
-        runs_all = next(runs_walk)[1]
+        runs_all = next(os.walk(search_path))[1]
         runs = []
         for r in runs_all:
             r_files = os.listdir(search_path + r)
@@ -514,8 +520,8 @@ def get_job_usage(qstat_file):
     return usage
 
 
-def set_vmem_rt(args, run_dir, conf, run_hours, pool_jobs=False):
-    """Set vmem and runtime per time step  based on settings in config file"""
+def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False):
+    """Set vmem and runtime per time step  based on settings in config file."""
     skip = False
 
     #get runtime per timestep
@@ -523,7 +529,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, pool_jobs=False):
     identical_runs = None
     runtime_per_step = None
     if conf.rt is not None:
-        runtime_per_step = conf.rt/3600*args["dt"]/run_hours #runtime per time step
+        runtime_per_step = conf.rt*args["dt"]/(3600*run_hours)/conf.rt_buffer #runtime per time step
     elif (conf.runtime_per_step_dict is not None) and (r in conf.runtime_per_step_dict):
         runtime_per_step = conf.runtime_per_step_dict[r]
         print("Use runtime dict")
@@ -550,7 +556,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, pool_jobs=False):
         vmemi = conf.vmem
     elif conf.vmem_per_grid_point is not None:
         print("Use vmem per grid point")
-        vmemi = int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"])
+        vmemi = int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"])/nslots
         if conf.vmem_min is not None:
             vmemi = max(vmemi, conf.vmem_min)
     else:
@@ -565,6 +571,8 @@ def set_vmem_rt(args, run_dir, conf, run_hours, pool_jobs=False):
             skip = True
         else:
             vmemi = max(vmemi)
+    if vmemi is not None:
+        vmemi *= nslots*conf.vmem_buffer
 
     args["vmem"] = vmemi
 

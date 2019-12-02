@@ -1,10 +1,6 @@
 #!/bin/bash
-
-#$ -cwd
-#$ -o /scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID.out
-#$ -e /scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID.err
-#$ -M matthias.goebel@uibk.ac.at
-#$ -m sea
+#$ -o ${run_path}/logs/$JOB_NAME_$JOB_ID_init.out
+#$ -e ${run_path}/logs/$JOB_NAME_$JOB_ID_init.err
 
 set -e
 
@@ -53,14 +49,14 @@ fi
 for (( i=0; i<${#jobs[@]}; i++ ))
 do
   cd ${run_path}/WRF_${jobs[$i]}
+  #redirect logs to file
+  exec 1> "run.log"
+  exec 2> "run.err"
+
   echo "Running job: ${jobs[$i]}"
   nsi=${nslots[$i]}
   wrf_dir_i=${wrfv[$i]}
   echo "slots: $nsi "
-
-  #redirect logs to file and stdout
-  exec 1> "run.log"
-  exec 2> "run.err"
 
   if (( nsi > 1 ))
   then
@@ -84,7 +80,7 @@ do
     fi
   else
     echo "serial run"
-    ./wrf.exe &
+    ./wrf.exe || true  &
   fi
   echo 
   echo

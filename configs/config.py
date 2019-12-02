@@ -98,22 +98,31 @@ queue = "std.q" #queue for SGE
 vmem_init_per_grid_point = 0.3 #virtual memory (MB) per horizontal grid point to request for WRF initialization (ideal.exe)
 vmem_init_min = 2000 #minimum virtual memory (MB) for WRF initialization
 
-vmem = None #virtual memory per job (MB)  to request for running WRF (wrf.exe)
+vmem = None #virtual memory per slot (MB) to request for running WRF (wrf.exe)
 
 #if vmem is None:
-vmem_per_grid_point = None #vmem (MB) per horizontal grid point; will be divided by number of slots
-vmem_min = None #minimum virtual memory (MB) for running WRF
+vmem_per_grid_point = None #vmem (MB) per horizontal grid point per job (not per slot!)
+vmem_min = None #minimum virtual memory (MB) per slot for running WRF
 
 vmem_pool = 2000 #virtual memory to request per slot if pooling is used
 
 vmem_buffer = 1.3 #buffer factor for virtual memory
 
-# runtime: specify either rt or runtime_per_step or None
+#stack size (MB) for ideal.exe
+h_stack_init=128
+#stack size (MB) for wrf.exe
+h_stack=None
+
+#runtime (min) for ideal.exe
+rt_init=10
+
+# runtime for wrf.exe: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from previous identical runs if present
-rt = None #None or job runtime in seconds
 rt_buffer = 1.5 #buffer factor to multiply rt with
+rt = None #None or job runtime in seconds; buffer not used
 # if rt is None: runtime per time step in seconds for different dx
 runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}
+
 
 #paths to search for log files to determine runtime and/or vmem if not specified
 resource_search_paths = [run_path]
@@ -124,9 +133,10 @@ min_n_per_proc = 16 #25, minimum number of grid points per processor
 even_split = False #force equal split between processors
 
 #%%
-'''Slot configurations for personal computer and cluster'''
+'''Slot configurations and cluster settings'''
 
 reduce_pool = True #reduce pool size to the actual uses number of slots; do not use if you do not want to share the node with others
+mail_adress="matthias.goebel@uibk.ac.at"
 
 if (("HOSTNAME" in os.environ) and (cluster_name in os.environ["HOSTNAME"])):
     cluster = True

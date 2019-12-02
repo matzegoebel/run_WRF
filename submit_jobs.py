@@ -182,8 +182,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             slot_comm = "-pe openmpi-fillup {}".format(nslotsi)
         else:
             wrf_dir_i = conf.wrf_dir_pre
-            wrf_dir.append(wrf_dir_i)
-            wrf_dir_i = wrf_dir_i
+        wrf_dir.append(wrf_dir_i)
 
         #timestep
         if "dt" not in args:
@@ -200,18 +199,19 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 init_queue = "std.q"
 
         elif use_qsub:
-            args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, pool_jobs=pool_jobs)
+            args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi, pool_jobs=pool_jobs)
             if skip:
                 continue
             vmemi = args["vmem"]
             vmem.append(vmemi)
-            print("Runtime per time step: {0:.5f} s".format(["rt_per_timestep"]))
-            print("Use vmem: {}".format(vmemi))
+            print("Runtime per time step: {0:.5f} s".format(args["rt_per_timestep"]))
+            print("Use vmem per slot: {}M".format(vmemi/nslotsi))
 
         #not needed; just for completeness of dataframe:
         args["nx"] = nx
         args["ny"] = ny
         args["nslots"] = nslotsi
+        args["run_dir"] = run_dir
         for arg, val in args.items():
             combs_all.loc[i, arg] = val
 
@@ -264,7 +264,12 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                 qsub=int(use_qsub), cluster=int(conf.cluster))
                 if use_qsub:
                     comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
-                    comm = r"qsub -q {} -l h_vmem={}M -m {} -N {} -v {} init_wrf.job".format(init_queue, vmem_init, mail, IDr, comm_args_str)
+                    rt_init = misc_tools.format_timedelta(conf.rt_init*60)
+                    sge_args = "-cwd -q {} -l h_rt={} -l h_vmem={}M -m {} -M {} -N {}".format(init_queue, rt_init, vmem_init, mail, conf.mail_adress, IDr)
+                    if "h_stack_init" in dir(conf) and conf.h_stack_init is not None:
+                        sge_args += " -l h_stack={}M".format(round(conf.h_stack_init))
+
+                    comm = r"qsub {} -v {} init_wrf.job".format(sge_args, comm_args_str)
                 else:
                     for p, v in comm_args.items():
                         os.environ[p] = str(v)
@@ -278,9 +283,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     err = os.system(comm)
                     initlog = open(run_dir_r + "/init.log").read()
                     print(initlog.split("\n")[-2].strip())
-                    initerr = open(run_dir_r + "/init.err").read()
-                    print(initerr)
                     if err != 0:
+                        initerr = open(run_dir_r + "/init.err").read()
+                        print(initerr)
                         raise RuntimeError("Initialization failed!")
 
 
@@ -361,22 +366,40 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                 slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
                         else:
                             job_name = IDr
-                        wrf_dir = " ".join([str(wd) for wd in wrf_dir])
+                        wrf_dir = " ".join(wrf_dir)
                         jobs = " ".join(IDs)
-                        nslots = " ".join([str(ns) for ns in nslots])
-                        comm_args =dict(wrfv=wrf_dir, nslots=nslots,jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
-                                        cluster=int(conf.cluster), wait=int(wait))
+                        nslots_str = " ".join([str(ns) for ns in nslots])
+                        comm_args =dict(wrfv=wrf_dir, nslots=nslots_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
+                                        cluster=int(conf.cluster), wait=int(wait), restart=int(restart), outpath=outpath)
                         if use_qsub:
-                            rtp = max(rtr)
-                            rtp = "{:02d}:{:02d}:00".format(math.floor(rtp), math.ceil((rtp - math.floor(rtp))*60))
-                            vmemp = int(sum(vmem)/len(vmem))
+                            vmemp = int(sum(vmem)/sum(nslots))
+                            rtp = misc_tools.format_timedelta(max(rtr)*3600)
+
+                            sge_args = "-cwd -q {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -M {}".format(conf.queue, job_name, rtp, vmemp, slot_comm, mail, conf.mail_adress)
+                            if "h_stack" in dir(conf) and conf.h_stack is not None:
+                                sge_args += " -l h_stack={}M".format(round(conf.h_stack))
+
                             comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
-                            comm = r"qsub -q {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -v {} run_wrf.job".format(conf.queue, job_name, rtp, vmemp, slot_comm, mail, comm_args_str)
+                            comm = r"qsub {} -v {} run_wrf.job".format(sge_args, comm_args_str)
+
                         else:
                             for p, v in comm_args.items():
                                 os.environ[p] = str(v)
 
                             comm = "bash run_wrf.job"
+
+                        if verbose:
+                            print(comm)
+                        if not check_args:
+                            err = os.system(comm)
+                            if wait:
+                                for ID in IDs:
+                                    print(ID)
+                                    run_dir_i = "{}/WRF_{}/".format(conf.run_path, ID)
+                                    print(os.popen("tail -n 5 {}".format(run_dir_i + "run.log")).read())
+                                    print(open(run_dir_i + "run.err").read())
+                            if err != 0:
+                                raise RuntimeError("WRF run failed!")
 
                         if resched_i:
                             IDs = [IDr]
@@ -395,19 +418,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             vmem = []
                             nslots = []
                             wrf_dir = []
-                        if verbose:
-                            print(comm)
-                        if not check_args:
-                            err = os.system(comm)
-                            if wait and err == 0:
-                                rd = run_dir_r + "/"
-                                if os.path.isfile(rd + "rsl.error.0000"):
-                                    runlog = rd + "rsl.error.0000"
-                                else:
-                                    runlog = rd + "run.log"
-                                tail_log = os.popen("tail -n 5 {}".format(runlog)).read()
-                                print(tail_log)
-
 
     return combs_all
 
