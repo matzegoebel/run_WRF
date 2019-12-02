@@ -27,8 +27,7 @@ run_path = os.environ["wrf_runs"] + "/" + runID #path where run directories of s
 build_path = os.environ["wrf_builds"] + "tests" #path where different versions of the compiled WRF model code reside
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
-param_grid = odict(mp_physics=[1,2],
-                   res={"dx" : [200,4000], "dz0" : [10,50], "nz" : [100,60]})
+param_grid = odict(mp_physics=[1,2])
 
 # names of parameter values for output filenames; either dictionaries or lists (not for composite parameters)
 param_names = {"mp_physics" : {1: "kessler", 2: "lin"},
@@ -46,12 +45,12 @@ params["n_rep"] = 1 #number of repetitions for each configuration
 
 #horizontal grid
 params["dx"] = 500 #horizontal grid spacing (m)
-params["lx"] = 1 #horizontal extent in east west (m)
-params["ly"] = 1 #minimum horizontal extent in north south (m)
+params["lx"] = 1000 #horizontal extent in east west (m)
+params["ly"] = 1000 #minimum horizontal extent in north south (m)
 #use minimum number of grid points set below:
-use_min_gridpoints = True #"x", "y", True (for both) or False
-params["min_gridpoints_x"] = 2 #minimum number of grid points in x direction
-params["min_gridpoints_y"] = 2 #minimum number of grid points in y direction
+use_min_gridpoints = False #"x", "y", True (for both) or False
+params["min_gridpoints_x"] = 2 #minimum number of grid points in x direction (including boundary)
+params["min_gridpoints_y"] = 2 #minimum number of grid points in y direction (including boundary)
 #if use_min_gridpoints: force x and y extents to be multiples of lx and ly, respectively
 force_domain_multiple = False #"x", "y", True (for both) or False
 
@@ -82,7 +81,7 @@ output_streams = {0: ["wrfout", 30], 7: ["fastout", 5.5] }
 # filename where output variables for standard and auxiliary streams are modified:
 params["iofields_filename"] = "IO_test.txt"
 
-params["restart_interval"] = 240 #restart interval (min)
+params["restart_interval"] = 120 #restart interval (min)
 
 split_output_res = 0 #dx (m) below which to split output in one timestep per file
 
@@ -110,7 +109,7 @@ vmem_buffer = 1.3 #buffer factor for virtual memory
 
 # runtime: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from previous identical runs if present
-rt = 600 #None or job runtime in seconds
+rt = None #None or job runtime in seconds
 rt_buffer = 1.5 #buffer factor to multiply rt with
 # if rt is None: runtime per time step in seconds for different dx
 runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}
@@ -141,14 +140,6 @@ else:
     pool_size = 16
 
 #%%
-
-param_combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid)
-
-#combine param grid and additional settings
-combs = param_combs.copy()
-for param, val in params.items():
-    if param not in combs:
-        combs[param] = val
-
+param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)
 
 #Below you can manually add parameters to the DataFrame combs

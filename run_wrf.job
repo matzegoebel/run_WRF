@@ -44,7 +44,7 @@ then
   if $cluster
   then
     qs=$(qstat -t)
-    hosts=$(python ${code_dir}/get_hosts.py "$JOB_ID" "$qs")
+    hosts=$(python ${code_dir}/pool/get_hosts.py "$JOB_ID" "$qs")
     hosts=(${hosts})
     echo "hosts ${hosts[*]}"
   fi
@@ -65,14 +65,14 @@ do
   if (( nsi > 1 ))
   then
     echo "parallel"
-    if $pool and $cluster
+    if $pool && $cluster
     then
       echo "si $si"
       hostsi=${hosts[@]:$si:$nsi}
       echo "on hosts: $hostsi"
 
-      H=$(python ${code_dir}/get_hosts_set.py "$hostsi")
-      python ${code_dir}/rankfile.py  "${hosts[*]}" "$si" "$nsi" > rankfile.$JOB_ID
+      H=$(python ${code_dir}/pool/get_hosts_set.py "$hostsi")
+      python ${code_dir}/pool/rankfile.py  "${hosts[*]}" "$si" "$nsi" > rankfile.$JOB_ID
       cat rankfile.$JOB_ID
 
       mpiexec -H $H -rf rankfile.$JOB_ID -mca rmaps_rank_file_physical 1 -np $nsi -v -report-bindings -display-map -display-allocation ./wrf.exe || true &

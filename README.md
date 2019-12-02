@@ -26,7 +26,7 @@ The package simplifies requesting job resources like virtual memory, runtime and
 
 If not using SGE, the simulations are started simultaneously and run in the background, by default. The `-w` option allows to wait for a simulation (or pool of simulations, see below) to finish, before submitting the next. 
 
-If a simulation aborts, simply run `submit_jobs.py -r`. This restarts the simulations from the most recent restart files. The original output is moved to a backup folder called `rst`. An unlimited number of restarts is possible. To concatenate the files from the original and the restarted runs (with overlap removed), use the script `concat_restart.py` after all runs are finished.
+If a simulation aborts or you want to continue it to a later end time, simply run `submit_jobs.py -r`. This restarts the simulations from the most recent restart files. The original output is moved to a backup folder called `rst`. A new end time can be set in the config file. An unlimited number of restarts is possible. To concatenate the files from the original and the restarted runs (with overlap removed), use the script `concat_restart.py` after all runs are finished.
 
 The option `-t` allows checking the functioning of the python script without submitting the jobs.
 

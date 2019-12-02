@@ -20,6 +20,7 @@ from datetime import datetime
 from io import StringIO
 import sys
 import get_namelist
+import vertical_grid
 
 #%%nproc
 
@@ -112,7 +113,7 @@ def print_progress(start=None, counter=None, length=None, message="Elapsed time"
 
 #%%config grid related
 
-def grid_combinations(param_grid):
+def grid_combinations(param_grid, add_params=None):
     """
     Create list of all combinations of parameter values defined in dictionary param_grid.
     Two or more parameters can be varied simultaneously by defining a composite
@@ -128,11 +129,19 @@ def grid_combinations(param_grid):
     ----------
     param_grid : dictionary of lists or dictionaries
         input dictionary containing the parameter values
+    add_params : pandas DataFrame
+        additional parameters to add to result
 
     Returns
     -------
-    combs : list of dictionaries
-            parameter combinations
+    param_combs : pandas DataFrame
+        parameter combinations
+    combs_full : pandas DataFrame
+        param_combs combined with add_params
+    param_grid_flat : dictionary
+        input param_grid with composite parameters flattened
+    composite_params : dictionary
+        included parameters for each composite parameter
 
     """
     d = copy.deepcopy(param_grid)
@@ -161,7 +170,16 @@ def grid_combinations(param_grid):
         c = flatten_list(comb)
         combs[i] = odict(zip(params,c))
 
-    return pd.DataFrame(combs), param_grid_flat, composite_params
+    param_combs = pd.DataFrame(combs)
+
+    combs_full = param_combs.copy()
+    if add_params is not None:
+        #combine param grid and additional settings
+        for param, val in add_params.items():
+            if param not in combs_full:
+                combs_full[param] = val
+
+    return param_combs, combs_full, param_grid_flat, composite_params
 
 def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
     """
@@ -413,7 +431,10 @@ def get_identical_runs(run_dir, search_paths):
     identical_runs = []
     for search_path in search_paths:
         search_path += "/"
-        runs_all = next(os.walk(search_path))[1]
+        runs_walk = os.walk(search_path)
+        if len(list(runs_walk)) == 0:
+            continue
+        runs_all = next(runs_walk)[1]
         runs = []
         for r in runs_all:
             r_files = os.listdir(search_path + r)
@@ -492,6 +513,178 @@ def get_job_usage(qstat_file):
 
     return usage
 
+
+def set_vmem_rt(args, run_dir, conf, run_hours, pool_jobs=False):
+    """Set vmem and runtime per time step  based on settings in config file"""
+    skip = False
+
+    #get runtime per timestep
+    r = args["dx"]
+    identical_runs = None
+    runtime_per_step = None
+    if conf.rt is not None:
+        runtime_per_step = conf.rt/3600*args["dt"]/run_hours #runtime per time step
+    elif (conf.runtime_per_step_dict is not None) and (r in conf.runtime_per_step_dict):
+        runtime_per_step = conf.runtime_per_step_dict[r]
+        print("Use runtime dict")
+    else:
+        print("Get runtime from previous runs")
+        run_dir_0 = run_dir + "_0" #use rep 0 as reference
+        identical_runs = get_identical_runs(run_dir_0, conf.resource_search_paths)
+        if len(identical_runs) > 0:
+            timing = get_runtime_all(runs=identical_runs, all_times=False)
+            if len(timing) > 0:
+                runtime_per_step, rt_sd = timing["timing"].mean(), timing["timing_sd"].mean()
+                print("Runtime per time step standard deviation: {0:.5f} s".format(rt_sd))
+
+        if runtime_per_step is None:
+            print("No runtime specified and no previous runs found. Skipping...")
+            skip = True
+    args["rt_per_timestep"] = runtime_per_step
+
+    #virtual memory
+    vmemi = None
+    if pool_jobs:
+        vmemi = conf.vmem_pool
+    elif conf.vmem is not None:
+        vmemi = conf.vmem
+    elif conf.vmem_per_grid_point is not None:
+        print("Use vmem per grid point")
+        vmemi = int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"])
+        if conf.vmem_min is not None:
+            vmemi = max(vmemi, conf.vmem_min)
+    else:
+        print("Get vmem from previous runs")
+        if identical_runs is None:
+            run_dir_0 = run_dir + "_0" #use rep 0 as reference
+            identical_runs = get_identical_runs(run_dir_0, conf.resource_search_paths)
+
+        vmemi = get_vmem(identical_runs)
+        if vmemi is None:
+            print("No vmem specified and no previous runs found. Skipping...")
+            skip = True
+        else:
+            vmemi = max(vmemi)
+
+    args["vmem"] = vmemi
+
+    return args, skip
+
+#%%init
+def prepare_init(args, conf, wrf_dir_i):
+    """Sets some namelist parameters based on the config files settings."""
+
+    r = args["dx"]
+    if "dy" not in args:
+        args["dy"] = r
+
+    if "isotropic_res" in args:
+        if r <= args["isotropic_res"]:
+            args["mix_isotropic"] = 1
+        else:
+            args["mix_isotropic"] = 0
+
+    #timestep
+
+    dt_int = math.floor(args["dt"])
+    args["time_step"] = dt_int
+    args["time_step_fract_num"] = round((args["dt"] - dt_int)*10)
+    args["time_step_fract_den"] = 10
+    if "radt" not in args:
+        args["radt"] = max(args["radt_min"], 10*dt_int/60) #rule of thumb
+
+    #vert. domain
+    args["e_vert"] = args["nz"]
+    eta, dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
+                                                      dz0=args["dz0"], plot=False, table=False)
+    eta_levels = "'" + ",".join(eta.astype(str)) + "'"
+
+    #split output in one timestep per file
+    one_frame = False
+    if r <= conf.split_output_res:
+        args["frames_per_outfile"] = 1
+        for out_ind in conf.output_streams.keys():
+            if out_ind != 0:
+                args["frames_per_auxhist{}".format(out_ind)] = 1
+        one_frame = True
+
+    #output streams
+    for stream, (_, out_int) in conf.output_streams.items():
+        out_int_m = math.floor(out_int)
+        out_int_s = round((out_int - out_int_m)*60)
+        if stream > 0:
+            stream_full = "auxhist{}".format(stream)
+        else:
+            stream_full = "history"
+        args["{}_interval_m".format(stream_full)] = out_int_m
+        args["{}_interval_s".format(stream_full)] = out_int_s
+
+    #specified heat fluxes or land surface model
+    if "spec_hfx" in args:
+        args["ra_lw_physics"] = 0
+        args["ra_sw_physics"] = 0
+        args["tke_heat_flux"] = args["spec_hfx"]
+        args["sf_surface_physics"] = 0
+        if "isfflx" not in args:
+            args["isfflx"] = 2
+    else:
+        if "isfflx" not in args:
+            args["isfflx"] = 1
+        args["tke_heat_flux"] = 0.
+        args["tke_drag_coefficient"] = 0.
+
+    #pbl scheme
+    if r >= args["pbl_res"]:
+        pbl_scheme = args["bl_pbl_physics"]
+        if "km_opt" not in args:
+            args["km_opt"] = 4
+    else:
+        pbl_scheme = 0
+        if "km_opt" not in args:
+            args["km_opt"] = 2
+
+    args["bl_pbl_physics"] = pbl_scheme
+
+    #choose surface layer scheme that is compatible with PBL scheme
+    if "sf_sfclay_physics" not in args:
+        if pbl_scheme in [1,2,3,4,5,7,10]:
+            sfclay_scheme = pbl_scheme
+        elif pbl_scheme == 6:
+            sfclay_scheme = 5
+        else:
+            sfclay_scheme = 1
+        args["sf_sfclay_physics"] = sfclay_scheme
+
+    # delete non-namelist parameters
+    del_args = [*conf.del_args, *[p + "_idx" for p in conf.composite_params.keys()]]
+    with open("{}/{}/test/{}/namelist.input".format(conf.build_path, wrf_dir_i, conf.ideal_case)) as namelist_file:
+        namelist = namelist_file.read().replace(" ", "").replace("\t","")
+    args_df = args.copy()
+    for del_arg in del_args:
+        if "\n"+del_arg+"=" in namelist:
+            raise RuntimeError("Parameter {} used in submit_jobs.py already defined in namelist.input! Rename this parameter!".format(del_arg))
+        if del_arg in args_df:
+            del args_df[del_arg]
+
+    args_df = pd.DataFrame(args_df, index=[0])
+
+    #use integer datatype for integer parameters
+    new_dtypes = {}
+    for arg in args_df.keys():
+        typ = args_df.dtypes[arg]
+        if (typ == float) and (args_df[arg].dropna() == args_df[arg].dropna().astype(int)).all():
+            typ = int
+        new_dtypes[arg] = typ
+    args_dict = args_df.astype(new_dtypes).iloc[0].to_dict()
+
+    args_str = " ".join(["{} {}".format(param, val) for param, val in args_dict.items()])
+
+    if "iofields_filename" in args:
+        args_str = args_str + """ iofields_filename "'{}'" """.format(args["iofields_filename"])
+    args_str += " eta_levels " + eta_levels
+
+    return args, args_str, one_frame
+
 #%%restart
 
 def prepare_restart(wdir, outpath, output_streams, end_time):
@@ -519,19 +712,30 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
     """
     rstfiles = os.popen("ls -t {}/wrfrst*".format(wdir)).read()
     if rstfiles == "":
-        print("WARNING: no restart files found")
+        print("WARNING: no restart files found. Skipping...")
+        return
 
     ID = "_".join(wdir.split("/")[-1].split("_")[1:])
     restart_time = rstfiles.split("\n")[0].split("/")[-1].split("_")[-2:]
     print("Restart run from {}".format(" ".join(restart_time)))
-    start_time_rst = datetime.strptime("_".join(restart_time), '%Y-%m-%d_%H:%M:%S')
-    rst_date, rst_time = restart_time
-    rst_date = rst_date.split("-")
-    rst_time = rst_time.split(":")
-    run_hours = (end_time - start_time_rst).total_seconds()/3600
 
-    rst_opt = "restart .true. start_year {} start_month {} start_day {}\
-    start_hour {} start_minute {} start_second {} run_hours {}".format(*rst_date, *rst_time, run_hours)
+    start_time_rst = datetime.strptime("_".join(restart_time), '%Y-%m-%d_%H:%M:%S')
+    times = {}
+    rst_date, rst_time = restart_time
+    times["start"] = rst_date.split("-")
+    times["start"].extend(rst_time.split(":"))
+
+    end_time_dt = datetime.strptime(end_time, '%Y-%m-%d_%H:%M:%S')
+    end_d, end_t = end_time.split("_")
+    times["end"] = end_d.split("-")
+    times["end"].extend(end_t.split(":"))
+
+    run_hours = (end_time_dt - start_time_rst).total_seconds()/3600
+    rst_opt = "restart .true"
+    for se in ["start", "end"]:
+        for unit, t in zip(["year", "month", "day", "hour", "minute", "second"], times[se]):
+            rst_opt += " {}_{} {}".format(se, unit, t)
+
     os.makedirs("{}/rst/".format(outpath), exist_ok=True) #move previous output in backup directory
     outfiles = [glob.glob("{}/{}_{}".format(outpath, stream, ID)) for stream in output_streams]
     for f in flatten_list(outfiles):

@@ -98,7 +98,7 @@ sleep $sleep
 wait
 
 #include information about number of processors in namelist.input
-if ((nx*ny > 1))
+if (( nx*ny > 1 ))
 then
   cat rsl.error.0000
   source ${code_dir}/search_replace.sh namelist.input namelist.input 0 nproc_x $nx nproc_y $ny

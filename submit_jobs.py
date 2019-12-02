@@ -10,8 +10,6 @@ Automatically initialize and run idealized experiments in WRF on a single comput
 import numpy as np
 import math
 import os
-import vertical_grid
-import pandas as pd
 import datetime
 import argparse
 import glob
@@ -21,7 +19,7 @@ import inspect
 
 #%%
 def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_qsub=False,
-                check_args=False, pool_jobs=False, mail="ea", wait=False, verbose=False):
+           check_args=False, pool_jobs=False, mail="ea", wait=False, verbose=False):
     """
     Submit idealized WRF experiments. Refer to README.md for more information.
 
@@ -60,8 +58,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     """
     if (not init) and (outdir is not None):
         print("WARNING: option -o ignored when not in initialization mode!\n")
-    if pool_jobs and (not use_qsub):
-        raise ValueError("Pooling can only be used with --qsub option")
     if wait and use_qsub:
         raise ValueError("Waiting for SGE jobs is not yet implemented")
     if init and restart:
@@ -75,14 +71,14 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     param_combs, combs = conf.param_combs, conf.combs
     combs_all = combs.copy()
 
-    if outdir is not None:
-        conf.outdir = outdir
+    if outdir is None:
+        outdir = conf.outdir
 
-    conf.outpath = os.path.join(os.environ["wrf_res"], conf.outdir, "") #WRF output path
-    if not os.path.isdir(conf.outpath):
-        os.makedirs(conf.outpath)
+    outpath = os.path.join(os.environ["wrf_res"], outdir, "") #WRF output path
+    if not os.path.isdir(outpath):
+        os.makedirs(outpath)
 
-    outpath_esc = conf.outpath.replace("/", "\/") #need to escape slashes
+    outpath_esc = outpath.replace("/", "\/") #need to escape slashes
 
     IDs = []
     rtr = []
@@ -94,7 +90,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     if init:
         print("Initialize WRF simulations")
     else:
-        print("Run WRF simulations")
+        if restart:
+            print("Restart WRF simulations")
+        else:
+            print("Run WRF simulations")
+
 
     print("Configs:")
     print(param_combs)
@@ -130,7 +130,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             args["start_" + n] = di
         for di,n in zip(end_d + end_t, ["year","month","day","hour","minute","second"] ):
             args["end_" + n] = di
-        args["run_hours"] = 0 #use end time not run_hours
+        #use end time not run_*
+        args["run_hours"] = 0
+        args["run_minutes"] = 0
+        args["run_seconds"] = 0
 
 
         #hor. domain
@@ -180,123 +183,14 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         else:
             wrf_dir_i = conf.wrf_dir_pre
             wrf_dir.append(wrf_dir_i)
+            wrf_dir_i = wrf_dir_i
 
         #timestep
         if "dt" not in args:
             args["dt"] = r/1000*6 #wrf rule of thumb
-        dt = args["dt"]
-        #set a bunch of namelist parameters
+
         if init:
-            args["dy"] = r
-            args["dx"] = r
-
-            if "isotropic_res" in args:
-                if r <= args["isotropic_res"]:
-                    args["mix_isotropic"] = 1
-                else:
-                    args["mix_isotropic"] = 0
-
-            #timestep
-
-            dt_int = math.floor(args["dt"])
-            args["time_step"] = dt_int
-            args["time_step_fract_num"] = round((args["dt"] - dt_int)*10)
-            args["time_step_fract_den"] = 10
-            if "radt" not in args:
-                args["radt"] = max(args["radt_min"], 10*dt_int/60) #rule of thumb
-
-            #vert. domain
-            args["e_vert"] = args["nz"]
-            eta, dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
-                                                              dz0=args["dz0"], plot=False, table=False)
-            eta_levels = "'" + ",".join(eta.astype(str)) + "'"
-
-
-
-            #split output in one timestep per file
-            one_frame = False
-            if r <= conf.split_output_res:
-                args["frames_per_outfile"] = 1
-                for out_ind in conf.output_streams.keys():
-                    if out_ind != 0:
-                        args["frames_per_auxhist{}".format(out_ind)] = 1
-                one_frame = True
-
-            #output streams
-            for stream, (_, out_int) in conf.output_streams.items():
-                out_int_m = math.floor(out_int)
-                out_int_s = round((out_int - out_int_m)*60)
-                if stream > 0:
-                    stream_full = "auxhist{}".format(stream)
-                else:
-                    stream_full = "history"
-                args["{}_interval_m".format(stream_full)] = out_int_m
-                if out_int_s > 0:
-                    args["{}_interval_s".format(stream_full)] = out_int_s
-
-            #specified heat fluxes or land surface model
-            if "spec_hfx" in args:
-                args["ra_lw_physics"] = 0
-                args["ra_sw_physics"] = 0
-                args["tke_heat_flux"] = args["spec_hfx"]
-                args["sf_surface_physics"] = 0
-                if "isfflx" not in args:
-                    args["isfflx"] = 2
-            else:
-                if "isfflx" not in args:
-                    args["isfflx"] = 1
-                args["tke_heat_flux"] = 0.
-                args["tke_drag_coefficient"] = 0.
-
-            #pbl scheme
-            if r >= args["pbl_res"]:
-                pbl_scheme = args["bl_pbl_physics"]
-                if "km_opt" not in args:
-                    args["km_opt"] = 4
-            else:
-                pbl_scheme = 0
-                if "km_opt" not in args:
-                    args["km_opt"] = 2
-
-            args["bl_pbl_physics"] = pbl_scheme
-
-            #choose surface layer scheme that is compatible with PBL scheme
-            if "sf_sfclay_physics" not in args:
-                if pbl_scheme in [1,2,3,4,5,7,10]:
-                    sfclay_scheme = pbl_scheme
-                elif pbl_scheme == 6:
-                    sfclay_scheme = 5
-                else:
-                    sfclay_scheme = 1
-                args["sf_sfclay_physics"] = sfclay_scheme
-
-            # delete non-namelist parameters
-            del_args = [*conf.del_args, *[p + "_idx" for p in conf.composite_params.keys()]]
-            with open("{}/{}/test/{}/namelist.input".format(conf.build_path, wrf_dir_i, conf.ideal_case)) as namelist_file:
-                namelist = namelist_file.read().replace(" ", "").replace("\t","")
-            args_df = args.copy()
-            for del_arg in del_args:
-                if "\n"+del_arg+"=" in namelist:
-                    raise RuntimeError("Parameter {} used in submit_jobs.py already defined in namelist.input! Rename this parameter!".format(del_arg))
-                if del_arg in args_df:
-                    del args_df[del_arg]
-
-            args_df = pd.DataFrame(args_df, index=[0])
-
-            #use integer datatype for integer parameters
-            new_dtypes = {}
-            for arg in args_df.keys():
-                typ = args_df.dtypes[arg]
-                if (typ == float) and (args_df[arg].dropna() == args_df[arg].dropna().astype(int)).all():
-                    typ = int
-                new_dtypes[arg] = typ
-            args_dict = args_df.astype(new_dtypes).iloc[0].to_dict()
-
-            args_str = " ".join(["{} {}".format(param, val) for param, val in args_dict.items()])
-
-            if "iofields_filename" in args:
-                args_str = args_str + """ iofields_filename "'{}'" """.format(args["iofields_filename"])
-            args_str += " eta_levels " + eta_levels
+            args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i)
 
             #vmem init and SGE queue
             vmem_init = max(conf.vmem_init_min, int(conf.vmem_init_per_grid_point*args["e_we"]*args["e_sn"]))
@@ -305,60 +199,13 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             else:
                 init_queue = "std.q"
 
-
-
-
         elif use_qsub:
-            #get runtime per timestep
-            identical_runs = None
-            runtime_per_step = None
-            if conf.rt is not None:
-                runtime_per_step = conf.rt/3600*dt/run_hours #runtime per time step
-            elif (conf.runtime_per_step_dict is not None) and (r in conf.runtime_per_step_dict):
-                runtime_per_step = conf.runtime_per_step_dict[r]
-                print("Use runtime dict")
-            else:
-                print("Get runtime from previous runs")
-                run_dir_0 = run_dir + "_0" #use rep 0 as reference
-                identical_runs = misc_tools.get_identical_runs(run_dir_0, conf.resource_search_paths)
-                if len(identical_runs) > 0:
-                    timing = misc_tools.get_runtime_all(runs=identical_runs, all_times=False)
-                    if len(timing) > 0:
-                        runtime_per_step, rt_sd = timing["timing"].mean(), timing["timing_sd"].mean()
-                        print("Runtime per time step standard deviation: {0:.5f} s".format(rt_sd))
-
-                if runtime_per_step is None:
-                    print("No runtime specified and no previous runs found. Skipping...")
-                    continue
-            args["rt_per_timestep"] = runtime_per_step
-            print("Runtime per time step: {0:.5f} s".format(runtime_per_step))
-
-            #virtual memory
-            vmemi = None
-            if pool_jobs:
-                vmemi = conf.vmem_pool
-            elif conf.vmem is not None:
-                vmemi = conf.vmem
-            elif conf.vmem_per_grid_point is not None:
-                print("Use vmem per grid point")
-                vmemi = int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"])
-                if conf.vmem_min is not None:
-                    vmemi = max(vmemi, conf.vmem_min)
-            else:
-                print("Get vmem from previous runs")
-                if identical_runs is None:
-                    run_dir_0 = run_dir + "_0" #use rep 0 as reference
-                    identical_runs = misc_tools.get_identical_runs(run_dir_0, conf.resource_search_paths)
-
-                vmemi = misc_tools.get_vmem(identical_runs)
-                if vmemi is None:
-                    print("No vmem specified and no previous runs found. Skipping...")
-                    continue
-                else:
-                    vmemi = max(vmemi)
-
+            args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, pool_jobs=pool_jobs)
+            if skip:
+                continue
+            vmemi = args["vmem"]
             vmem.append(vmemi)
-            args["vmem"] = vmemi
+            print("Runtime per time step: {0:.5f} s".format(["rt_per_timestep"]))
             print("Use vmem: {}".format(vmemi))
 
         #not needed; just for completeness of dataframe:
@@ -411,9 +258,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
                     hist_paths = r'''{} {} "{}"'''.format(hist_paths, stream_arg, outname)
 
-                args_str = args_str + hist_paths
+                args_str_r = args_str + hist_paths
                 comm_args =dict(wrfv=wrf_dir_i, ideal_case=conf.ideal_case, input_sounding=args["input_sounding"],
-                                sleep=rep, nx=nx, ny=ny, wrf_args=args_str, run_path=conf.run_path, build_path=conf.build_path,
+                                sleep=rep, nx=nx, ny=ny, wrf_args=args_str_r, run_path=conf.run_path, build_path=conf.build_path,
                                 qsub=int(use_qsub), cluster=int(conf.cluster))
                 if use_qsub:
                     comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
@@ -423,30 +270,34 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         os.environ[p] = str(v)
 
                     os.environ["JOB_NAME"] = IDr
-                    comm = "bash init_wrf.job '{}' ".format(args_str)
+                    comm = "bash init_wrf.job '{}' ".format(args_str_r)
 
                 if verbose:
                     print(comm)
                 if not check_args:
                     err = os.system(comm)
-                    ID_path = "{}/WRF_{}/".format(conf.run_path, IDr)
-                    initlog = open(ID_path + "init.log").read()
+                    initlog = open(run_dir_r + "/init.log").read()
                     print(initlog.split("\n")[-2].strip())
-                    initerr = open(ID_path + "init.err").read()
+                    initerr = open(run_dir_r + "/init.err").read()
                     print(initerr)
                     if err != 0:
                         raise RuntimeError("Initialization failed!")
 
 
             else:
+                if not os.path.isfile(run_dir_r + "/wrfinput_d01"):
+                    print("Run not initialized yet! Skipping...")
+                    continue
                 stream_names = [stream[0] for stream in conf.output_streams.values()]
                 if restart:
-                    wdir = "{}/WRF_{}/".format(conf.run_path,IDr)
-                    run_hours = misc_tools.prepare_restart(wdir, IDr, conf.outpath, stream_names, end_time_dt)
-                    if run_hours == 0:
+                    args["rt_per_timestep"]  = misc_tools.prepare_restart(run_dir_r, outpath, stream_names, args["end_time"])
+                    if args["rt_per_timestep"]  <= 0:
+                        print("Run already complete")
+                        continue
+                    elif run_hours is None:
                         continue
                 else:
-                    outfiles = ["{}/{}_{}".format(conf.outpath, outfile, IDr) for outfile in stream_names]
+                    outfiles = ["{}/{}_{}".format(outpath, outfile, IDr) for outfile in stream_names]
                     outfiles = [o for o in outfiles if os.path.isfile(o)]
                     if len(outfiles) > 0:
                         print("Output files already exist.")
@@ -457,7 +308,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             print("Overwriting...")
                         elif exist == "b":
                             print("Creating backup...")
-                            bk_dir =  "{}/bak/".format(conf.outpath)
+                            bk_dir =  "{}/bak/".format(outpath)
                             os.makedirs(bk_dir, exist_ok=True)
                             for outfile in outfiles:
                                 outfile_name = outfile.split("/")[-1]
@@ -473,14 +324,14 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
                 rtri = None
                 if use_qsub:
-                    rtri = runtime_per_step * run_hours/dt * conf.rt_buffer
+                    rtri = args["rt_per_timestep"] * run_hours/args["dt"] * conf.rt_buffer
                     rtr.append(rtri)
 
                 last_id = False
                 if (rep == n_rep-1) and (i == len(combs) - 1):
                     last_id = True
 
-                if (sum(nslots) >= conf.pool_size) or (not pool_jobs) or conf.last_id: #submit current pool of jobs
+                if (sum(nslots) >= conf.pool_size) or (not pool_jobs) or last_id: #submit current pool of jobs
                     print("")
                     resched_i = False
                     #if pool is already too large: cut out last job, which is rescheduled afterwards

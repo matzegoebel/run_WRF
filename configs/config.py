@@ -46,10 +46,10 @@ params["n_rep"] = 1 #number of repetitions for each configuration
 
 #horizontal grid
 params["dx"] = 500 #horizontal grid spacing (m)
-params["lx"] = 1 #horizontal extent in east west (m)
-params["ly"] = 1 #minimum horizontal extent in north south (m)
+params["lx"] = 1000 #horizontal extent in east west (m)
+params["ly"] = 1000 #minimum horizontal extent in north south (m)
 #use minimum number of grid points set below:
-use_min_gridpoints = True #"x", "y", True (for both) or False
+use_min_gridpoints = False #"x", "y", True (for both) or False
 params["min_gridpoints_x"] = 10 #minimum number of grid points in x direction
 params["min_gridpoints_y"] = 10 #minimum number of grid points in y direction
 #if use_min_gridpoints: force x and y extents to be multiples of lx and ly, respectively
@@ -142,12 +142,7 @@ else:
 
 #%%
 
-param_combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid)
+param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)
 
-#combine param grid and additional settings
-combs = param_combs.copy()
-for param, val in params.items():
-    if param not in combs:
-        combs[param] = val
 
 #Below you can manually add parameters to the DataFrame combs

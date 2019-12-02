@@ -11,7 +11,9 @@ import pytest
 import numpy as np
 import subprocess as sp
 import os
+from collections import OrderedDict as odict
 import get_namelist
+import pandas as pd
 
 runs_dir = "./test_data/runs/"
 def test_get_runtime():
@@ -60,3 +62,13 @@ def test_namelist_to_dict():
     for k, v in correct.items():
         assert v == namelist_dict[k]
 
+def test_grid_combinations():
+    param_grid = odict(input_sounding=["stable", "unstable"], res={"dx" : [200,4000], "dz0" : [10,50]})
+    param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid)
+    param_combs_corr = pd.DataFrame(columns=["input_sounding", "dx", "dz0", "res_idx"], index=np.arange(4))
+    param_combs_corr.loc[:,:] = np.array([['stable', 200, 10, 0],
+                                          ['stable', 4000, 50, 1],
+                                          ['unstable', 200, 10, 0],
+                                          ['unstable', 4000, 50, 1]], dtype=object)
+
+    pd.testing.assert_frame_equal(param_combs.astype(object), param_combs_corr)

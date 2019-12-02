@@ -16,24 +16,41 @@ from collections import Counter
 import configs.test.config_test as conf
 import shutil
 import time
-
+from netCDF4 import Dataset
+import wrf
+import pandas as pd
+#%%
 
 def test_submit_jobs():
 
     for add in ["_mpi", ""]:
         target_dir = "{}/{}{}/test/{}/".format(conf.build_path, conf.wrf_dir_pre, add, conf.ideal_case)
         shutil.copy("test_data/IO_test.txt", target_dir)
-        shutil.copy("test_data/namelists/namelist.input" + add, target_dir + "namelist.input")
+        shutil.copy("test_data/namelists/namelist.input", target_dir + "namelist.input")
 
     os.chdir("..")
-    submit_jobs(check_args=True, init=True, verbose=False, config_file="test.config_test")
-    combs = submit_jobs(check_args=True, config_file="test.config_test")
     with pytest.raises(RuntimeError):
         submit_jobs(config_file="test.config_test_del_args", init=True)
 
-    nruns = len(combs)
-    submit_jobs(init=True, config_file="test.config_test", exist="o")
-    submit_jobs(init=False, wait=True, config_file="test.config_test", exist="o")
+    #check skipping non-initialized runs
+    with Capturing() as output:
+        submit_jobs(init=False, config_file="test.config_test")
+    assert Counter(output)["Run not initialized yet! Skipping..."] == 2
+
+
+    #initialize and run wrf
+    combs = submit_jobs(init=True, config_file="test.config_test")
+    nruns = combs["n_rep"].sum()
+    submit_jobs(init=False, wait=True, config_file="test.config_test")
+
+    #check output data
+    outd = os.path.join(conf.outpath, conf.outdir)
+    outfiles = ['fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
+    assert sorted(os.listdir(outd)) == sorted(outfiles)
+    file = Dataset(outd + "/fastout_pytest_lin_0")
+    t = wrf.extract_times(file, timeidx=None)
+    t_corr = pd.date_range(start="2018-06-20T00:00:00", end='2018-06-20T02:00:00', freq="5.5min")
+    assert (t == t_corr).all()
 
     #test behaviour if output exists
     for run in os.listdir(conf.run_path):
@@ -53,20 +70,62 @@ def test_submit_jobs():
                 if "Skipping..." not in message:
                     assert count[success[init]] == nruns
 
+
+    #check backup creation
+    submit_jobs(init=False, exist="b", wait=True, config_file="test.config_test")
+    bak = ['fastout_pytest_lin_0_bak_0',
+           'wrfout_pytest_lin_0_bak_0',
+           'fastout_pytest_lin_0_bak_1',
+           'wrfout_pytest_lin_0_bak_1',
+           'fastout_pytest_kessler_0_bak_0',
+           'wrfout_pytest_kessler_0_bak_0',
+           'fastout_pytest_kessler_0_bak_1',
+           'wrfout_pytest_kessler_0_bak_1']
+    assert sorted(os.listdir(outd + "/bak")) == sorted(bak)
+
     with pytest.raises(ValueError, match="Value 'a' for -e option not defined!"):
         submit_jobs(init=True, exist="a", config_file="test.config_test")
 
 
-    time.sleep(5)
+    #check restart
+    with Capturing() as output:
+        submit_jobs(init=False, restart=True, wait=True, config_file="test.config_test_rst")
+    count = Counter(output)
+    for m in ["Restart run from 2018-06-20 02:00:00", 'd01 2018-06-20_04:00:00 wrf: SUCCESS COMPLETE WRF']:
+        assert count[m] == nruns
+
+    #check repeats
+    combs = submit_jobs(init=True, exist="o", config_file="test.config_test_reps")
+    with Capturing() as output:
+        submit_jobs(init=False, wait=True, exist="o", config_file="test.config_test_reps")
+    count = Counter(output)
+    assert count[success[False]] == combs["n_rep"].sum()
+
+
+    #check mpi and pool
+    submit_jobs(init=True, wait=True, exist="o", config_file="test.config_test_mpi")
+
+    with Capturing() as output:
+        submit_jobs(init=False, pool_jobs=True, wait=True, exist="o", config_file="test.config_test_mpi")
+    count = Counter(output)
+    m = "Submit IDs: ['pytest_kessler_0', 'pytest_lin_0']"
+    assert count[m] == 1
+   # assert count[success[False]] == combs["n_rep"].sum()
+
+    #test get_rt and vmem, qsub
+    # with Capturing() as output:
+    #     submit_jobs(init=False, check_args=True, use_qsub=True, exist="o", config_file="test.config_test")
+    # count = Counter(output)
 
 
     shutil.rmtree(os.environ["wrf_res"] + "/test/pytest")
     shutil.rmtree(os.environ["wrf_runs"] + "/pytest")
 
 
+
 #Domain size must be multiple of lx
 
-#test run and restart run, check name list changes
-# check if bak is created
-#check grid combs
-#check if wrf successful in log or as parameter form submit_jobs?
+#check name list changes, output
+#test pooling
+#test get_rt and vmem
+# test history streams

@@ -1,0 +1,41 @@
+job_number:                 154993
+exec_file:                  job_scripts/154993
+submission_time:            Sat Nov 30 11:22:40 2019
+owner:                      c7071088
+uid:                        170378
+group:                      c707
+gid:                        236
+sge_o_home:                 /home/c707/c7071088
+sge_o_log_name:             c7071088
+sge_o_path:                 /scratch/c7071088/programs/bin:/home/c707/c7071088/tools:/usr/site/hpc/x86_64/glibc-2.17/broadwell/netcdf-4/4.6.1/intel-18.0u1/bin:/usr/site/hpc/x86_64/glibc-2.17/broadwell/hdf5/1.8.20/intel-18.0u1/bin:/usr/site/hpc/x86_64/glibc-2.17/broadwell/openmpi/3.1.1/intel-18.0u1/bin:/usr/site/hpc/x86_64/generic/intel/composerxe/2018u1/bin:/scratch/c7071088/miniconda3/bin:/scratch/c7071088/miniconda3/condabin:/usr/sge/bin:/usr/sge/bin/lx-amd64:/usr/lib64/qt-3.3/bin:/usr/local/bin:/usr/bin:/home/c707/c7071088/.local/bin:/home/c707/c7071088/bin
+sge_o_shell:                /bin/bash
+sge_o_workdir:              /gpfs/gpfs1/scratch/c7071088/phd/code/wrf_related/run_wrf
+sge_o_host:                 login
+account:                    sge
+cwd:                        /gpfs/gpfs1/scratch/c7071088/phd/code/wrf_related/run_wrf
+stderr_path_list:           NONE:NONE:/scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID.err
+hard resource_list:         h_rt=900,h_vmem=600M
+mail_options:               aes
+mail_list:                  matthias.goebel@uibk.ac.at
+notify:                     FALSE
+job_name:                   pytest_kessler_0
+stdout_path_list:           NONE:NONE:/scratch/$USER/phd/logs/$JOB_NAME_$JOB_ID.out
+jobshare:                   0
+hard_queue_list:            std.q
+env_list:                   TERM=NONE,wrfv=WRF_test,nslots=1,jobs=pytest_kessler_0,pool_jobs=0,run_path=/scratch/c7071088/wrf/runs//pytest,cluster=1,wait=0
+script_file:                run_wrf.job
+binding:                    NONE
+job_type:                   NONE
+usage         1:            cpu=00:02:00, mem=13.13958 GB s, io=0.02315 GB, vmem=114.105M, maxvmem=114.105M
+binding       1:            NONE
+scheduling info:            queue instance "all.q@n018.intern.leo4.intra.uibk.ac.at" dropped because it is temporarily not available
+                            queue instance "short.q@n018.intern.leo4.intra.uibk.ac.at" dropped because it is temporarily not available
+                            queue instance "std.q@n018.intern.leo4.intra.uibk.ac.at" dropped because it is temporarily not available
+                            queue instance "long.q@n048.intern.leo4.intra.uibk.ac.at" dropped because it is full
+                            queue instance "long.q@n047.intern.leo4.intra.uibk.ac.at" dropped because it is full
+                            queue instance "std.q@n030.intern.leo4.intra.uibk.ac.at" dropped because it is full
+                            queue instance "std.q@n010.intern.leo4.intra.uibk.ac.at" dropped because it is full
+                            queue instance "std.q@n044.intern.leo4.intra.uibk.ac.at" dropped because it is full
+                            queue instance "bigmem.q@n045.intern.leo4.intra.uibk.ac.at" dropped because it is full
+                            queue instance "bigmem.q@n046.intern.leo4.intra.uibk.ac.at" dropped because it is full
+
