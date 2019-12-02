@@ -6,9 +6,7 @@ print help: `python submit_jobs.py --help`
 
 This package helps running idealized WRF experiments. You can define a grid of namelist parameters and additional settings for your experiments in the config file `configs/config.py`. Any namelist parameter can be added to the settings. However, it has to be already defined in the default namelist file of the used WRF build directory (`WRF${wrf_dir_pre}/test/${ideal_case}/namelist.input`). Otherwise, the namelist settings cannot be overridden and an error is raised. The two variables in the path above are specified in the config file.  
 The input sounding is selected in the config file. This input sounding also needs to be in the ideal case directory of the WRF build.
-
 In addition, the script makes it easy to set the vertical and horizontal domain, start and end times of the simulations and output directories
-
 For additional parameters in the config file, that are not namelist parameters, refer to the comments in the config file.
 
 To initialize the simulations, run `python submit_jobs.py` with the `-i` flag and then again without this flag to start the simulations. The python script executes the bash scripts `init_wrf.job` and `run_wrf.job`, respectively. The former script copies the binaries of a specified WRF build to a new simulation directory, modifies the namelist parameters, selects the desired input sounding and executes `ideal.exe` and the latter executes `wrf.exe` in serial or parallel mode.
@@ -22,7 +20,7 @@ If the simulation folder (in init mode) or the output files (in simulation mode)
 
 When run on a cluster, the `-q` flag allows submitting the jobs with SGE. Email settings for SGE can be set with the  `-m` option (set your email address in the job scripts `init_wrf.job` and `run_wrf.job` beforehand). To control which modules are loaded for cluster jobs, take a look at `init_wrf.job` and `run_wrf.job`.
 
-The package simplifies requesting job resources like virtual memory, runtime and number of CPUs. If the runtime or virtual memory of jobs is not specified in the config file, the program searches for simulations with an identical namelist file (except for some parameters irrelevant to the runtime per time step) and uses the runtime and virtual memory information in the respective log file. For this purpose, you can create short test simulations (with `-q` option) by setting a small value for `rt` and one repitition per configuration (`n_rep=1`) in your config file. Do not use pooling (see below) for these test runs, as, in this case, the virtual memory could be retrieved for each configuration separately.
+The package simplifies requesting job resources like virtual memory, runtime and number of CPUs. If the runtime or virtual memory of jobs is not specified in the config file, the program searches for simulations with an identical namelist file (except for some parameters irrelevant to the runtime per time step) and uses the runtime and virtual memory information in the respective log file. For this purpose, you can create short test simulations (with `-q` option) by setting a small value for `rt` and one repitition per configuration (`n_rep=1`) in your config file. Do not use pooling (see below) for these test runs, as, in this case, the virtual memory could not be retrieved for each configuration separately.
 
 If not using SGE, the simulations are started simultaneously and run in the background, by default. The `-w` option allows to wait for a simulation (or pool of simulations, see below) to finish, before submitting the next. 
 
