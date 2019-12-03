@@ -74,7 +74,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     if outdir is None:
         outdir = conf.outdir
 
-    outpath = os.path.join(os.environ["wrf_res"], outdir, "") #WRF output path
+    outpath = os.path.join(conf.outpath, outdir, "") #WRF output path
     if not os.path.isdir(outpath):
         os.makedirs(outpath)
 
