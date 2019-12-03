@@ -18,7 +18,7 @@ from configs.test.config_test import *
 
 #%%
 
-vmem = 200
+vmem = 500
 
 #%%
 param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)

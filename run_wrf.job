@@ -1,6 +1,5 @@
 #!/bin/bash
-#$ -o ${run_path}/logs/$JOB_NAME_$JOB_ID_init.out
-#$ -e ${run_path}/logs/$JOB_NAME_$JOB_ID_init.err
+
 
 set -e
 
@@ -88,12 +87,13 @@ done
 
 for (( i=0; i<${#jobs[@]}; i++ ))
 do
+  cd ${run_path}/WRF_${jobs[$i]}
+
   # if SGE is used or wait=True is set: wait for job to finish
   if [ -n "${SGE_STDOUT_PATH}" ] || (( $wait==1 ))
   then
     wait
     #append rsl.error.0000 to run.log
-    cd ${run_path}/WRF_${jobs[$i]}
     if [[ -f rsl.error.0000 ]]
     then
       cat rsl.error.0000 >> run.log
@@ -106,10 +106,15 @@ do
     python -c "import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[$i]}')"
   fi
 
+
+  if [ -n "${SGE_STDOUT_PATH}" ]
+  then
+    #save resource usage of job
+    qstat -j $JOB_ID > qstat.info
+    #prepend sge log to run log
+    echo -e "$(cat ${run_path}/logs/$JOB_NAME.out)\n$(cat run.log)" > run.log
+    echo -e "$(cat ${run_path}/logs/$JOB_NAME.err)\n$(cat run.err)" > run.err
+  fi
+
 done
 
-if [ -n "${SGE_STDOUT_PATH}" ]
-then
-  #save resource usage of job
-  qstat -j $JOB_ID > qstat.info
-fi

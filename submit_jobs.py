@@ -80,6 +80,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
     outpath_esc = outpath.replace("/", "\/") #need to escape slashes
 
+    #temporary log output for SGE
+    if use_qsub:
+        sge_log_dir = conf.run_path + "/logs/"
+        os.makedirs(sge_log_dir, exist_ok=True)
+
     IDs = []
     rtr = []
     wrf_dir = []
@@ -265,7 +270,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 if use_qsub:
                     comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                     rt_init = misc_tools.format_timedelta(conf.rt_init*60)
-                    sge_args = "-cwd -q {} -l h_rt={} -l h_vmem={}M -m {} -M {} -N {}".format(init_queue, rt_init, vmem_init, mail, conf.mail_adress, IDr)
+                    qout, qerr = [sge_log_dir + IDr + s for s in [".out", ".err"]]
+                    sge_args = "-cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M -m {} -M {} -N {}".format(init_queue, qout, qerr, rt_init, vmem_init, mail, conf.mail_adress, IDr)
                     if "h_stack_init" in dir(conf) and conf.h_stack_init is not None:
                         sge_args += " -l h_stack={}M".format(round(conf.h_stack_init))
 
@@ -374,8 +380,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         if use_qsub:
                             vmemp = int(sum(vmem)/sum(nslots))
                             rtp = misc_tools.format_timedelta(max(rtr)*3600)
-
-                            sge_args = "-cwd -q {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -M {}".format(conf.queue, job_name, rtp, vmemp, slot_comm, mail, conf.mail_adress)
+                            qout, qerr = [sge_log_dir + job_name + s for s in [".out", ".err"]]
+                            sge_args = "-cwd -q {} -o {} -e {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -M {}".format(conf.queue, qout, qerr, job_name, rtp, vmemp, slot_comm, mail, conf.mail_adress)
                             if "h_stack" in dir(conf) and conf.h_stack is not None:
                                 sge_args += " -l h_stack={}M".format(round(conf.h_stack))
 

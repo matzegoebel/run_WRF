@@ -491,10 +491,12 @@ def get_vmem(runs, logfile="qstat.info"):
         qstat_file = r + "/" + logfile
         if os.path.isfile(qstat_file):
             vmem_r = get_job_usage(qstat_file)["maxvmem"]
+            vmem_r_num = None
             for mag, factor in zip(("M", "G"), (1, 1000)):
                 if mag in vmem_r:
                     vmem_r_num = float(vmem_r[:vmem_r.index(mag)])*factor
-            vmem.append(vmem_r_num)
+            if vmem_r_num is not None:
+                vmem.append(vmem_r_num)
     if len(vmem) > 0:
         return vmem
 
