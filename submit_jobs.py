@@ -8,6 +8,7 @@ Automatically initialize and run idealized experiments in WRF on a single comput
 @author: c7071088
 """
 import numpy as np
+import pandas as pd
 import math
 import os
 import datetime
@@ -102,11 +103,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
 
     print("Configs:")
-    print(param_combs)
+    print(pd.DataFrame(param_combs))
     print("-"*40)
     for i in range(len(combs)):
-        args = combs.loc[i].dropna().to_dict()
-        param_comb = param_combs.loc[i]
+        args = pd.Series(combs[i]).dropna().to_dict()
+        param_comb = param_combs[i]
 
         #create output ID for current configuration
         IDi, IDi_d = misc_tools.output_id_from_config(param_comb, conf.param_grid, conf.param_names, conf.runID)
@@ -218,7 +219,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         args["nslots"] = nslotsi
         args["run_dir"] = run_dir
         for arg, val in args.items():
-            combs_all.loc[i, arg] = val
+            combs_all[i][arg] = val
 
 
         n_rep = args["n_rep"]
@@ -251,7 +252,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         raise ValueError("Value '{}' for -e option not defined!".format(exist))
 
                 hist_paths = r""
-                for stream, (outfile, _) in conf.output_streams.items():
+                for stream, (outfile, _) in args["output_streams"].items():
                     outname = r"{}{}_{}".format(outpath_esc, outfile, IDr)
                     if one_frame:
                         outname += "_<date>"
@@ -287,9 +288,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     print(comm)
                 if not check_args:
                     err = os.system(comm)
-                    initlog = open(run_dir_r + "/init.log").read()
-                    print(initlog.split("\n")[-2].strip())
-                    if err != 0:
+                    if err == 0:
+                        initlog = open(run_dir_r + "/init.log").read()
+                        print(initlog.split("\n")[-2].strip())
+                    else:
                         initerr = open(run_dir_r + "/init.err").read()
                         print(initerr)
                         raise RuntimeError("Initialization failed!")
@@ -299,7 +301,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 if not os.path.isfile(run_dir_r + "/wrfinput_d01"):
                     print("Run not initialized yet! Skipping...")
                     continue
-                stream_names = [stream[0] for stream in conf.output_streams.values()]
+                stream_names = [stream[0] for stream in args["output_streams"].values()]
                 if restart:
                     args["rt_per_timestep"]  = misc_tools.prepare_restart(run_dir_r, outpath, stream_names, args["end_time"])
                     if args["rt_per_timestep"]  <= 0:
@@ -430,7 +432,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             nslots = []
                             wrf_dir = []
 
-    return combs_all
+    return pd.DataFrame(combs_all)
 
 #%%
 if __name__ == "__main__":

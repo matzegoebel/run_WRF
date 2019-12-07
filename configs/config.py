@@ -77,9 +77,10 @@ params["bl_pbl_physics"] = 2
 
 #indices for output streams and their respective name and output interval (minutes, floats allowed)
 # 0 is the standard output stream
-output_streams = {0: ["wrfout", 30] }
+params["output_streams"] = {0: ["wrfout", 30] }
 
 # filename where output variables for standard and auxiliary streams are modified:
+# if None: use specified value in namelist.input: if "" no file is used
 params["iofields_filename"] = None
 
 params["restart_interval"] = 240 #restart interval (min)
@@ -87,7 +88,7 @@ params["restart_interval"] = 240 #restart interval (min)
 split_output_res = 0 #dx (m) below which to split output in one timestep per file
 
 # non-namelist parameters that will not be included in namelist file
-del_args =   ["start_time", "end_time", "nz", "dz0","dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
+del_args =   ["output_streams", "start_time", "end_time", "nz", "dz0","dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
               "n_rep", "isotropic_res", "pbl_res", "dt", "radt_min"]
 #%%
 '''Settings for resource requirements of SGE jobs'''

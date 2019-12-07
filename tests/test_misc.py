@@ -64,7 +64,7 @@ def test_namelist_to_dict():
 
 def test_grid_combinations():
     param_grid = odict(input_sounding=["stable", "unstable"], res={"dx" : [200,4000], "dz0" : [10,50]})
-    param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid)
+    param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, return_df=True)
     param_combs_corr = pd.DataFrame(columns=["input_sounding", "dx", "dz0", "res_idx"], index=np.arange(4))
     param_combs_corr.loc[:,:] = np.array([['stable', 200, 10, 0],
                                           ['stable', 4000, 50, 1],

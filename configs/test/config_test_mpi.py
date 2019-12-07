@@ -21,7 +21,7 @@ from configs.test.config_test import *
 param_grid = odict(mp_physics=[1, 2])
 params = params.copy()
 
-params["end_time"] = "2018-06-20_01:00:00" #format %Y-%m-%d_%H:%M:%S
+params["end_time"] = "2018-06-20_07:00:00" #format %Y-%m-%d_%H:%M:%S
 
 use_min_gridpoints = True #"x", "y", True (for both) or False
 params["min_gridpoints_x"] = 33 #minimum number of grid points in x direction

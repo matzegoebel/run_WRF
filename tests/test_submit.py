@@ -53,7 +53,7 @@ def test_submit_jobs():
     assert sorted(os.listdir(outd)) == sorted(outfiles)
     file = Dataset(outd + "/fastout_pytest_lin_0")
     t = wrf.extract_times(file, timeidx=None)
-    t_corr = pd.date_range(start="2018-06-20T00:00:00", end='2018-06-20T02:00:00', freq="10min")
+    t_corr = pd.date_range(start="2018-06-20T06:00:00", end='2018-06-20T08:00:00', freq="10min")
     assert (t == t_corr).all()
 
     #test behaviour if output exists
@@ -62,7 +62,7 @@ def test_submit_jobs():
         if os.path.isfile(file):
             os.remove(file)
     exist_message = (("s", "Redoing initialization..."), ("s", "Skipping..."), ("o", "Overwriting..."), ("b", "Creating backup..."))
-    success = {True : 'wrf: SUCCESS COMPLETE IDEAL INIT', False : 'd01 2018-06-20_02:00:00 wrf: SUCCESS COMPLETE WRF'}
+    success = {True : 'wrf: SUCCESS COMPLETE IDEAL INIT', False : 'd01 2018-06-20_08:00:00 wrf: SUCCESS COMPLETE WRF'}
     for init in [True, False]:
         for i, (exist, message) in enumerate(exist_message):
             if init or i > 0:
@@ -95,7 +95,7 @@ def test_submit_jobs():
     with Capturing() as output:
         submit_jobs(init=False, restart=True, wait=True, config_file="test.config_test_rst")
     count = Counter(output)
-    for m in ["Restart run from 2018-06-20 02:00:00", 'd01 2018-06-20_04:00:00 wrf: SUCCESS COMPLETE WRF']:
+    for m in ["Restart run from 2018-06-20 08:00:00", 'd01 2018-06-20_10:00:00 wrf: SUCCESS COMPLETE WRF']:
         assert count[m] == nruns
 
     #check output data
@@ -104,7 +104,7 @@ def test_submit_jobs():
     assert sorted(os.listdir(outd)) == sorted(outfiles)
     file = Dataset(outd + "/fastout_pytest_lin_0")
     t = wrf.extract_times(file, timeidx=None)
-    t_corr = pd.date_range(start="2018-06-20T00:00:00", end='2018-06-20T04:00:00', freq="10min")
+    t_corr = pd.date_range(start="2018-06-20T00:06:00", end='2018-06-20T010:00:00', freq="10min")
     assert (t == t_corr).all()
 
     #check repeats
@@ -123,7 +123,7 @@ def test_submit_jobs():
     count = Counter(output)
     m = "Submit IDs: ['pytest_kessler_0', 'pytest_lin_0']"
     assert count[m] == 1
-    m = "d01 2018-06-20_00:01:00 wrf: SUCCESS COMPLETE WRF"
+    m = "d01 2018-06-20_00:07:00 wrf: SUCCESS COMPLETE WRF"
     assert count[m] == combs["n_rep"].sum()
 
     #test get_rt and vmem, qsub

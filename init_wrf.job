@@ -22,7 +22,6 @@ cd $run_dir
 exec 1> "init.log"
 exec 2> "init.err"
 
-
 if (( cluster==0 ))
 then
   ulimit -s unlimited

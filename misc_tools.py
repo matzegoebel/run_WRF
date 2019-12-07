@@ -125,7 +125,7 @@ def format_timedelta(td):
 
 #%%config grid related
 
-def grid_combinations(param_grid, add_params=None):
+def grid_combinations(param_grid, add_params=None, return_df=False):
     """
     Create list of all combinations of parameter values defined in dictionary param_grid.
     Two or more parameters can be varied simultaneously by defining a composite
@@ -143,12 +143,14 @@ def grid_combinations(param_grid, add_params=None):
         input dictionary containing the parameter values
     add_params : pandas DataFrame
         additional parameters to add to result
+    return_df : bool
+        return pandas Dataframes instead of list of dicts
 
     Returns
     -------
-    param_combs : pandas DataFrame
+    combs : list of dicts or pandas DataFrame
         parameter combinations
-    combs_full : pandas DataFrame
+    combs_full : list of dicts or pandas DataFrame
         param_combs combined with add_params
     param_grid_flat : dictionary
         input param_grid with composite parameters flattened
@@ -182,16 +184,19 @@ def grid_combinations(param_grid, add_params=None):
         c = flatten_list(comb)
         combs[i] = odict(zip(params,c))
 
-    param_combs = pd.DataFrame(combs)
-
-    combs_full = param_combs.copy()
+    combs_full = copy.deepcopy(combs)
     if add_params is not None:
         #combine param grid and additional settings
         for param, val in add_params.items():
-            if param not in combs_full:
-                combs_full[param] = val
+            for i,comb in enumerate(combs_full):
+                if param not in comb:
+                    comb[param] = val
 
-    return param_combs, combs_full, param_grid_flat, composite_params
+    if return_df:
+        combs = pd.DataFrame(combs)
+        combs_full = pd.DataFrame(combs_full)
+
+    return combs, combs_full, param_grid_flat, composite_params
 
 def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
     """
@@ -232,7 +237,7 @@ def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
                 else:
                     ID[p] = namep[param_grid[p].index(ID[p])]
 
-    ID_str = "_".join(ID.values.astype(str))
+    ID_str = "_".join([str(v) for v in ID.values()])
     if runID is not None:
         ID_str =  runID + "_" + ID_str
 
@@ -609,19 +614,19 @@ def prepare_init(args, conf, wrf_dir_i):
     args["e_vert"] = args["nz"]
     eta, dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
                                                       dz0=args["dz0"], plot=False, table=False)
-    eta_levels = "'" + ",".join(eta.astype(str)) + "'"
+    args["eta_levels"] = "'" + ",".join(eta.astype(str)) + "'"
 
     #split output in one timestep per file
     one_frame = False
     if r <= conf.split_output_res:
         args["frames_per_outfile"] = 1
-        for out_ind in conf.output_streams.keys():
+        for out_ind in args["output_streams"].keys():
             if out_ind != 0:
                 args["frames_per_auxhist{}".format(out_ind)] = 1
         one_frame = True
 
     #output streams
-    for stream, (_, out_int) in conf.output_streams.items():
+    for stream, (_, out_int) in args["output_streams"].items():
         out_int_m = math.floor(out_int)
         out_int_s = round((out_int - out_int_m)*60)
         if stream > 0:
@@ -667,6 +672,12 @@ def prepare_init(args, conf, wrf_dir_i):
             sfclay_scheme = 1
         args["sf_sfclay_physics"] = sfclay_scheme
 
+    if "iofields_filename" in args:
+        if args["iofields_filename"] == "":
+            args["iofields_filename"] = "NONE_SPECIFIED"
+        args["iofields_filename"] = '''"'{}'"'''.format(args["iofields_filename"])
+        # args_str = args_str + """ iofields_filename "'{}'" """.format(args["iofields_filename"])
+
     # delete non-namelist parameters
     del_args = [*conf.del_args, *[p + "_idx" for p in conf.composite_params.keys()]]
     with open("{}/{}/test/{}/namelist.input".format(conf.build_path, wrf_dir_i, conf.ideal_case)) as namelist_file:
@@ -688,12 +699,7 @@ def prepare_init(args, conf, wrf_dir_i):
             typ = int
         new_dtypes[arg] = typ
     args_dict = args_df.astype(new_dtypes).iloc[0].to_dict()
-
     args_str = " ".join(["{} {}".format(param, val) for param, val in args_dict.items()])
-
-    if "iofields_filename" in args:
-        args_str = args_str + """ iofields_filename "'{}'" """.format(args["iofields_filename"])
-    args_str += " eta_levels " + eta_levels
 
     return args, args_str, one_frame
 

@@ -38,14 +38,14 @@ param_names = {"mp_physics" : {1: "kessler", 2: "lin"},
 #any namelist parameters and some additional ones can be used
 
 
-params["start_time"] = "2018-06-20_00:00:00" #format %Y-%m-%d_%H:%M:%S
-params["end_time"] = "2018-06-20_02:00:00" #format %Y-%m-%d_%H:%M:%S
+params["start_time"] = "2018-06-20_06:00:00" #format %Y-%m-%d_%H:%M:%S
+params["end_time"] = "2018-06-20_08:00:00" #format %Y-%m-%d_%H:%M:%S
 
 params["n_rep"] = 1 #number of repetitions for each configuration
 
 #horizontal grid
 params["dx"] = 500 #horizontal grid spacing (m)
-params["lx"] = 1000 #horizontal extent in east west (m)
+params["lx"] = 1000 #minimum horizontal extent in east west (m)
 params["ly"] = 1000 #minimum horizontal extent in north south (m)
 #use minimum number of grid points set below:
 use_min_gridpoints = False #"x", "y", True (for both) or False
@@ -71,14 +71,15 @@ params["pbl_res"] = 500 #dx (m) from and above which to use PBL scheme; this als
 params["spec_hfx"] = None #None specified surface heat flux instead of radiation
 
 #other standard namelist parameters
-params["mp_physics"] = 2
+params["mp_physics"] = 0
 params["bl_pbl_physics"] = 2
 
 #indices for output streams and their respective name and output interval (minutes, floats allowed)
 # 0 is the standard output stream
-output_streams = {0: ["wrfout", 30.], 7: ["fastout", 10.] }
+params["output_streams"] = {0: ["wrfout", 30.], 7: ["fastout", 10.] }
 
 # filename where output variables for standard and auxiliary streams are modified:
+# if None: use specified value in namelist.input: if "" no file is used
 params["iofields_filename"] = "IO_test.txt"
 
 params["restart_interval"] = 120 #restart interval (min)
@@ -86,7 +87,7 @@ params["restart_interval"] = 120 #restart interval (min)
 split_output_res = 0 #dx (m) below which to split output in one timestep per file
 
 # non-namelist parameters that will not be included in namelist file
-del_args =   ["start_time", "end_time", "nz", "dz0","dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
+del_args =   ["output_streams", "start_time", "end_time", "nz", "dz0","dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
               "n_rep", "isotropic_res", "pbl_res", "dt", "radt_min"]
 #%%
 '''Settings for resource requirements of SGE jobs'''

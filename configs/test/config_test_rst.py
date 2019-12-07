@@ -18,7 +18,7 @@ from configs.test.config_test import *
 
 #%%
 params = params.copy()
-params["end_time"] = "2018-06-20_04:00:00" #format %Y-%m-%d_%H:%M:%S
+params["end_time"] = "2018-06-20_10:00:00" #format %Y-%m-%d_%H:%M:%S
 
 
 #%%
