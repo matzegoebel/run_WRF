@@ -20,35 +20,37 @@ import inspect
 
 #%%
 def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_qsub=False,
-           check_args=False, pool_jobs=False, mail="ea", wait=False, verbose=False):
+           check_args=False, pool_jobs=False, mail="ea", wait=False, ignore_bad_namelist=False, verbose=False):
     """
     Submit idealized WRF experiments. Refer to README.md for more information.
 
     Parameters
     ----------
-    config_file : TYPE, optional
+    config_file : str, optional
         Name of config file in configs folder. The default is "config".
-    init : TYPE, optional
+    init : bool, optional
         Initialize simulations.
-    restart : TYPE, optional
+    restart : bool, optional
         Restart simulations.
-    outdir : TYPE, optional
+    outdir : str, optional
         Subdirectory for WRF output. Default defined in script. Only effective during initialization.
-    exist : TYPE, optional
+    exist : str, optional
         What to do if output already exists: Skip run ('s'), overwrite ('o') or backup files ('b'). Default is 's'.
-    debug : TYPE, optional
+    debug : bool, optional
         Run wrf in debugging mode. Just adds '_debug' to the build directory.
-    use_qsub : TYPE, optional
+    use_qsub : bool, optional
         Use qsub to submit jobs
-    check_args : TYPE, optional
+    check_args : bool, optional
         Only test python script (no jobs sumitted)
-    pool_jobs : TYPE, optional
+    pool_jobs : bool, optional
         Gather jobs before submitting with SGE. Needed if different jobs shall be run on the some node (potentially filling up the whole node)
-    mail : TYPE, optional
+    mail : str, optional
         If using qsub, defines when mail is sent. Either 'n' for no mails, or a combination of 'b' (beginning of job), 'e' (end), 'a' (abort)', 's' (suspended). Default: 'ea'
-    wait : TYPE, optional
+    wait : bool, optional
         Wait until job is finished before submitting the next.
-    verbose : TYPE, optional
+    ignore_bad_namelist : bool, optional
+        Ignore errors and warnings related to inconsistencies in namelist settings.
+    verbose : bool, optional
         Verbose mode
 
     Returns
@@ -195,7 +197,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             args["dt"] = r/1000*6 #wrf rule of thumb
 
         if init:
-            args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i)
+            args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i, ignore_bad_namelist=ignore_bad_namelist)
 
             #vmem init and SGE queue
             vmem_init = max(conf.vmem_init_min, int(conf.vmem_init_per_grid_point*args["e_we"]*args["e_sn"]))
@@ -466,6 +468,7 @@ if __name__ == "__main__":
                     "pool_jobs":      ("-p", "--pool", "store_true"),
                     "mail":           ("-m", "--mail", "store"),
                     "wait":           ("-w", "--wait", "store_true"),
+                    "ignore_bad_namelist":  ("-n", "--ignore_bad_namelist", "store_true"),
                     "verbose":        ("-v", "--verbose", "store_true")
                     }
 

@@ -588,7 +588,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False):
     return args, skip
 
 #%%init
-def prepare_init(args, conf, wrf_dir_i):
+def prepare_init(args, conf, wrf_dir_i, ignore_bad_namelist=False):
     """Sets some namelist parameters based on the config files settings."""
 
     r = args["dx"]
@@ -612,9 +612,10 @@ def prepare_init(args, conf, wrf_dir_i):
 
     #vert. domain
     args["e_vert"] = args["nz"]
-    eta, dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
-                                                      dz0=args["dz0"], plot=False, table=False)
-    args["eta_levels"] = "'" + ",".join(eta.astype(str)) + "'"
+    if "eta_levels" not in args:
+        args["eta_levels"], dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
+                                                          dz0=args["dz0"], plot=False, table=False)
+    args["eta_levels"] = "'" + ",".join(args["eta_levels"].astype(str)) + "'"
 
     #split output in one timestep per file
     one_frame = False
@@ -659,6 +660,9 @@ def prepare_init(args, conf, wrf_dir_i):
         pbl_scheme = 0
         if "km_opt" not in args:
             args["km_opt"] = 2
+        if "diff_opt" not in args:
+            args["diff_opt"] = 2
+
 
     args["bl_pbl_physics"] = pbl_scheme
 
@@ -680,16 +684,19 @@ def prepare_init(args, conf, wrf_dir_i):
 
     # delete non-namelist parameters
     del_args = [*conf.del_args, *[p + "_idx" for p in conf.composite_params.keys()]]
-    with open("{}/{}/test/{}/namelist.input".format(conf.build_path, wrf_dir_i, conf.ideal_case)) as namelist_file:
-        namelist = namelist_file.read().replace(" ", "").replace("\t","")
-    args_df = args.copy()
+    namelist = get_namelist.namelist_to_dict("{}/{}/test/{}/namelist.input".format(conf.build_path, wrf_dir_i, conf.ideal_case))
+    args_clean = args.copy()
     for del_arg in del_args:
-        if "\n"+del_arg+"=" in namelist:
+        if del_arg in namelist:
             raise RuntimeError("Parameter {} used in submit_jobs.py already defined in namelist.input! Rename this parameter!".format(del_arg))
-        if del_arg in args_df:
-            del args_df[del_arg]
-
-    args_df = pd.DataFrame(args_df, index=[0])
+        if del_arg in args_clean:
+            del args_clean[del_arg]
+    namelist.update(args_clean)
+    if "dz" in locals():
+        namelist["dz"] = dz
+    if not ignore_bad_namelist:
+        check_namelist_best_practice(namelist)
+    args_df = pd.DataFrame(args_clean, index=[0])
 
     #use integer datatype for integer parameters
     new_dtypes = {}
@@ -703,6 +710,61 @@ def prepare_init(args, conf, wrf_dir_i):
 
     return args, args_str, one_frame
 
+def check_namelist_best_practice(namelist):
+    """Check consistency of namelist parameters and print warnings if strange parameter combinations are used"""
+
+    raise_err = False
+    dx = namelist["dx"]
+    print("Check consistency of namelist settings. Horizontal grid spacing: dx={} m".format(dx))
+
+    #vertical grid
+    if "dz" in namelist:
+        dz_max = np.nanmax(namelist["dz"])
+        if dz_max > dx:
+            print("ERROR: There are levels with dz > dx (dz_max={0:.1f} m). Use more vertical levels, a lower model top or a higher dx!".format(dz_max))
+            raise_err = True
+        if dz_max > 1000:
+            print("ERROR: There are levels with dz > 1000 m (dz_max={0:.1f} m). Use more vertical levels or a lower model top!".format(dz_max))
+            raise_err = True
+
+    #MP_physics
+    graupel = namelist["mp_physics"] not in [1,3,4,14]
+    if (not graupel) and (dx <= 4000):
+        print("WARNING: Microphysics scheme with graupel necessary at cloud-resolving resolution. Avoid the following settings for mp_physics: 1,3,4,14")
+    elif graupel and (dx >= 10000):
+        print("HINT: Microphysics scheme with graupel not necessary for grid spacings above 10 km. You can instead use one of the following settings for mp_physics: 1,3,4,14")
+
+
+    #pbl scheme and LES
+    if (namelist["bl_pbl_physics"] == 0) and (dx >= 500):
+        print("ERROR: PBL scheme necessary for dx > 500 m!")
+        raise_err = True
+    elif (namelist["bl_pbl_physics"] != 0) and (dx <= 100):
+        print("ERROR: No PBL scheme necessary for dx < 100 m, use LES!")
+        raise_err = True
+
+    if (namelist["bl_pbl_physics"] == 0) and (dx <= 500): #LES
+        if namelist["km_opt"] not in [2,3]:
+            print("ERROR: Need 3D SGS turbulence scheme for LES. Choose km_opt 2 or 3")
+            raise_err = True
+        if namelist["diff_opt"] != 2:
+            print("ERROR: LES requires horizontal diffusion in physical space (diff_opt=2).")
+            raise_err = True
+        if namelist["sf_sfclay_physics"] not in [0,1,2]:
+            print("WARNING: Surface layer scheme {} not recommended for LES. Rather use setting 1 or 2.".format(namelist["sf_sfclay_physics"]))
+        if namelist["mix_isotropic"] != 1:
+            print("WARNING: Isotropic mixing (mix_isotropic=1) recommended for LES")
+
+
+
+    if (namelist["km_opt"] in [2,3]) and (namelist["diff_opt"] != 2):
+        print("ERROR: Horizontal diffusion in physical space (diff_opt=2) needed for 3D SGS turbulence scheme (km_opt=2 or 3).")
+        raise_err = True
+
+
+    print("\n")
+    if raise_err:
+        raise ValueError("Critical inconsitenciies found in namelist settings. Fix the issues or use -n option to ignore them.")
 #%%restart
 
 def prepare_restart(wdir, outpath, output_streams, end_time):
