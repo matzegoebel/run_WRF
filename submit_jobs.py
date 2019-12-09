@@ -269,9 +269,15 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     hist_paths = r'''{} {} "{}"'''.format(hist_paths, stream_arg, outname)
 
                 args_str_r = args_str + hist_paths
+
+                iofile = ""
+                if "iofields_filename" in args:
+                    iofile_ = args["iofields_filename"].replace("'","").replace('"',"")
+                    if iofile_ != "NONE_SPECIFIED":
+                        iofile = iofile_
                 comm_args =dict(wrfv=wrf_dir_i, ideal_case=conf.ideal_case, input_sounding=args["input_sounding"],
                                 sleep=rep, nx=nx, ny=ny, wrf_args=args_str_r, run_path=conf.run_path, build_path=conf.build_path,
-                                qsub=int(use_qsub), cluster=int(conf.cluster))
+                                qsub=int(use_qsub), cluster=int(conf.cluster), iofile=iofile)
                 if use_qsub:
                     comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                     rt_init = misc_tools.format_timedelta(conf.rt_init*60)

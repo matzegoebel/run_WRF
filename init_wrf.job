@@ -48,9 +48,10 @@ fi
 
 #from run directory for data files needed by physics modules; symbolic links sufficient
 cp -s ${build_dir}/run/* .
-rm -f namelist.input input_sounding
-#from ideal case directory for input sounding and namelist files
-cp -r -n $wrf_case_dir/* .
+#from ideal case directory for namelist file, input sounding and IO file 
+cd $wrf_case_dir
+cp --remove-destination namelist.input input_sounding* $iofile $run_dir
+cd $run_dir
 #binaries from main
 cp -f -b ${build_dir}/main/wrf.exe ${build_dir}/main/ideal.exe .
 
