@@ -8,7 +8,7 @@ Miscellaneous functions for submit_jobs.py
 @author: c7071088
 """
 
-import copy
+from copy import deepcopy
 import itertools
 import numpy as np
 import pandas as pd
@@ -158,8 +158,8 @@ def grid_combinations(param_grid, add_params=None, return_df=False):
         included parameters for each composite parameter
 
     """
-    d = copy.deepcopy(param_grid)
-    param_grid_flat = copy.deepcopy(param_grid)
+    d = deepcopy(param_grid)
+    param_grid_flat = deepcopy(param_grid)
     params = []
     composite_params = {}
     for param,val in d.items():
@@ -184,7 +184,7 @@ def grid_combinations(param_grid, add_params=None, return_df=False):
         c = flatten_list(comb)
         combs[i] = odict(zip(params,c))
 
-    combs_full = copy.deepcopy(combs)
+    combs_full = deepcopy(combs)
     if add_params is not None:
         #combine param grid and additional settings
         for param, val in add_params.items():
@@ -219,7 +219,7 @@ def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
         output ID
 
     """
-    ID = param_comb.copy()
+    ID = deepcopy(param_comb)
     for p, v in param_grid.items():
         if type(v) == dict:
             if param_names is None:
@@ -588,7 +588,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False):
     return args, skip
 
 #%%init
-def prepare_init(args, conf, wrf_dir_i, ignore_bad_namelist=False):
+def prepare_init(args, conf, wrf_dir_i, namelist_check=True):
     """Sets some namelist parameters based on the config files settings."""
 
     r = args["dx"]
@@ -602,7 +602,6 @@ def prepare_init(args, conf, wrf_dir_i, ignore_bad_namelist=False):
             args["mix_isotropic"] = 0
 
     #timestep
-
     dt_int = math.floor(args["dt"])
     args["time_step"] = dt_int
     args["time_step_fract_num"] = round((args["dt"] - dt_int)*10)
@@ -615,6 +614,7 @@ def prepare_init(args, conf, wrf_dir_i, ignore_bad_namelist=False):
     if "eta_levels" not in args:
         args["eta_levels"], dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
                                                           dz0=args["dz0"], plot=False, table=False)
+        print("Created vertical grid:\nLowest level at {0:.1f} m\nthickness of uppermost layer: {1:.1f} m\n".format(dz[0], dz[-2]))
     args["eta_levels"] = "'" + ",".join(args["eta_levels"].astype(str)) + "'"
 
     #split output in one timestep per file
@@ -685,7 +685,7 @@ def prepare_init(args, conf, wrf_dir_i, ignore_bad_namelist=False):
     # delete non-namelist parameters
     del_args = [*conf.del_args, *[p + "_idx" for p in conf.composite_params.keys()]]
     namelist = get_namelist.namelist_to_dict("{}/{}/test/{}/namelist.input".format(conf.build_path, wrf_dir_i, conf.ideal_case))
-    args_clean = args.copy()
+    args_clean = deepcopy(args)
     for del_arg in del_args:
         if del_arg in namelist:
             raise RuntimeError("Parameter {} used in submit_jobs.py already defined in namelist.input! Rename this parameter!".format(del_arg))
@@ -694,7 +694,7 @@ def prepare_init(args, conf, wrf_dir_i, ignore_bad_namelist=False):
     namelist.update(args_clean)
     if "dz" in locals():
         namelist["dz"] = dz
-    if not ignore_bad_namelist:
+    if namelist_check:
         check_namelist_best_practice(namelist)
     args_df = pd.DataFrame(args_clean, index=[0])
 
@@ -715,7 +715,12 @@ def check_namelist_best_practice(namelist):
 
     raise_err = False
     dx = namelist["dx"]
-    print("Check consistency of namelist settings. Horizontal grid spacing: dx={} m".format(dx))
+    print("Check consistency of namelist settings. Horizontal grid spacing: dx={0:.1f} m".format(dx))
+
+    #dt
+    dt =  namelist["time_step"] + namelist["time_step_fract_num"]/namelist["time_step_fract_den"]
+    if dt > 6*dx/1000:
+        print("WARNING: time step is larger then recommended. This may cause numerical instabilities. Recommendation: dt(s) = 6 * dx(km)")
 
     #vertical grid
     if "dz" in namelist:
@@ -735,13 +740,22 @@ def check_namelist_best_practice(namelist):
         print("HINT: Microphysics scheme with graupel not necessary for grid spacings above 10 km. You can instead use one of the following settings for mp_physics: 1,3,4,14")
 
 
-    #pbl scheme and LES
+    #pbl scheme, LES and turbulence
     if (namelist["bl_pbl_physics"] == 0) and (dx >= 500):
         print("ERROR: PBL scheme necessary for dx > 500 m!")
         raise_err = True
-    elif (namelist["bl_pbl_physics"] != 0) and (dx <= 100):
-        print("ERROR: No PBL scheme necessary for dx < 100 m, use LES!")
-        raise_err = True
+    elif namelist["bl_pbl_physics"] != 0:
+        if dx <= 100:
+            print("ERROR: No PBL scheme necessary for dx < 100 m, use LES!")
+            raise_err = True
+        else:
+            if ("dz" in namelist) and (namelist["dz"][0] > 100):
+                print("WARNING: First vertical level should be within surface layer (max. 100 m). Current lowest level at {0:.2f} m".format(namelist["dz"][0]))
+            if namelist["bl_pbl_physics"] in [3, 7, 99]:
+                eta_levels = eval("np.array([{}])".format(namelist["eta_levels"][1:-1]))
+                if eta_levels[1] > 0.995:
+                    print("WARNING: First eta level should not be larger than 0.995 for ACM2, GFS and MRF PBL schemes. Found: {0:.4f}".format(eta_levels[1]))
+
 
     if (namelist["bl_pbl_physics"] == 0) and (dx <= 500): #LES
         if namelist["km_opt"] not in [2,3]:
@@ -756,15 +770,45 @@ def check_namelist_best_practice(namelist):
             print("WARNING: Isotropic mixing (mix_isotropic=1) recommended for LES")
 
 
-
     if (namelist["km_opt"] in [2,3]) and (namelist["diff_opt"] != 2):
         print("ERROR: Horizontal diffusion in physical space (diff_opt=2) needed for 3D SGS turbulence scheme (km_opt=2 or 3).")
         raise_err = True
 
+    if (namelist["km_opt"] != 4) and (dx > 2000):
+        print("WARNING: For dx > 2000, SGS turbulent mixing should be based on 2D deformation (km_opt=4).")
+
+    #Cumulus
+    if (dx >= 10000) and (namelist["cu_physics"] == 0):
+        print("WARNING: For dx >= 10 km, the use of a cumulus scheme is strongly recommended.")
+    elif (dx <= 4000) and (namelist["cu_physics"] != 0):
+        print("WARNING: For dx <= 4 km, a cumulus scheme is probably not needed.")
+    elif (dx > 4000) and (dx < 10000) and (namelist["cu_physics"] not in [3, 5, 11, 14]):
+        print("WARNING: The grid spacing lies in the gray zone for cumulus convection. Consider using a scale-aware cumulus parametrization (cu_physics={3, 5, 11, 14})")
+
+
+    #advection scheme
+    basic_adv = np.array([namelist[adv + "_adv_opt"] for adv in ["moist", "scalar", "momentum"]])
+    any_basic_adv = (basic_adv < 2).any()
+    if (dx > 100) and (dx < 1000) and any_basic_adv:
+        print("WARNING: Monotonic or non-oscillatory advection options are recommended for 100m < dx < 1km (moist/scalar/momentum_adv_opt >= 2)")
+
+    #surface fluxes
+    for flux in ["tke_drag_coefficient", "tke_heat_flux"]:
+        if flux == "tke_heat_flux":
+            use_fluxes = [0,2]
+        else:
+            use_fluxes = [0]
+
+        flux_val = 0
+        if flux in namelist:
+            flux_val = namelist[flux]
+        if (namelist["isfflx"] in use_fluxes) and (flux_val == 0):
+            print("WARNING: {}=0, although it is used as surface flux for isfflx={}".format(flux,namelist["isfflx"]))
 
     print("\n")
     if raise_err:
-        raise ValueError("Critical inconsitenciies found in namelist settings. Fix the issues or use -n option to ignore them.")
+        raise ValueError("Critical inconsistencies found in namelist settings. Fix the issues or use -n option to ignore them.")
+
 #%%restart
 
 def prepare_restart(wdir, outpath, output_streams, end_time):
@@ -873,6 +917,8 @@ def concat_restart(path, id_filter=""):
                     else:
                         print("File {} is redundant!".format(cfile))
                         continue
+                elif time[0] >= time_next[0]:
+                    raise RuntimeError("Error in concatenating output for restarted runs!")
                 else:
                     os.system("cp {} {}".format(cfile, cfile + "_cut"))
             else:

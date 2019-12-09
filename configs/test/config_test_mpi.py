@@ -15,11 +15,12 @@ import os
 from collections import OrderedDict as odict
 import misc_tools
 from configs.test.config_test import *
+from copy import deepcopy
 
 #%%
 
 param_grid = odict(mp_physics=[1, 2])
-params = params.copy()
+params = deepcopy(params)
 
 params["end_time"] = "2018-06-20_07:00:00" #format %Y-%m-%d_%H:%M:%S
 

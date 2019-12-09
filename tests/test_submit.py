@@ -30,10 +30,10 @@ def test_submit_jobs():
     for add in ["_mpi", ""]:
         target_dir = "{}/{}{}/test/{}/".format(conf.build_path, conf.wrf_dir_pre, add, conf.ideal_case)
         shutil.copy("test_data/IO_test.txt", target_dir)
-        shutil.copy("test_data/namelists/namelist.input", target_dir + "namelist.input")
+        shutil.copy("test_data/namelists/namelist.input", target_dir)
 
     os.chdir("..")
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="Parameter dx used in submit_jobs.py already defined in namelist.input! Rename this parameter!"):
         submit_jobs(config_file="test.config_test_del_args", init=True)
 
     #check skipping non-initialized runs
@@ -43,9 +43,9 @@ def test_submit_jobs():
 
 
     #initialize and run wrf
-    combs = submit_jobs(init=True, config_file="test.config_test")
+    combs = submit_jobs(init=True, exist="s", config_file="test.config_test")
     nruns = combs["n_rep"].sum()
-    submit_jobs(init=False, wait=True, config_file="test.config_test")
+    submit_jobs(init=False, wait=True, exist="s", config_file="test.config_test")
 
     #check output data
     outd = os.path.join(conf.outpath, conf.outdir)
@@ -104,7 +104,7 @@ def test_submit_jobs():
     assert sorted(os.listdir(outd)) == sorted(outfiles)
     file = Dataset(outd + "/fastout_pytest_lin_0")
     t = wrf.extract_times(file, timeidx=None)
-    t_corr = pd.date_range(start="2018-06-20T00:06:00", end='2018-06-20T010:00:00', freq="10min")
+    t_corr = pd.date_range(start="2018-06-20T06:00:00", end='2018-06-20T10:00:00', freq="10min")
     assert (t == t_corr).all()
 
     #check repeats
@@ -123,7 +123,7 @@ def test_submit_jobs():
     count = Counter(output)
     m = "Submit IDs: ['pytest_kessler_0', 'pytest_lin_0']"
     assert count[m] == 1
-    m = "d01 2018-06-20_00:07:00 wrf: SUCCESS COMPLETE WRF"
+    m = "d01 2018-06-20_07:00:00 wrf: SUCCESS COMPLETE WRF"
     assert count[m] == combs["n_rep"].sum()
 
     #test get_rt and vmem, qsub

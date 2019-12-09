@@ -54,11 +54,11 @@ def test_job_usage():
 def test_namelist_to_dict():
     path = 'test_data/namelists/namelist.test'
     namelist_dict = get_namelist.namelist_to_dict(path, verbose=False)
-    correct = {'run_days': '0',
+    correct = {'run_days': 0,
      'iofields_filename': "'LES_IO.txt'",
      'input_2d': '.false',
      'auxhist7_outname': "'test'",
-     'shadlen': '25000'}
+     'shadlen': 25000}
     for k, v in correct.items():
         assert v == namelist_dict[k]
 

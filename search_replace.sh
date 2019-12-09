@@ -18,6 +18,7 @@ fi
 
 
 raise=false
+missing_params=""
 while [[ $# -gt 0 ]]
 do
   if grep -x -q "\s*$1\s*=.*" ${outfile}
@@ -30,7 +31,7 @@ do
     fi
 
   else
-    >&2 echo "ERROR: parameter $1 not found in namelist file!"
+    missing_params="$1, $missing_params"
     raise=true
   fi
   shift
@@ -39,6 +40,7 @@ done
 
 if ( $raise )
 then
+  echo "ERROR: parameters not found in namelist file: $missing_params"
   exit 1
 fi
 

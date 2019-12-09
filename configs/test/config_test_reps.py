@@ -15,10 +15,11 @@ import os
 from collections import OrderedDict as odict
 import misc_tools
 from configs.test.config_test import *
+from copy import deepcopy
 
 #%%
 param_grid = odict(mp_physics=[1])
-params = params.copy()
+params = deepcopy(params)
 params["n_rep"] = 2 #number of repetitions for each configuration
 
 #%%

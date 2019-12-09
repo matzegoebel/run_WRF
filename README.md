@@ -14,6 +14,8 @@ When run in parallel mode, the script assumes the name of the parallel build dir
 
 With the `-c` option you can specify an alternative config file (default is `config`) located in (a subdirectory of) the folder `configs`. If, for instance, the config file `test_mp_physics.py` is located in `configs/supercell/`, then run `python submit_jobs.py -i -c supercell.test_mp_physics`.
 
+When initializing the simulations, the namelist settings are checked for sanity and consistency based on best practice guidelines for WRF. Warnings and---for severe problems---errors are raised. To ignore the errors and proceed with initializing the simulations, use the `-n` option. 
+
 The log output is written to `init.log/init.err` and `run.log/run.err` in the respective simulation folder for initialization and simulation mode, respectively. The subdirectory for the simulation output can be specified in the script or with the `-o` option. Currently, the default config file uses the environment variables `$wrf_builds`, `$wrf_runs` and `$wrf_res` as base directories for WRF build, run and output directories, respectively.
 
 If the simulation folder (in init mode) or the output files (in simulation mode) already exist, the desired action can be specified with the `-e` option: Skipping this run (`-e s`), overwriting (`-e o`) or backing up the data (`-e b`).

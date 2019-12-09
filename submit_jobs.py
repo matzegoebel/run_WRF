@@ -17,10 +17,11 @@ import glob
 import misc_tools
 import importlib
 import inspect
+from copy import deepcopy
 
 #%%
 def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_qsub=False,
-           check_args=False, pool_jobs=False, mail="ea", wait=False, ignore_bad_namelist=False, verbose=False):
+           check_args=False, pool_jobs=False, mail="ea", wait=False, namelist_check=True, verbose=False):
     """
     Submit idealized WRF experiments. Refer to README.md for more information.
 
@@ -48,8 +49,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         If using qsub, defines when mail is sent. Either 'n' for no mails, or a combination of 'b' (beginning of job), 'e' (end), 'a' (abort)', 's' (suspended). Default: 'ea'
     wait : bool, optional
         Wait until job is finished before submitting the next.
-    ignore_bad_namelist : bool, optional
-        Ignore errors and warnings related to inconsistencies in namelist settings.
+    namelist_check : bool, optional
+        Perform sanity check of namelist parameters.
     verbose : bool, optional
         Verbose mode
 
@@ -59,6 +60,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         DataFrame with settings for all submitted configurations.
 
     """
+
     if (not init) and (outdir is not None):
         print("WARNING: option -o ignored when not in initialization mode!\n")
     if wait and use_qsub:
@@ -72,7 +74,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         config_file = config_file[:-3]
     conf = importlib.import_module("configs.{}".format(config_file))
     param_combs, combs = conf.param_combs, conf.combs
-    combs_all = combs.copy()
+    combs_all = deepcopy(combs)
 
     if outdir is None:
         outdir = conf.outdir
@@ -108,7 +110,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     print(pd.DataFrame(param_combs))
     print("-"*40)
     for i in range(len(combs)):
-        args = pd.Series(combs[i]).dropna().to_dict()
+        args = deepcopy(pd.Series(combs[i]).dropna().to_dict())
         param_comb = param_combs[i]
 
         #create output ID for current configuration
@@ -117,7 +119,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
         print("\n\nConfig:  " + IDi)
         print("\n".join(str(param_comb).split("\n")[:-1]))
-        print("\n\n")
+        print("\n")
 
         r = args["dx"]
 
@@ -197,7 +199,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             args["dt"] = r/1000*6 #wrf rule of thumb
 
         if init:
-            args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i, ignore_bad_namelist=ignore_bad_namelist)
+            args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i, namelist_check=namelist_check)
 
             #vmem init and SGE queue
             vmem_init = max(conf.vmem_init_min, int(conf.vmem_init_per_grid_point*args["e_we"]*args["e_sn"]))
@@ -468,7 +470,7 @@ if __name__ == "__main__":
                     "pool_jobs":      ("-p", "--pool", "store_true"),
                     "mail":           ("-m", "--mail", "store"),
                     "wait":           ("-w", "--wait", "store_true"),
-                    "ignore_bad_namelist":  ("-n", "--ignore_bad_namelist", "store_true"),
+                    "namelist_check":  ("-n", "--no_namelist_check", "store_false"),
                     "verbose":        ("-v", "--verbose", "store_true")
                     }
 
