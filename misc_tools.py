@@ -23,6 +23,7 @@ from io import StringIO
 import sys
 import get_namelist
 import vertical_grid
+from pathlib import Path as fopen
 
 #%%nproc
 
@@ -358,11 +359,11 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=False):
     """
     runlog = run_dir + "/run.log"
     if os.path.isfile(runlog):
-        f = open(runlog)
+        with open(runlog) as f:
+            log = f.readlines()
     else:
         raise FileNotFoundError("No log file found!")
 
-    log = f.readlines()
     settings = {}
     if "Timing for main" in "".join(log): #check that it is no init run
         timing_ID = []
@@ -417,7 +418,6 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=False):
                 counter += 1
         else:
             counter += 1
-    f.close()
     return timing, counter
 
 def get_identical_runs(run_dir, search_paths):
@@ -521,7 +521,7 @@ def get_job_usage(qstat_file):
         Usage statistics.
 
     """
-    qstat = open(qstat_file).read()
+    qstat = fopen(qstat_file).read_text()
     usage = qstat[qstat.index("\nusage"):].split("\n")[1]
     usage = usage[usage.index(":")+1:].strip().split(",")
     usage = dict([l.strip().split("=") for l in usage])
@@ -834,6 +834,15 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
     run_hours : datetime.datetime
         Start time of restart run.
     """
+    #check if already finished
+    with open(wdir + "/run.log") as f:
+        runlog = f.readlines()
+
+    if "d01 {} wrf: SUCCESS COMPLETE WRF\n".format(end_time) in runlog:
+        print("Run already complete")
+        return
+
+    #search rst files and determine start time
     rstfiles = os.popen("ls -t {}/wrfrst*".format(wdir)).read()
     if rstfiles == "":
         print("WARNING: no restart files found. Skipping...")
@@ -855,6 +864,10 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
     times["end"].extend(end_t.split(":"))
 
     run_hours = (end_time_dt - start_time_rst).total_seconds()/3600
+    if run_hours  <= 0:
+        print("Run already complete")
+        return
+
     rst_opt = "restart .true"
     for se in ["start", "end"]:
         for unit, t in zip(["year", "month", "day", "hour", "minute", "second"], times[se]):
@@ -889,7 +902,6 @@ def concat_restart(path, id_filter=""):
 
         old_files = glob.glob("{}/rst/{}_rst_*".format(path, ID))
         old_files = [o for o in old_files if o[-4:] != "_cut"]
-    #    old_files = os.popen("ls -t {}/rst/{}_rst_*".format(path, ID)).read().split("\n")[::-1]
         rst_inds = [int(f.split("_")[-1]) for f in old_files]
         rst_inds = list(np.argsort(rst_inds))
         if "" in old_files:
@@ -927,7 +939,7 @@ def concat_restart(path, id_filter=""):
             all_files_cut.append(cfile + "_cut")
             time = time_next
 
-        if len(all_files_cut) > 1:
+        if len(all_files_cut) > 0:
             new_concat = new_file + "_concat"
             if os.path.isfile(new_concat):
                 os.remove(new_concat)

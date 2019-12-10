@@ -45,13 +45,26 @@ then
   fi
 fi
 
+
+pid=()
+set +e
+trap 'rc=$?' ERR
+
 for (( i=0; i<${#jobs[@]}; i++ ))
 do
   cd ${run_path}/WRF_${jobs[$i]}
+  
   #redirect logs to file
-  exec 1> "run.log"
+  if (( restart == 1 ))
+  then
+    exec 1>> "run.log"
+  else
+      exec 1> "run.log"
+  fi
+  
   exec 2> "run.err"
-
+  echo
+  echo
   echo "Running job: ${jobs[$i]}"
   nsi=${nslots[$i]}
   wrf_dir_i=${wrfv[$i]}
@@ -70,16 +83,16 @@ do
       python ${code_dir}/pool/rankfile.py  "${hosts[*]}" "$si" "$nsi" > rankfile.$JOB_ID
       cat rankfile.$JOB_ID
 
-      mpiexec -H $H -rf rankfile.$JOB_ID -mca rmaps_rank_file_physical 1 -np $nsi -v -report-bindings -display-map -display-allocation ./wrf.exe || true &
+      mpiexec -H $H -rf rankfile.$JOB_ID -mca rmaps_rank_file_physical 1 -np $nsi -v -report-bindings -display-map -display-allocation ./wrf.exe & pid[i]=$!
       si=$((si + nsi))
       sleep 20
 
     else
-      mpiexec -np $nsi -v ./wrf.exe || true  &
+      mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!
     fi
   else
     echo "serial run"
-    ./wrf.exe || true  &
+    ./wrf.exe & pid[i]=$!
   fi
   echo 
   echo
@@ -87,21 +100,19 @@ done
 
 for (( i=0; i<${#jobs[@]}; i++ ))
 do
+  wait ${pid[i]}
+  echo "job ${jobs[$i]} exited with code $?"
+
   cd ${run_path}/WRF_${jobs[$i]}
 
-  # if SGE is used or wait=True is set: wait for job to finish
-  if [ -n "${SGE_STDOUT_PATH}" ] || (( $wait==1 ))
+  if [[ -f rsl.error.0000 ]]
   then
-    wait
-    #append rsl.error.0000 to run.log
-    if [[ -f rsl.error.0000 ]]
-    then
-      cat rsl.error.0000 >> run.log
-    fi
+    cat rsl.error.0000 >> run.log
   fi
 
   if (( restart == 1 ))
   then
+    echo
     echo "Concatenate output from original and restarted run"
     python -c "import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[$i]}')"
   fi
@@ -118,3 +129,5 @@ do
 
 done
 
+#echo "trap" $rc
+exit ${rc} 

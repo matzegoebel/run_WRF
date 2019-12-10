@@ -18,6 +18,7 @@ import misc_tools
 import importlib
 import inspect
 from copy import deepcopy
+from pathlib import Path as fopen
 
 #%%
 def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_qsub=False,
@@ -298,27 +299,29 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     print(comm)
                 if not check_args:
                     err = os.system(comm)
+
                     if err == 0:
-                        initlog = open(run_dir_r + "/init.log").read()
+                        initlog = fopen(run_dir_r + "/init.log").read_text()
                         print(initlog.split("\n")[-2].strip())
-                    else:
-                        initerr = open(run_dir_r + "/init.err").read()
-                        print(initerr)
+
+                    initerr = fopen(run_dir_r + "/init.err").read_text()
+                    print(initerr)
+                    if err != 0:
                         raise RuntimeError("Initialization failed!")
 
 
+
             else:
+                skip = False
                 if not os.path.isfile(run_dir_r + "/wrfinput_d01"):
                     print("Run not initialized yet! Skipping...")
-                    continue
+                    skip = True
                 stream_names = [stream[0] for stream in args["output_streams"].values()]
                 if restart:
-                    args["rt_per_timestep"]  = misc_tools.prepare_restart(run_dir_r, outpath, stream_names, args["end_time"])
-                    if args["rt_per_timestep"]  <= 0:
-                        print("Run already complete")
-                        continue
-                    elif run_hours is None:
-                        continue
+                    run_hours  = misc_tools.prepare_restart(run_dir_r, outpath, stream_names, args["end_time"])
+                    if (run_hours is None) or (run_hours <= 0):
+                        skip = True
+
                 else:
                     outfiles = ["{}/{}_{}".format(outpath, outfile, IDr) for outfile in stream_names]
                     outfiles = [o for o in outfiles if os.path.isfile(o)]
@@ -326,7 +329,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         print("Output files already exist.")
                         if exist == "s":
                                 print("Skipping...")
-                                continue
+                                skip = True
+
                         elif exist == "o":
                             print("Overwriting...")
                         elif exist == "b":
@@ -343,7 +347,13 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         else:
                             raise ValueError("Value '{}' for -e option not defined!".format(exist))
 
-
+                if skip:
+                    IDs = []
+                    rtr = []
+                    vmem = []
+                    nslots = []
+                    wrf_dir = []
+                    continue
 
                 rtri = None
                 if use_qsub:
@@ -388,7 +398,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         jobs = " ".join(IDs)
                         nslots_str = " ".join([str(ns) for ns in nslots])
                         comm_args =dict(wrfv=wrf_dir, nslots=nslots_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
-                                        cluster=int(conf.cluster), wait=int(wait), restart=int(restart), outpath=outpath)
+                                        cluster=int(conf.cluster), restart=int(restart), outpath=outpath)
                         if use_qsub:
                             vmemp = int(sum(vmem)/sum(nslots))
                             rtp = misc_tools.format_timedelta(max(rtr)*3600)
@@ -405,6 +415,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                 os.environ[p] = str(v)
 
                             comm = "bash run_wrf.job"
+                            if not wait:
+                                comm += " &"
 
                         if verbose:
                             print(comm)
@@ -420,7 +432,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                     print(ID)
                                     run_dir_i = "{}/WRF_{}/".format(conf.run_path, ID)
                                     print(os.popen("tail -n {} {}".format(log_lines, run_dir_i + "run.log")).read())
-                                    print(open(run_dir_i + "run.err").read())
+                                    print(fopen(run_dir_i + "run.err").read_text())
                             if err != 0:
                                 raise RuntimeError("WRF run failed!")
 
