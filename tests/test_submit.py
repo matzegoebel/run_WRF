@@ -20,9 +20,13 @@ from netCDF4 import Dataset
 import misc_tools
 import wrf
 import pandas as pd
+
+success = {True : 'wrf: SUCCESS COMPLETE IDEAL INIT', False : 'd01 2018-06-20_08:00:00 wrf: SUCCESS COMPLETE WRF'}
+outd = os.path.join(conf.outpath, conf.outdir)
+
 #%%
 
-def test_submit_jobs():
+def test_basic():
     for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
         if os.path.isdir(d):
             shutil.rmtree(d)
@@ -43,12 +47,10 @@ def test_submit_jobs():
 
 
     #initialize and run wrf
-    combs = submit_jobs(init=True, exist="s", config_file="test.config_test")
-    nruns = combs["n_rep"].sum()
+    submit_jobs(init=True, exist="s", config_file="test.config_test")
     submit_jobs(init=False, wait=True, exist="s", config_file="test.config_test")
 
     #check output data
-    outd = os.path.join(conf.outpath, conf.outdir)
     outfiles = ['fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
     assert sorted(os.listdir(outd)) == sorted(outfiles)
     file = Dataset(outd + "/fastout_pytest_lin_0")
@@ -56,25 +58,25 @@ def test_submit_jobs():
     t_corr = pd.date_range(start="2018-06-20T06:00:00", end='2018-06-20T08:00:00', freq="10min")
     assert (t == t_corr).all()
 
+def test_output_exist():
     #test behaviour if output exists
     for run in os.listdir(conf.run_path):
         file = "{}/{}/wrfinput_d01".format(conf.run_path, run)
         if os.path.isfile(file):
             os.remove(file)
     exist_message = (("s", "Redoing initialization..."), ("s", "Skipping..."), ("o", "Overwriting..."), ("b", "Creating backup..."))
-    success = {True : 'wrf: SUCCESS COMPLETE IDEAL INIT', False : 'd01 2018-06-20_08:00:00 wrf: SUCCESS COMPLETE WRF'}
     for init in [True, False]:
         for i, (exist, message) in enumerate(exist_message):
             if init or i > 0:
                 print(exist, message)
                 with Capturing() as output:
-                    submit_jobs(init=init, exist=exist, wait=True, config_file="test.config_test")
+                    combs = submit_jobs(init=init, exist=exist, wait=True, config_file="test.config_test")
                 count = Counter(output)
-                assert count[message] == nruns
+                assert count[message] == combs["n_rep"].sum()
                 if "Skipping..." not in message:
-                    assert count[success[init]] == nruns
+                    assert count[success[init]] == combs["n_rep"].sum()
 
-
+def test_bak_creation():
     #check backup creation
     submit_jobs(init=False, exist="b", wait=True, config_file="test.config_test")
     bak = ['fastout_pytest_lin_0_bak_0',
@@ -90,13 +92,13 @@ def test_submit_jobs():
     with pytest.raises(ValueError, match="Value 'a' for -e option not defined!"):
         submit_jobs(init=True, exist="a", config_file="test.config_test")
 
-
+def test_restart():
     #check restart
     with Capturing() as output:
-        submit_jobs(init=False, restart=True, wait=True, config_file="test.config_test_rst")
+        combs = submit_jobs(init=False, restart=True, wait=True, config_file="test.config_test_rst")
     count = Counter(output)
     for m in ["Restart run from 2018-06-20 08:00:00", 'd01 2018-06-20_10:00:00 wrf: SUCCESS COMPLETE WRF']:
-        assert count[m] == nruns
+        assert count[m] == combs["n_rep"].sum()
 
     #check output data
     outd = os.path.join(conf.outpath, conf.outdir)
@@ -107,6 +109,7 @@ def test_submit_jobs():
     t_corr = pd.date_range(start="2018-06-20T06:00:00", end='2018-06-20T10:00:00', freq="10min")
     assert (t == t_corr).all()
 
+def test_repeats():
     #check repeats
     combs = submit_jobs(init=True, exist="o", config_file="test.config_test_reps")
     with Capturing() as output:
@@ -115,6 +118,7 @@ def test_submit_jobs():
     assert count[success[False]] == combs["n_rep"].sum()
 
 
+def test_mpi():
     #check mpi and pool
     combs = submit_jobs(init=True, wait=True, exist="o", config_file="test.config_test_mpi")
 
@@ -126,6 +130,7 @@ def test_submit_jobs():
     m = "d01 2018-06-20_07:00:00 wrf: SUCCESS COMPLETE WRF"
     assert count[m] == combs["n_rep"].sum()
 
+def test_get_rt_vmem():
     #test get_rt and vmem, qsub
     for run in os.listdir(conf.run_path):
         rundir ="{}/{}/".format(conf.run_path, run)
@@ -134,7 +139,7 @@ def test_submit_jobs():
     with Capturing() as output:
         combs = submit_jobs(init=False, check_args=True, use_qsub=True, exist="o", config_file="test.config_test_mpi")
     count = Counter(output)
-    messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 148.3365M']
+    messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 148.3M']
     for m in messages:
         assert count[m] == combs["n_rep"].sum()
     rundirs = [rd + "_0" for rd in combs["run_dir"].values]
