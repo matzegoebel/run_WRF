@@ -21,7 +21,7 @@ from copy import deepcopy
 from pathlib import Path as fopen
 
 #%%
-def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_qsub=False,
+def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_job_scheduler=False,
            check_args=False, pool_jobs=False, mail="ea", wait=False, namelist_check=True, verbose=False):
     """
     Submit idealized WRF experiments. Refer to README.md for more information.
@@ -40,14 +40,14 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         What to do if output already exists: Skip run ('s'), overwrite ('o') or backup files ('b'). Default is 's'.
     debug : bool, optional
         Run wrf in debugging mode. Just adds '_debug' to the build directory.
-    use_qsub : bool, optional
-        Use qsub to submit jobs
+    use_job_scheduler : bool, optional
+        Use job scheduler to submit jobs
     check_args : bool, optional
         Only test python script (no jobs sumitted)
     pool_jobs : bool, optional
-        Gather jobs before submitting with SGE. Needed if different jobs shall be run on the some node (potentially filling up the whole node)
+        Gather jobs before submitting with a job scheduler. Needed if different jobs shall be run on the some node (potentially filling up the whole node)
     mail : str, optional
-        If using qsub, defines when mail is sent. Either 'n' for no mails, or a combination of 'b' (beginning of job), 'e' (end), 'a' (abort)', 's' (suspended). Default: 'ea'
+        If using a job scheduler, defines when mail is sent. Either 'n' for no mails, or a combination of 'b' (beginning of job), 'e' (end), 'a' (abort)', 's' (suspended). Default: 'ea'
     wait : bool, optional
         Wait until job is finished before submitting the next.
     namelist_check : bool, optional
@@ -64,8 +64,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
     if (not init) and (outdir is not None):
         print("WARNING: option -o ignored when not in initialization mode!\n")
-    if wait and use_qsub:
-        raise ValueError("Waiting for SGE jobs is not yet implemented")
+    if wait and use_job_scheduler:
+        raise ValueError("Waiting for batch jobs is not yet implemented")
     if init and restart:
         raise ValueError("For restart runs no initialization is needed!")
     if len(glob.glob(os.getcwd() + "/submit_jobs.py")) == 0:
@@ -77,6 +77,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     param_combs, combs = conf.param_combs, conf.combs
     combs_all = deepcopy(combs)
 
+    if use_job_scheduler and (conf.job_scheduler == "slurm") and pool_jobs:
+        raise ValueError("Job scheduler SLURM cannot be used for pooling jobs!")
+
     if outdir is None:
         outdir = conf.outdir
 
@@ -86,10 +89,20 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
     outpath_esc = outpath.replace("/", "\/") #need to escape slashes
 
-    #temporary log output for SGE
-    if use_qsub:
-        sge_log_dir = conf.run_path + "/logs/"
-        os.makedirs(sge_log_dir, exist_ok=True)
+    #temporary log output for job scheduler
+    if use_job_scheduler:
+        batch_log_dir = conf.run_path + "/logs/"
+        os.makedirs(batch_log_dir, exist_ok=True)
+        job_scheduler = conf.job_scheduler.lower()
+        if job_scheduler not in ["slurm", "sge"]:
+            raise ValueError("Job scheduler {} not implemented. Use SGE or SLURM".format(job_scheduler))
+        if job_scheduler == "slurm":
+            mail_slurm = []
+            for s,r in zip(["n", "b", "e", "a"], ["NONE", "BEGIN", "END", "FAIL"]):
+                if s in mail:
+                    mail_slurm.append(r)
+            mail = ",".join(mail_slurm)
+
 
     IDs = []
     rtr = []
@@ -190,7 +203,12 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             wrf_dir_i = conf.wrf_dir_pre + "_debug"
         elif nslotsi > 1:
             wrf_dir_i = conf.wrf_dir_pre + "_mpi"
-            slot_comm = "-pe openmpi-fillup {}".format(nslotsi)
+            if use_job_scheduler and (not pool_jobs):
+                if job_scheduler == "sge":
+                    slot_comm = "-pe openmpi-fillup {}".format(nslotsi)
+                elif job_scheduler == "slurm":
+                    slot_comm = "-n={}".format(nslotsi)
+
         else:
             wrf_dir_i = conf.wrf_dir_pre
         wrf_dir.append(wrf_dir_i)
@@ -202,21 +220,24 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         if init:
             args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i, namelist_check=namelist_check)
 
-            #vmem init and SGE queue
+            #vmem init
             vmem_init = max(conf.vmem_init_min, int(conf.vmem_init_per_grid_point*args["e_we"]*args["e_sn"]))
-            if vmem_init > 25e3:
-                init_queue = "bigmem.q"
-            else:
-                init_queue = "std.q"
+            #job scheduler queue
+            if use_job_scheduler:
+                if job_scheduler == "sge":
+                    if vmem_init > 25e3:
+                        init_queue = "bigmem.q"
+                    else:
+                        init_queue = "std.q"
 
-        elif use_qsub:
+        elif use_job_scheduler:
             args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi, pool_jobs=pool_jobs)
             if skip:
                 continue
             vmemi = args["vmem"]
             vmem.append(vmemi)
             print("Runtime per time step: {0:.5f} s".format(args["rt_per_timestep"]))
-            print("Use vmem per slot: {}M".format(vmemi/nslotsi))
+            print("Use vmem per slot: {0:.1f}M".format(vmemi/nslotsi))
 
         #not needed; just for completeness of dataframe:
         args["nx"] = nx
@@ -276,23 +297,27 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     iofile_ = args["iofields_filename"].replace("'","").replace('"',"")
                     if iofile_ != "NONE_SPECIFIED":
                         iofile = iofile_
-                comm_args =dict(wrfv=wrf_dir_i, ideal_case=conf.ideal_case, input_sounding=args["input_sounding"],
-                                sleep=rep, nx=nx, ny=ny, wrf_args=args_str_r, run_path=conf.run_path, build_path=conf.build_path,
-                                qsub=int(use_qsub), cluster=int(conf.cluster), iofile=iofile)
-                if use_qsub:
-                    comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
+                comm_args =dict(JOB_NAME=IDr, wrfv=wrf_dir_i, ideal_case=conf.ideal_case, input_sounding=args["input_sounding"],
+                                sleep=rep, nx=nx, ny=ny, run_path=conf.run_path, build_path=conf.build_path,
+                                batch=int(use_job_scheduler), wrf_args="", cluster=int(conf.cluster), iofile=iofile)
+                for p, v in comm_args.items():
+                    os.environ[p] = str(v)
+                if use_job_scheduler:
+                    os.environ["job_scheduler"] = job_scheduler
+                    os.environ["wrf_args"] = args_str_r
+                    #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                     rt_init = misc_tools.format_timedelta(conf.rt_init*60)
-                    qout, qerr = [sge_log_dir + IDr + s for s in [".out", ".err"]]
-                    sge_args = "-cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M -m {} -M {} -N {}".format(init_queue, qout, qerr, rt_init, vmem_init, mail, conf.mail_adress, IDr)
-                    if "h_stack_init" in dir(conf) and conf.h_stack_init is not None:
-                        sge_args += " -l h_stack={}M".format(round(conf.h_stack_init))
+                    qout, qerr = [batch_log_dir + IDr + s for s in [".out", ".err"]]
+                    batch_args = [qout, qerr, rt_init, vmem_init, mail, IDr]
+                    if job_scheduler == "sge":
+                        batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M -m {} -N {} -V".format(init_queue, *batch_args)
+                        if "h_stack_init" in dir(conf) and conf.h_stack_init is not None:
+                            batch_args_str += " -l h_stack={}M".format(round(conf.h_stack_init))
 
-                    comm = r"qsub {} -v {} init_wrf.job".format(sge_args, comm_args_str)
+                    elif job_scheduler == "slurm":
+                        batch_args_str = "qsub -o={} -e={} -t={} --mem-per-cpu={}M --mail-type={} -J={} --export=ALL".format(*batch_args)
+                    comm = batch_args_str + " init_wrf.job"
                 else:
-                    for p, v in comm_args.items():
-                        os.environ[p] = str(v)
-
-                    os.environ["JOB_NAME"] = IDr
                     comm = "bash init_wrf.job '{}' ".format(args_str_r)
 
                 if verbose:
@@ -356,7 +381,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     continue
 
                 rtri = None
-                if use_qsub:
+                if use_job_scheduler:
                     rtri = args["rt_per_timestep"] * run_hours/args["dt"] * conf.rt_buffer
                     rtr.append(rtri)
 
@@ -384,14 +409,17 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         print("Submit IDs: {}".format(IDs))
                         print("with total cores: {}".format(sum(nslots)))
 
-                        if pool_jobs and use_qsub:
+                        if pool_jobs and use_job_scheduler:
                             job_name = "pool_" + "_".join(IDs)
-                            if use_qsub:
+                            if use_job_scheduler:
                                 nperhost =  conf.pool_size
                                 if conf.reduce_pool:
-                                    nperhost_sge = np.array([1, *np.arange(2,29,2)])
-                                    nperhost = nperhost_sge[(nperhost_sge >= sum(nslots)).argmax()] #select available nperhost that is greater and closest to the number of slots
-                                slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
+                                    nperhost_batch = np.array([1, *np.arange(2,29,2)])
+                                    nperhost = nperhost_batch[(nperhost_batch >= sum(nslots)).argmax()] #select available nperhost that is greater and closest to the number of slots
+                                if job_scheduler == "sge":
+                                    slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
+                                elif job_scheduler == "slurm":
+                                    raise ValueError("Job scheduler SLURM cannot be used for pooling jobs, yet!")
                         else:
                             job_name = IDr
                         wrf_dir = " ".join(wrf_dir)
@@ -399,21 +427,26 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         nslots_str = " ".join([str(ns) for ns in nslots])
                         comm_args =dict(wrfv=wrf_dir, nslots=nslots_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
                                         cluster=int(conf.cluster), restart=int(restart), outpath=outpath)
-                        if use_qsub:
+                        for p, v in comm_args.items():
+                            os.environ[p] = str(v)
+                        if use_job_scheduler:
+                            os.environ["job_scheduler"] = job_scheduler
+
                             vmemp = int(sum(vmem)/sum(nslots))
                             rtp = misc_tools.format_timedelta(max(rtr)*3600)
-                            qout, qerr = [sge_log_dir + job_name + s for s in [".out", ".err"]]
-                            sge_args = "-cwd -q {} -o {} -e {} -N {} -l h_rt={} -l h_vmem={}M {} -m {} -M {}".format(conf.queue, qout, qerr, job_name, rtp, vmemp, slot_comm, mail, conf.mail_adress)
-                            if "h_stack" in dir(conf) and conf.h_stack is not None:
-                                sge_args += " -l h_stack={}M".format(round(conf.h_stack))
+                            qout, qerr = [batch_log_dir + job_name + s for s in [".out", ".err"]]
 
-                            comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
-                            comm = r"qsub {} -v {} run_wrf.job".format(sge_args, comm_args_str)
+                            #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
+                            batch_args = [qout, qerr, rtp, vmemp, slot_comm, mail,  job_name]
+                            if job_scheduler == "sge":
+                                batch_args_str = "-cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M {} -m {} -M {} -N {} -V".format(conf.queue, *batch_args)
+                                if "h_stack" in dir(conf) and conf.h_stack is not None:
+                                    batch_args_str += " -l h_stack={}M".format(round(conf.h_stack))
+                            elif job_scheduler == "slurm":
+                                batch_args_str = "qsub -o={} -e={} -t={} --mem-per-cpu={}M {} --mail-type={} -J={} --export=ALL".format(*batch_args)
+                            comm = batch_args_str + " run_wrf.job"
 
                         else:
-                            for p, v in comm_args.items():
-                                os.environ[p] = str(v)
-
                             comm = "bash run_wrf.job"
                             if not wait:
                                 comm += " &"
@@ -483,12 +516,12 @@ if __name__ == "__main__":
                     "outdir":         ("-o", "--outdir", "store"),
                     "exist":          ("-e", "--exist", "store"),
                     "debug":          ("-d", "--debug", "store_true"),
-                    "use_qsub":       ("-q", "--qsub", "store_true"),
+                    "use_job_scheduler": ("-j", "--use_job_sched", "store_true"),
                     "check_args":     ("-t", "--test", "store_true"),
                     "pool_jobs":      ("-p", "--pool", "store_true"),
                     "mail":           ("-m", "--mail", "store"),
                     "wait":           ("-w", "--wait", "store_true"),
-                    "namelist_check":  ("-n", "--no_namelist_check", "store_false"),
+                    "namelist_check": ("-n", "--no_namelist_check", "store_false"),
                     "verbose":        ("-v", "--verbose", "store_true")
                     }
 

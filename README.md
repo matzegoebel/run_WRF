@@ -20,11 +20,11 @@ The log output is written to `init.log/init.err` and `run.log/run.err` in the re
 
 If the simulation folder (in init mode) or the output files (in simulation mode) already exist, the desired action can be specified with the `-e` option: Skipping this run (`-e s`), overwriting (`-e o`) or backing up the data (`-e b`).
 
-When run on a cluster, the `-q` flag allows submitting the jobs with SGE. Email settings for SGE can be set with the  `-m` option (set your email address in the config file beforehand). To control which modules are loaded for cluster jobs, take a look at `init_wrf.job` and `run_wrf.job`.
+When run on a cluster, the `-g` flag allows submitting the jobs with a job scheduler, `sge` or `slurm` (set type in config file). Email settings for the job scheduler can be set with the  `-m` option. To control which modules are loaded for cluster jobs, take a look at `init_wrf.job` and `run_wrf.job`.
 
 The package simplifies requesting job resources like virtual memory, runtime and number of CPUs. If the runtime or virtual memory of jobs is not specified in the config file, the program searches for simulations with an identical namelist file (except for some parameters irrelevant to the runtime per time step) and uses the runtime and virtual memory information in the respective log file. For this purpose, you can create short test simulations (with `-q` option) by setting a small value for `rt` and one repetition per configuration (`n_rep=1`) in your config file. Do not use pooling (see below) for these test runs, as, in this case, the virtual memory could not be retrieved for each configuration separately.
 
-If not using SGE, the simulations are started simultaneously and run in the background, by default. The `-w` option allows waiting for a simulation (or pool of simulations, see below) to finish, before submitting the next. 
+If not using a job scheduler, the simulations are started simultaneously and run in the background, by default. The `-w` option allows waiting for a simulation (or pool of simulations, see below) to finish, before submitting the next. 
 
 If a simulation aborts or you want to continue it to a later end time (as specified in the config file), simply run `submit_jobs.py -r`. This restarts the simulations from the most recent restart files. The original output is moved to a backup folder and concatenated with the output of the restarted run (with overlap removed) after the restarted run is finished. An unlimited number of restarts is possible.
 
@@ -33,7 +33,7 @@ The option `-t` allows checking the functioning of the python script without sub
 The `-d` option leads to "_debug" being appended to the build directory name. This is for convenience, when you want to debug `ideal.exe` or `wrf.exe` with `gdb`, subsequently. The respective WRF build, must be configured with `-d` or `-D`. 
 
 If you want to run several simulations on the same cluster node, you can use the `-p` option. This gathers jobs until the specified pool size is reached and pins them to specific slots on the requested node. If you do not want to share the node with other users, you can fill up the whole node by specifying a pool size as large as the available slots on a node.
-This option can also be used without SGE. Combined with the `-w` option, you can ensure that only `pool_size` cores are used simultaneously.
+This option can also be used without job scheduler. Combined with the `-w` option, you can ensure that only `pool_size` cores are used simultaneously.
 
 ## Requirements
 The package is written for a Linux environment. For Windows, it may have to be adjusted.

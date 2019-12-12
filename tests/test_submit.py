@@ -137,7 +137,7 @@ def test_get_rt_vmem():
         shutil.copy("tests/test_data/qstat.info", rundir)
 
     with Capturing() as output:
-        combs = submit_jobs(init=False, check_args=True, use_qsub=True, exist="o", config_file="test.config_test_mpi")
+        combs = submit_jobs(init=False, check_args=True, use_job_scheduler=True, exist="o", config_file="test.config_test_mpi")
     count = Counter(output)
     messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 148.3M']
     for m in messages:
