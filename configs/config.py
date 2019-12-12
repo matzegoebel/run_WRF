@@ -136,10 +136,16 @@ even_split = False #force equal split between processors
 job_scheduler = "sge" #sge or slurm
 cluster_name = "leo" #this name should appear in the variable $HOSTNAME to detect if cluster settings should be used
 queue = "std.q" #batch queue for SGE
+#modules to load
+if cluster_name == "leo":
+    module_load = "intel/18.0u1 netcdf-4"
+elif cluster_name == "vsc":
+    module_load = "intel/19 intel-mpi/2019 hdf5/1.8.12-MPI pnetcdf/1.10.0 netcdf_C/4.4.1.1 netcdf_Fortran/4.4.4"
 
 reduce_pool = True #reduce pool size to the actual uses number of slots; do not use if you do not want to share the node with others
 
-if (("HOSTNAME" in os.environ) and (cluster_name in os.environ["HOSTNAME"])):
+host = os.popen("hostname -d").read()
+if cluster_name in host:
     cluster = True
     #maximum number of slots that will be requested for the x and y directions
     max_nslotsy = None

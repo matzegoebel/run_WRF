@@ -7,13 +7,8 @@ if (( cluster == 1 ))
 then
   cluster=true
   module purge > /dev/null
-  module load intel/18.0u1 netcdf-4  > /dev/null
-  #~ if [ -d $SCRATCH/parallel_studio_2019 ]
-  #~ then
-    #~ module purge
-    #~ export NETCDF="$SCRATCH/netcdf"
-    #~ source ${home_dir}/parallel_studio_2019/parallel_studio_xe_2019.4.070/bin/psxevars.sh
-  #~ fi
+  module load $module_load  > /dev/null
+
 else
   cluster=false
 fi

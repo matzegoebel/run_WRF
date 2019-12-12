@@ -299,7 +299,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         iofile = iofile_
                 comm_args =dict(JOB_NAME=IDr, wrfv=wrf_dir_i, ideal_case=conf.ideal_case, input_sounding=args["input_sounding"],
                                 sleep=rep, nx=nx, ny=ny, run_path=conf.run_path, build_path=conf.build_path,
-                                batch=int(use_job_scheduler), wrf_args="", cluster=int(conf.cluster), iofile=iofile)
+                                batch=int(use_job_scheduler), wrf_args="", cluster=int(conf.cluster), iofile=iofile, module_load=conf.module_load)
                 for p, v in comm_args.items():
                     os.environ[p] = str(v)
                 if use_job_scheduler:
@@ -426,7 +426,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         jobs = " ".join(IDs)
                         nslots_str = " ".join([str(ns) for ns in nslots])
                         comm_args =dict(wrfv=wrf_dir, nslots=nslots_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
-                                        cluster=int(conf.cluster), restart=int(restart), outpath=outpath)
+                                        cluster=int(conf.cluster), restart=int(restart), outpath=outpath, module_load=conf.module_load)
                         for p, v in comm_args.items():
                             os.environ[p] = str(v)
                         if use_job_scheduler:
