@@ -40,7 +40,7 @@ else
   #~ fi
 fi
 
-if [ -z $SGE_STDOUT_PATH ]
+if [ -z "$wrf_args" ]
 then
   wrf_args=$1
 fi

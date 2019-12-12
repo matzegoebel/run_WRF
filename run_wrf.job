@@ -27,9 +27,6 @@ jobs=(${jobs})
 nslots=(${nslots})
 wrfv=(${wrfv})
 
-echo "job ID : $JOB_ID"
-echo
-
  
 si=0
 pool=false
@@ -118,13 +115,19 @@ do
   fi
 
 
-  if [ -n "${SGE_STDOUT_PATH}" ]
+  if (( batch == 1 ))
   then
-    #save resource usage of job
-    qstat -j $JOB_ID > qstat.info
-    #prepend sge log to run log
-    echo -e "$(cat ${run_path}/logs/$JOB_NAME.out)\n$(cat run.log)" > run.log
-    echo -e "$(cat ${run_path}/logs/$JOB_NAME.err)\n$(cat run.err)" > run.err
+    if (( job_scheduler == "sge" ))
+    then
+      #save resource usage of job
+      qstat -j $JOB_ID > qstat.info
+      #prepend sge log to run log
+      echo -e "$(cat ${run_path}/logs/$JOB_NAME.out)\n$(cat run.log)" > run.log
+      echo -e "$(cat ${run_path}/logs/$JOB_NAME.err)\n$(cat run.err)" > run.err
+    elif (( job_scheduler == "sge" ))
+    then
+      echo "WARNING: saving job resources to file not yet implemented for SLURM"
+    fi
   fi
 
 done

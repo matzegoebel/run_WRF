@@ -91,9 +91,7 @@ split_output_res = 0 #dx (m) below which to split output in one timestep per fil
 del_args =   ["output_streams", "start_time", "end_time", "nz", "dz0","dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
               "n_rep", "isotropic_res", "pbl_res", "dt", "radt_min"]
 #%%
-'''Settings for resource requirements of SGE jobs'''
-cluster_name = "leo" #this name should appear in the variable $HOSTNAME to detect if cluster settings should be used
-queue = "std.q" #queue for SGE
+'''Settings for resource requirements of batch jobs'''
 
 #virtual memory: numbers need adjustment
 vmem_init_per_grid_point = 0.3 #virtual memory (MB) per horizontal grid point to request for WRF initialization (ideal.exe)
@@ -109,7 +107,7 @@ vmem_pool = 2000 #virtual memory to request per slot if pooling is used
 
 vmem_buffer = 1.3 #buffer factor for virtual memory
 
-#stack size (MB) for ideal.exe
+#stack size (MB) for ideal.exe (SGE only)
 h_stack_init=128
 #stack size (MB) for wrf.exe
 h_stack=None
@@ -135,9 +133,11 @@ even_split = False #force equal split between processors
 
 #%%
 '''Slot configurations and cluster settings'''
+job_scheduler = "sge" #sge or slurm
+cluster_name = "leo" #this name should appear in the variable $HOSTNAME to detect if cluster settings should be used
+queue = "std.q" #batch queue for SGE
 
 reduce_pool = True #reduce pool size to the actual uses number of slots; do not use if you do not want to share the node with others
-mail_adress="matthias.goebel@uibk.ac.at"
 
 if (("HOSTNAME" in os.environ) and (cluster_name in os.environ["HOSTNAME"])):
     cluster = True
