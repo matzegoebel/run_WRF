@@ -22,7 +22,7 @@ from pathlib import Path as fopen
 
 #%%
 def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_job_scheduler=False,
-           check_args=False, pool_jobs=False, mail="ea", wait=False, namelist_check=True, verbose=False):
+           check_args=False, pool_jobs=False, mail="ea", wait=False, namelist_check=True, test_run=False, verbose=False):
     """
     Submit idealized WRF experiments. Refer to README.md for more information.
 
@@ -52,6 +52,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         Wait until job is finished before submitting the next.
     namelist_check : bool, optional
         Perform sanity check of namelist parameters.
+    test_run : bool, optional
+        Do short test runs on cluster to find out required runtime and virtual memory
     verbose : bool, optional
         Verbose mode
 
@@ -66,6 +68,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         print("WARNING: option -o ignored when not in initialization mode!\n")
     if wait and use_job_scheduler:
         raise ValueError("Waiting for batch jobs is not yet implemented")
+    if test_run and (not use_job_scheduler):
+        raise ValueError("Test runs without job scheduler do not make sense!")
+    if test_run and pool_jobs:
+        raise ValueError("Do not use pooling for test runs!")
     if init and restart:
         raise ValueError("For restart runs no initialization is needed!")
     if len(glob.glob(os.getcwd() + "/submit_jobs.py")) == 0:
@@ -76,6 +82,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     conf = importlib.import_module("configs.{}".format(config_file))
     param_combs, combs = conf.param_combs, conf.combs
     combs_all = deepcopy(combs)
+
 
     if use_job_scheduler and (conf.job_scheduler == "slurm") and pool_jobs:
         raise ValueError("Job scheduler SLURM cannot be used for pooling jobs!")
@@ -231,13 +238,12 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         init_queue = "std.q"
 
         elif use_job_scheduler:
-            args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi, pool_jobs=pool_jobs)
+            args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi, pool_jobs=pool_jobs, restart=restart, test_run=test_run)
             if skip:
                 continue
             vmemi = args["vmem"]
             vmem.append(vmemi)
-            print("Runtime per time step: {0:.5f} s".format(args["rt_per_timestep"]))
-            print("Use vmem per slot: {0:.1f}M".format(vmemi/nslotsi))
+
 
         #not needed; just for completeness of dataframe:
         args["nx"] = nx
@@ -315,7 +321,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             batch_args_str += " -l h_stack={}M".format(round(conf.h_stack_init))
 
                     elif job_scheduler == "slurm":
-                        batch_args_str = "qsub -o={} -e={} -t={} --mem-per-cpu={}M --mail-type={} -J={} --export=ALL".format(*batch_args)
+                        batch_args_str = "sbatch -o={} -e={} -t={} --mem-per-cpu={}M --mail-type={} -J={} --export=ALL".format(*batch_args)
                     comm = batch_args_str + " init_wrf.job"
                 else:
                     comm = "bash init_wrf.job '{}' ".format(args_str_r)
@@ -382,7 +388,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
                 rtri = None
                 if use_job_scheduler:
-                    rtri = args["rt_per_timestep"] * run_hours/args["dt"] * conf.rt_buffer
+                    rtri = args["rt_per_timestep"] * run_hours/args["dt"]
                     rtr.append(rtri)
 
                 last_id = False
@@ -443,7 +449,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                 if "h_stack" in dir(conf) and conf.h_stack is not None:
                                     batch_args_str += " -l h_stack={}M".format(round(conf.h_stack))
                             elif job_scheduler == "slurm":
-                                batch_args_str = "qsub -o={} -e={} -t={} --mem-per-cpu={}M {} --mail-type={} -J={} --export=ALL".format(*batch_args)
+                                batch_args_str = "sbatch -o={} -e={} -t={} --mem-per-cpu={}M {} --mail-type={} -J={} --export=ALL".format(*batch_args)
                             comm = batch_args_str + " run_wrf.job"
 
                         else:
@@ -522,9 +528,11 @@ if __name__ == "__main__":
                     "mail":           ("-m", "--mail", "store"),
                     "wait":           ("-w", "--wait", "store_true"),
                     "namelist_check": ("-n", "--no_namelist_check", "store_false"),
+                    "test_run":        ("-T", "--test_run", "store_true"),
                     "verbose":        ("-v", "--verbose", "store_true")
                     }
 
+    assert sorted(parse_params.keys()) == sorted(desc.keys())
     add_args = {"exist" : {"choices" : ["s", "o", "b"]}}
 
     parser = argparse.ArgumentParser(description=intro)

@@ -6,8 +6,7 @@ Created on Fri Nov 22 17:36:46 2019
 Settings for submit_jobs.py
 Test settings for automated tests.
 
-For MPI testing.
-
+To test repetitions functionality
 @author: matze
 
 """

@@ -103,25 +103,24 @@ vmem = None #virtual memory per slot (MB) to request for running WRF (wrf.exe)
 vmem_per_grid_point = None #vmem (MB) per horizontal grid point per job (not per slot!)
 vmem_min = None #minimum virtual memory (MB) per slot for running WRF
 
-vmem_pool = 2000 #virtual memory to request per slot if pooling is used
-
 vmem_buffer = 1.3 #buffer factor for virtual memory
+vmem_test = 2000  #virtual memory per slot (MB) for test runs
+
 
 #stack size (MB) for ideal.exe (SGE only)
-h_stack_init=128
+h_stack_init = 128
 #stack size (MB) for wrf.exe
-h_stack=None
+h_stack = None
 
 #runtime (min) for ideal.exe
-rt_init=10
-
+rt_init = 10
 # runtime for wrf.exe: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from previous identical runs if present
-rt_buffer = 1.5 #buffer factor to multiply rt with
+rt_buffer = 2 #buffer factor to multiply rt with
 rt = None #None or job runtime in seconds; buffer not used
 # if rt is None: runtime per time step in seconds for different dx
 runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}
-
+rt_test = 5 #runtime for test runs
 
 #paths to search for log files to determine runtime and/or vmem if not specified
 resource_search_paths = [run_path]
@@ -130,6 +129,7 @@ resource_search_paths = [run_path]
 nslots_dict = {} #set number of slots for each dx
 min_n_per_proc = 16 #25, minimum number of grid points per processor
 even_split = False #force equal split between processors
+
 
 #%%
 '''Slot configurations and cluster settings'''

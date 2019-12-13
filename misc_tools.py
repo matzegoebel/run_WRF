@@ -439,7 +439,6 @@ def get_identical_runs(run_dir, search_paths):
 
     """
     search_paths = make_list(search_paths)
-    print("Search for runtime values in previous runs.")
     ignore_params = ["start_year", "start_month","start_day", "start_hour",
                      "start_minute","run_hours", "_outname"]
     identical_runs = []
@@ -529,19 +528,25 @@ def get_job_usage(qstat_file):
     return usage
 
 
-def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False):
+def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, restart=False, test_run=False):
     """Set vmem and runtime per time step  based on settings in config file."""
     skip = False
 
     #get runtime per timestep
     r = args["dx"]
+    n_steps = 3600*run_hours/args["dt"]
     identical_runs = None
     runtime_per_step = None
-    if conf.rt is not None:
-        runtime_per_step = conf.rt*args["dt"]/(3600*run_hours)/conf.rt_buffer #runtime per time step
+    print_rt_step = False
+    if test_run:
+        runtime_per_step = conf.rt_test*60/n_steps/conf.rt_buffer
+        args["n_rep"] = 1
+    elif conf.rt is not None:
+        runtime_per_step = conf.rt*60/conf.rt_buffer
     elif (conf.runtime_per_step_dict is not None) and (r in conf.runtime_per_step_dict):
         runtime_per_step = conf.runtime_per_step_dict[r]
         print("Use runtime dict")
+        print_rt_step = True
     else:
         print("Get runtime from previous runs")
         run_dir_0 = run_dir + "_0" #use rep 0 as reference
@@ -555,12 +560,20 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False):
         if runtime_per_step is None:
             print("No runtime specified and no previous runs found. Skipping...")
             skip = True
-    args["rt_per_timestep"] = runtime_per_step
+        print_rt_step = True
+
+    if not skip:
+        args["rt_per_timestep"] = runtime_per_step*conf.rt_buffer
+        if not restart:
+            print("Runtime: {0:.1f} min".format(args["rt_per_timestep"]*n_steps/60))
+        if print_rt_step:
+            print("Runtime per time step: {0:.5f} s".format(runtime_per_step))
+
 
     #virtual memory
     vmemi = None
-    if pool_jobs:
-        vmemi = conf.vmem_pool
+    if test_run:
+        vmemi = conf.vmem_test
     elif conf.vmem is not None:
         vmemi = conf.vmem
     elif conf.vmem_per_grid_point is not None:
@@ -583,7 +596,9 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False):
     if vmemi is not None:
         vmemi *= nslots*conf.vmem_buffer
 
-    args["vmem"] = vmemi
+    if not skip:
+        print("Use vmem per slot: {0:.1f}M".format(vmemi/nslots))
+        args["vmem"] = vmemi
 
     return args, skip
 
