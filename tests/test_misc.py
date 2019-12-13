@@ -14,6 +14,7 @@ import os
 from collections import OrderedDict as odict
 import get_namelist
 import pandas as pd
+from collections import Counter
 
 runs_dir = "./test_data/runs/"
 def test_get_runtime():
@@ -36,8 +37,9 @@ def test_get_runtime():
         identical_runs = misc_tools.get_identical_runs(runs_dir + "WRF_pytest_eta_0", "test_data/runs/")
 
     assert len(output) == 3
-    assert output[1].split("/")[-1] == 'WRF_pytest_2_eta_0 has same namelist parameters'
-    assert output[2].split("/")[-1] == 'WRF_pytest_eta_0 has same namelist parameters'
+    output = [o.split("/")[-1] for o in output]
+    assert 'WRF_pytest_2_eta_0 has same namelist parameters' in output
+    assert 'WRF_pytest_eta_0 has same namelist parameters'  in output
     vmem = misc_tools.get_vmem(identical_runs)
     assert vmem == [114.105, 160.0]
 
