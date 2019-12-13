@@ -136,6 +136,9 @@ even_split = False #force equal split between processors
 job_scheduler = "sge" #sge or slurm
 cluster_name = "leo" #this name should appear in the variable $HOSTNAME to detect if cluster settings should be used
 queue = "std.q" #batch queue for SGE
+mail_address = ""
+
+
 #modules to load
 module_load = "conda activate base; module purge; module load "
 if cluster_name == "leo":

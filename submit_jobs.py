@@ -97,6 +97,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     outpath_esc = outpath.replace("/", "\/") #need to escape slashes
 
     #temporary log output for job scheduler
+    job_scheduler = None
     if use_job_scheduler:
         batch_log_dir = conf.run_path + "/logs/"
         os.makedirs(batch_log_dir, exist_ok=True)
@@ -109,7 +110,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 if s in mail:
                     mail_slurm.append(r)
             mail = ",".join(mail_slurm)
-
+        if (conf.mail_address is None) or (conf.mail_address==""):
+            raise ValueError("For jobs using {}, provide valid mail address in config file".format(job_scheduler))
 
     IDs = []
     rtr = []
@@ -208,14 +210,13 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         slot_comm = ""
         if debug:
             wrf_dir_i = conf.wrf_dir_pre + "_debug"
-        elif nslotsi > 1:
+        elif (nslotsi > 1) or (job_scheduler == "slurm"):
             wrf_dir_i = conf.wrf_dir_pre + "_mpi"
             if use_job_scheduler and (not pool_jobs):
                 if job_scheduler == "sge":
                     slot_comm = "-pe openmpi-fillup {}".format(nslotsi)
                 elif job_scheduler == "slurm":
-                    slot_comm = "-n={}".format(nslotsi)
-
+                    slot_comm = "-N {}".format(nslotsi)
         else:
             wrf_dir_i = conf.wrf_dir_pre
         wrf_dir.append(wrf_dir_i)
@@ -314,14 +315,14 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                     rt_init = misc_tools.format_timedelta(conf.rt_init*60)
                     qout, qerr = [batch_log_dir + IDr + s for s in [".out", ".err"]]
-                    batch_args = [qout, qerr, rt_init, vmem_init, mail, IDr]
+                    batch_args = [qout, qerr, rt_init, vmem_init, conf.mail_address, mail, IDr]
                     if job_scheduler == "sge":
-                        batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M -m {} -N {} -V".format(init_queue, *batch_args)
+                        batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M -M {} -m {} -N {} -V".format(init_queue, *batch_args)
                         if "h_stack_init" in dir(conf) and conf.h_stack_init is not None:
                             batch_args_str += " -l h_stack={}M".format(round(conf.h_stack_init))
 
                     elif job_scheduler == "slurm":
-                        batch_args_str = "sbatch -o={} -e={} -t={} --mem-per-cpu={}M --mail-type={} -J={} --export=ALL".format(*batch_args)
+                        batch_args_str = "sbatch -o {} -e {} --time={} --mem-per-cpu={}M --mail-user={} --mail-type={} -J {} -n 1 --export=ALL".format(*batch_args)
                     comm = batch_args_str + " init_wrf.job"
                 else:
                     comm = "bash init_wrf.job '{}' ".format(args_str_r)
@@ -443,13 +444,13 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             qout, qerr = [batch_log_dir + job_name + s for s in [".out", ".err"]]
 
                             #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
-                            batch_args = [qout, qerr, rtp, vmemp, slot_comm, mail,  job_name]
+                            batch_args = [qout, qerr, rtp, vmemp, slot_comm, conf.mail_address, mail, job_name]
                             if job_scheduler == "sge":
-                                batch_args_str = "-cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M {} -m {} -M {} -N {} -V".format(conf.queue, *batch_args)
+                                batch_args_str = "-cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M {} -M {} -m {} -M {} -N {} -V".format(conf.queue, *batch_args)
                                 if "h_stack" in dir(conf) and conf.h_stack is not None:
                                     batch_args_str += " -l h_stack={}M".format(round(conf.h_stack))
                             elif job_scheduler == "slurm":
-                                batch_args_str = "sbatch -o={} -e={} -t={} --mem-per-cpu={}M {} --mail-type={} -J={} --export=ALL".format(*batch_args)
+                                batch_args_str = "sbatch -o {} -e {} --time={} --mem-per-cpu={}M {} --mail-user={} --mail-type={} -J {} --export=ALL".format(*batch_args)
                             comm = batch_args_str + " run_wrf.job"
 
                         else:

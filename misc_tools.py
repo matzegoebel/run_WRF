@@ -119,9 +119,10 @@ def print_progress(start=None, counter=None, length=None, message="Elapsed time"
 
 def format_timedelta(td):
     """Format td in seconds to HHH:MM:SS"""
+    td = int(td)
     hours, remainder = divmod(td, 3600)
     minutes, seconds = divmod(remainder, 60)
-    return '{:03}:{:02}:{:02}'.format(int(hours), int(minutes), int(seconds))
+    return '{:03}:{:02}:{:02}'.format(hours, minutes, seconds)
 
 
 #%%config grid related
@@ -471,7 +472,7 @@ def get_identical_runs(run_dir, search_paths):
     return identical_runs
 
 
-def get_vmem(runs, logfile="qstat.info"):
+def get_vmem(runs, logfile="resources.info"):
     """
     Get maximum used virtual memory of SGE jobs from log files in the given directories.
 
@@ -492,9 +493,9 @@ def get_vmem(runs, logfile="qstat.info"):
         return
     vmem = []
     for i, r in enumerate(runs):
-        qstat_file = r + "/" + logfile
-        if os.path.isfile(qstat_file):
-            vmem_r = get_job_usage(qstat_file)["maxvmem"]
+        resource_file = r + "/" + logfile
+        if os.path.isfile(resource_file):
+            vmem_r = get_job_usage(resource_file)["maxvmem"]
             vmem_r_num = None
             for mag, factor in zip(("M", "G"), (1, 1000)):
                 if mag in vmem_r:
@@ -505,13 +506,13 @@ def get_vmem(runs, logfile="qstat.info"):
         return vmem
 
 
-def get_job_usage(qstat_file):
+def get_job_usage(resource_file):
     """
-    Get usage statistics from qstat -j $JOB_ID command.
+    Get usage statistics from job scheduler.
 
     Parameters
     ----------
-    qstat_file : str
+    resource_file : str
         File where command output was saved.
 
     Returns
@@ -520,10 +521,20 @@ def get_job_usage(qstat_file):
         Usage statistics.
 
     """
-    qstat = fopen(qstat_file).read_text()
-    usage = qstat[qstat.index("\nusage"):].split("\n")[1]
-    usage = usage[usage.index(":")+1:].strip().split(",")
-    usage = dict([l.strip().split("=") for l in usage])
+    usage = fopen(resource_file).read_text()
+    if "usage" in resource_file:
+        usage = usage[usage.index("\nusage"):].split("\n")[1]
+        usage = usage[usage.index(":")+1:].strip().split(",")
+        usage = dict([l.strip().split("=") for l in usage])
+    elif "MaxVMSize" in usage:
+        keys, vals, _ = usage.split("\n")
+        keys = keys.split("|")[:-1]
+        vals = vals.split("|")[:-1]
+        usage = {k : v for k,v in zip(keys, vals) if v != ""}
+        if "MaxVMSize" in usage:
+            usage["maxvmem"] = usage["MaxVMSize"]
+    else:
+        raise RuntimeError("File format for job usage not known!")
 
     return usage
 

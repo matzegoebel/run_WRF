@@ -36,16 +36,16 @@ def test_get_runtime():
     with Capturing() as output:
         identical_runs = misc_tools.get_identical_runs(runs_dir + "WRF_pytest_eta_0", "test_data/runs/")
 
-    assert len(output) == 3
+    assert len(output) == 2
     output = [o.split("/")[-1] for o in output]
     assert 'WRF_pytest_2_eta_0 has same namelist parameters' in output
     assert 'WRF_pytest_eta_0 has same namelist parameters'  in output
     vmem = misc_tools.get_vmem(identical_runs)
-    assert vmem == [114.105, 160.0]
+    assert sorted(vmem) == [114.105, 160.0]
 
 def test_job_usage():
-    qstat_file = "test_data/qstat.info"
-    usage = misc_tools.get_job_usage(qstat_file)
+    resource_file = "test_data/resources.info"
+    usage = misc_tools.get_job_usage(resource_file)
     control = {'cpu': '00:02:00',
      'mem': '13.13958 GB s',
      'io': '0.02315 GB',

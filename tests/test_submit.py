@@ -134,7 +134,7 @@ def test_get_rt_vmem():
     #test get_rt and vmem, qsub
     for run in os.listdir(conf.run_path):
         rundir ="{}/{}/".format(conf.run_path, run)
-        shutil.copy("tests/test_data/qstat.info", rundir)
+        shutil.copy("tests/test_data/resources.info", rundir)
 
     with Capturing() as output:
         combs = submit_jobs(init=False, check_args=True, use_job_scheduler=True, exist="o", config_file="test.config_test_mpi")
