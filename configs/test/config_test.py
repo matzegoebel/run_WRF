@@ -138,7 +138,7 @@ cluster_name = "leo" #this name should appear in the variable $HOSTNAME to detec
 queue = "std.q" #batch queue for SGE
 
 #modules to load
-module_load = "module purge; module load "
+module_load = "conda activate base; module purge; module load "
 if cluster_name == "leo":
     module_load += " intel/18.0u1 netcdf-4"
 elif cluster_name == "vsc":
