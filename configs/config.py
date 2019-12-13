@@ -134,34 +134,35 @@ even_split = False #force equal split between processors
 #%%
 '''Slot configurations and cluster settings'''
 job_scheduler = "sge" #sge or slurm
-cluster_name = "leo" #this name should appear in the variable $HOSTNAME to detect if cluster settings should be used
-queue = "std.q" #batch queue for SGE
 mail_address = ""
-
-
-#modules to load
-module_load = "conda activate base; module purge; module load "
-if cluster_name == "leo":
-    module_load += " intel/18.0u1 netcdf-4"
-elif cluster_name == "vsc":
-    module_load += " intel/16.0.3 intel-mpi/5.1.3 hdf5/1.8.16 pnetcdf/1.5.0 netcdf/4.3.2;\
-                   export NETCDF=/opt/sw/x86_64/glibc-2.12/ivybridge-ep/netcdf/4.3.2/intel-14.0.2;\
-                   export PNETCDF=/opt/sw/x86_64/glibc-2.12/ivybridge-ep/parallel/netcdf/1.5.0/intel-14.0.2"
-
+clusters = ["leo", "vsc"]
 reduce_pool = True #reduce pool size to the actual uses number of slots; do not use if you do not want to share the node with others
 
 host = os.popen("hostname -d").read()
-if cluster_name in host:
+if any([c in host for c in clusters]):
     cluster = True
     #maximum number of slots that will be requested for the x and y directions
     max_nslotsy = None
     max_nslotsx = None
-    pool_size = 28 #number of cores per pool if job pooling is used
+    #modules to load
+    module_load = "conda activate base; module purge; module load "
+    if  "leo" in host:
+        module_load += " intel/18.0u1 netcdf-4"
+        queue = "std.q" #batch queue for SGE
+        pool_size = 28 #number of cores per pool if job pooling is used
+
+    elif "vsc" in host:
+        module_load += " intel/16.0.3 intel-mpi/5.1.3 hdf5/1.8.16 pnetcdf/1.5.0 netcdf/4.3.2;\
+                       export NETCDF=/opt/sw/x86_64/glibc-2.12/ivybridge-ep/netcdf/4.3.2/intel-14.0.2;\
+                       export PNETCDF=/opt/sw/x86_64/glibc-2.12/ivybridge-ep/parallel/netcdf/1.5.0/intel-14.0.2"
+        queue = "vsc3plus_0064,mem_0064,mem_0128" #partitions on vsc3
+
 else:
     cluster = False
     max_nslotsy = None
     max_nslotsx = None
     pool_size = 16
+
 
 #%%
 

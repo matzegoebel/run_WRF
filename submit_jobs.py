@@ -444,13 +444,13 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             qout, qerr = [batch_log_dir + job_name + s for s in [".out", ".err"]]
 
                             #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
-                            batch_args = [qout, qerr, rtp, vmemp, slot_comm, conf.mail_address, mail, job_name]
+                            batch_args = [conf.queue, qout, qerr, rtp, vmemp, slot_comm, conf.mail_address, mail, job_name]
                             if job_scheduler == "sge":
-                                batch_args_str = "-cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M {} -M {} -m {} -M {} -N {} -V".format(conf.queue, *batch_args)
+                                batch_args_str = "-cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M {} -M {} -m {} -M {} -N {} -V".format(*batch_args)
                                 if "h_stack" in dir(conf) and conf.h_stack is not None:
                                     batch_args_str += " -l h_stack={}M".format(round(conf.h_stack))
                             elif job_scheduler == "slurm":
-                                batch_args_str = "sbatch -o {} -e {} --time={} --mem-per-cpu={}M {} --mail-user={} --mail-type={} -J {} --export=ALL".format(*batch_args)
+                                batch_args_str = "sbatch -p {} -o {} -e {} --time={} --mem-per-cpu={}M {} --mail-user={} --mail-type={} -J {} --export=ALL".format(*batch_args)
                             comm = batch_args_str + " run_wrf.job"
 
                         else:

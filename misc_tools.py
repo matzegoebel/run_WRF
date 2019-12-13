@@ -527,9 +527,9 @@ def get_job_usage(resource_file):
         usage = usage[usage.index(":")+1:].strip().split(",")
         usage = dict([l.strip().split("=") for l in usage])
     elif "MaxVMSize" in usage:
-        keys, vals, _ = usage.split("\n")
-        keys = keys.split("|")[:-1]
-        vals = vals.split("|")[:-1]
+        kv = usage.split("\n")
+        keys = kv[0].split("|")[:-1]
+        vals = kv[-2].split("|")[:-1]
         usage = {k : v for k,v in zip(keys, vals) if v != ""}
         if "MaxVMSize" in usage:
             usage["maxvmem"] = usage["MaxVMSize"]
