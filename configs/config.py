@@ -162,6 +162,7 @@ else:
     max_nslotsy = None
     max_nslotsx = None
     pool_size = 16
+    module_load = ""
 
 
 #%%

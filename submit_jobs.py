@@ -332,9 +332,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 if not check_args:
                     err = os.system(comm)
 
-                    if err == 0:
-                        initlog = fopen(run_dir_r + "/init.log").read_text()
-                        print(initlog.split("\n")[-2].strip())
+                    initlog = fopen(run_dir_r + "/init.log").read_text()
+                    print(initlog.split("\n")[-2].strip())
 
                     initerr = fopen(run_dir_r + "/init.err").read_text()
                     print(initerr)

@@ -40,7 +40,7 @@ done
 
 if ( $raise )
 then
-  echo "ERROR: parameters not found in namelist file: $missing_params"
+  >&2 echo "ERROR: parameters not found in namelist file: $missing_params"
   exit 1
 fi
 

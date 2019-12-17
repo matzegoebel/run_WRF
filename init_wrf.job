@@ -91,10 +91,11 @@ set -e
 #include information about number of processors in namelist.input
 if (( nx*ny > 1 ))
 then
-  cat rsl.out.0000
   if (( err != 0 ))
   then
     >&2 cat rsl.error.0000
+  else
+    cat rsl.out.0000
   fi
   source ${code_dir}/search_replace.sh namelist.input namelist.input 0 nproc_x $nx nproc_y $ny
 fi

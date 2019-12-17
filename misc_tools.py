@@ -741,7 +741,7 @@ def check_namelist_best_practice(namelist):
 
     raise_err = False
     dx = namelist["dx"]
-    print("Check consistency of namelist settings. Horizontal grid spacing: dx={0:.1f} m".format(dx))
+    print("Checking consistency of namelist settings. Horizontal grid spacing: dx={0:.1f} m".format(dx))
 
     #dt
     dt =  namelist["time_step"] + namelist["time_step_fract_num"]/namelist["time_step_fract_den"]
