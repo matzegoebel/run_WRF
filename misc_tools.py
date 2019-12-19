@@ -522,7 +522,7 @@ def get_job_usage(resource_file):
 
     """
     usage = fopen(resource_file).read_text()
-    if "usage" in resource_file:
+    if "usage" in usage:
         usage = usage[usage.index("\nusage"):].split("\n")[1]
         usage = usage[usage.index(":")+1:].strip().split(",")
         usage = dict([l.strip().split("=") for l in usage])

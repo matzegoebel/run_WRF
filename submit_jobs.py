@@ -84,8 +84,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     combs_all = deepcopy(combs)
 
 
-    if use_job_scheduler and (conf.job_scheduler == "slurm") and pool_jobs:
-        raise ValueError("Job scheduler SLURM cannot be used for pooling jobs!")
 
     if outdir is None:
         outdir = conf.outdir
@@ -105,6 +103,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         if job_scheduler not in ["slurm", "sge"]:
             raise ValueError("Job scheduler {} not implemented. Use SGE or SLURM".format(job_scheduler))
         if job_scheduler == "slurm":
+            if pool_jobs:
+                raise ValueError("Job scheduler SLURM cannot be used for pooling jobs!")
             mail_slurm = []
             for s,r in zip(["n", "b", "e", "a"], ["NONE", "BEGIN", "END", "FAIL"]):
                 if s in mail:
@@ -395,7 +395,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 if (rep == n_rep-1) and (i == len(combs) - 1):
                     last_id = True
 
-                if (sum(nslots) >= conf.pool_size) or (not pool_jobs) or last_id: #submit current pool of jobs
+                if (not pool_jobs) or (sum(nslots) >= conf.pool_size) or last_id: #submit current pool of jobs
                     print("")
                     resched_i = False
                     #if pool is already too large: cut out last job, which is rescheduled afterwards
@@ -445,11 +445,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                             batch_args = [conf.queue, qout, qerr, rtp, vmemp, slot_comm, conf.mail_address, mail, job_name]
                             if job_scheduler == "sge":
-                                batch_args_str = "-cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M {} -M {} -m {} -M {} -N {} -V".format(*batch_args)
+                                batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M {} -M {} -m {} -N {} -V".format(*batch_args)
                                 if "h_stack" in dir(conf) and conf.h_stack is not None:
                                     batch_args_str += " -l h_stack={}M".format(round(conf.h_stack))
                             elif job_scheduler == "slurm":
-                                batch_args_str = "sbatch -p {} -o {} -e {} --time={} --mem-per-cpu={}M {} --mail-user={} --mail-type={} -J {} --export=ALL".format(*batch_args)
+                                batch_args_str = "sbatch --qos={} -p {} -o {} -e {} --time={} --mem-per-cpu={}M {} --mail-user={} --mail-type={} -J {} --export=ALL".format(conf.qos, *batch_args)
                             comm = batch_args_str + " run_wrf.job"
 
                         else:

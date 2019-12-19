@@ -24,25 +24,29 @@ import pandas as pd
 success = {True : 'wrf: SUCCESS COMPLETE IDEAL INIT', False : 'd01 2018-06-20_08:00:00 wrf: SUCCESS COMPLETE WRF'}
 outd = os.path.join(conf.outpath, conf.outdir)
 
+test_dir = os.getcwd()
+code_dir = "/".join(test_dir.split("/")[:-1])
+
 #%%
 
 def test_basic():
+    os.chdir(code_dir)
     for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
         if os.path.isdir(d):
             shutil.rmtree(d)
 
     for add in ["_mpi", ""]:
         target_dir = "{}/{}{}/test/{}/".format(conf.build_path, conf.wrf_dir_pre, add, conf.ideal_case)
-        shutil.copy("test_data/IO_test.txt", target_dir)
-        shutil.copy("test_data/namelists/namelist.input", target_dir)
+        shutil.copy("{}/test_data/IO_test.txt".format(test_dir), target_dir)
+        shutil.copy("{}/test_data/namelists/namelist.input".format(test_dir), target_dir)
 
-    os.chdir("..")
     with pytest.raises(RuntimeError, match="Parameter dx used in submit_jobs.py already defined in namelist.input! Rename this parameter!"):
         submit_jobs(config_file="test.config_test_del_args", init=True)
 
     #check skipping non-initialized runs
     with Capturing() as output:
         submit_jobs(init=False, config_file="test.config_test")
+    print(output)
     assert Counter(output)["Run not initialized yet! Skipping..."] == 2
 
 
@@ -59,7 +63,7 @@ def test_basic():
     assert (t == t_corr).all()
 
 def test_output_exist():
-    #test behaviour if output exists
+    os.chdir(code_dir)
     for run in os.listdir(conf.run_path):
         file = "{}/{}/wrfinput_d01".format(conf.run_path, run)
         if os.path.isfile(file):
@@ -71,13 +75,14 @@ def test_output_exist():
                 print(exist, message)
                 with Capturing() as output:
                     combs = submit_jobs(init=init, exist=exist, wait=True, config_file="test.config_test")
+                print(output)
                 count = Counter(output)
                 assert count[message] == combs["n_rep"].sum()
                 if "Skipping..." not in message:
                     assert count[success[init]] == combs["n_rep"].sum()
 
 def test_bak_creation():
-    #check backup creation
+    os.chdir(code_dir)
     submit_jobs(init=False, exist="b", wait=True, config_file="test.config_test")
     bak = ['fastout_pytest_lin_0_bak_0',
            'wrfout_pytest_lin_0_bak_0',
@@ -93,13 +98,13 @@ def test_bak_creation():
         submit_jobs(init=True, exist="a", config_file="test.config_test")
 
 def test_restart():
-    #check restart
+    os.chdir(code_dir)
     with Capturing() as output:
         combs = submit_jobs(init=False, restart=True, wait=True, config_file="test.config_test_rst")
     count = Counter(output)
+    print(output)
     for m in ["Restart run from 2018-06-20 08:00:00", 'd01 2018-06-20_10:00:00 wrf: SUCCESS COMPLETE WRF']:
         assert count[m] == combs["n_rep"].sum()
-
     #check output data
     outd = os.path.join(conf.outpath, conf.outdir)
     outfiles = ['rst', 'bak', 'fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
@@ -110,20 +115,22 @@ def test_restart():
     assert (t == t_corr).all()
 
 def test_repeats():
-    #check repeats
+    os.chdir(code_dir)
     combs = submit_jobs(init=True, exist="o", config_file="test.config_test_reps")
     with Capturing() as output:
         submit_jobs(init=False, wait=True, exist="o", config_file="test.config_test_reps")
+    print(output)
     count = Counter(output)
     assert count[success[False]] == combs["n_rep"].sum()
 
 
 def test_mpi():
-    #check mpi and pool
+    os.chdir(code_dir)
     combs = submit_jobs(init=True, wait=True, exist="o", config_file="test.config_test_mpi")
 
     with Capturing() as output:
         submit_jobs(init=False, pool_jobs=True, wait=True, exist="o", config_file="test.config_test_mpi")
+    print(output)
     count = Counter(output)
     m = "Submit IDs: ['pytest_kessler_0', 'pytest_lin_0']"
     assert count[m] == 1
@@ -131,13 +138,14 @@ def test_mpi():
     assert count[m] == combs["n_rep"].sum()
 
 def test_get_rt_vmem():
-    #test get_rt and vmem, qsub
+    os.chdir(code_dir)
     for run in os.listdir(conf.run_path):
         rundir ="{}/{}/".format(conf.run_path, run)
         shutil.copy("tests/test_data/resources.info", rundir)
 
     with Capturing() as output:
         combs = submit_jobs(init=False, check_args=True, use_job_scheduler=True, exist="o", config_file="test.config_test_mpi")
+    print(output)
     count = Counter(output)
     messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 148.3M']
     for m in messages:
@@ -151,7 +159,6 @@ def test_get_rt_vmem():
     for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
         shutil.rmtree(d)
 
-#os.chdir("..")
 
 
 #TODO

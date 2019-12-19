@@ -18,6 +18,7 @@ from collections import Counter
 
 runs_dir = "./test_data/runs/"
 def test_get_runtime():
+    print(os.getcwd())
     timing, counter = misc_tools.get_runtime(runs_dir + "WRF_pytest_eta_0", all_times=True)
     assert counter == 86400
     assert timing.notna().all().all()
@@ -35,7 +36,7 @@ def test_get_runtime():
 
     with Capturing() as output:
         identical_runs = misc_tools.get_identical_runs(runs_dir + "WRF_pytest_eta_0", "test_data/runs/")
-
+    print(output)
     assert len(output) == 2
     output = [o.split("/")[-1] for o in output]
     assert 'WRF_pytest_2_eta_0 has same namelist parameters' in output

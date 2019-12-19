@@ -6,8 +6,7 @@ set -e
 if (( cluster == 1 ))
 then
   cluster=true
-  module purge > /dev/null
-  module load $module_load  > /dev/null
+  eval $module_load
 
 else
   cluster=false
@@ -28,7 +27,7 @@ pool=false
 if (( ${#jobs[@]} > 1 )) && (( ${pool_jobs} == 1 ))
 then
   pool=true
-  if $cluster
+  if (( batch == 1 ))
   then
     qs=$(qstat -t)
     hosts=$(python ${code_dir}/pool/get_hosts.py "$JOB_ID" "$qs")
@@ -65,7 +64,7 @@ do
   if (( nsi > 1 ))
   then
     echo "parallel"
-    if $pool && $cluster
+    if $pool && (( batch == 1 ))
     then
       echo "si $si"
       hostsi=${hosts[@]:$si:$nsi}

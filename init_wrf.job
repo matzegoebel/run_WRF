@@ -29,8 +29,7 @@ then
 
 else
   echo "start cluster job"
-  module purge  > /dev/null
-  $module_load  > /dev/null
+  eval $module_load
 fi
 
 if [ -z "$wrf_args" ]

@@ -26,11 +26,11 @@
  io_form_input                       = 2
  io_form_boundary                    = 2
  iofields_filename                   = "NONE_SPECIFIED"
- auxhist7_outname                    = ''
- auxhist7_interval_m                 = 0,
- auxhist7_interval_s                 = 0,
- frames_per_auxhist7                 = 100000,
- io_form_auxhist7                    = 2 
+ auxhist4_outname                    = ''
+ auxhist4_interval_m                 = 0,
+ auxhist4_interval_s                 = 0,
+ frames_per_auxhist4                 = 100000,
+ io_form_auxhist4                    = 2 
 
 
  /
