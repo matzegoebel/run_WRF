@@ -7,7 +7,7 @@ Created on Fri Nov 29 20:17:50 2019
 """
 
 
-def namelist_to_dict(path, verbose=False, first_domain_only=True):
+def namelist_to_dict(path, verbose=False, first_domain_only=True, registries=None, build_path=None):
     """Convert namelist file to dictionary."""
     with open(path) as f:
         namelist_str = f.read().replace(" ", "").replace("\t", "").split("\n")
@@ -19,6 +19,18 @@ def namelist_to_dict(path, verbose=False, first_domain_only=True):
             param_val = get_namelist_param_val(line, verbose=verbose, first_domain_only=first_domain_only)
             if param_val is not None:
                 namelist_dict[param_val[0]] = param_val[1]
+    if (registries is not None) and (build_path is not None):
+        for reg in registries:
+            with open(build_path + "/Registry/" + reg) as f:
+                reglines = f.readlines()
+            for line in reglines:
+                line = line.replace("\t", " ")
+                if line[:7] == "rconfig":
+                    rconfig = [l for l in line.split(" ") if l !=""]
+                    if rconfig[2] not in namelist_dict:
+                        namelist_dict[rconfig[2]] = mod_namelist_val(rconfig[5])
+                    if ("namelist," not in rconfig[3]) and (rconfig[3] != "derived"):
+                        raise Exception("Strange format of registry file {}!".format(reg))
     return namelist_dict
 
 def get_namelist_param_val(line, verbose=False, first_domain_only=True):

@@ -60,7 +60,7 @@ params["zdamp"] = int(params["ztop"]/3) #depth of damping layer (m)
 params["nz"] = 60 #number of vertical levels
 params["dz0"] = 20 #height of first model level (m)
 params["dz_method"] = 0 #method for creating vertical grid as defined in vertical_grid.py
-params["dt"] = None  #time step (s), if None calculated as dt = 6 s/m *dx/1000
+params["dt_f"] = None  #time step (s), if None calculated as dt = 6 s/m *dx/1000; can be float
 #minimum time between radiation calls (min); if radt is not specified: radt=max(radt_min, 10*dt)
 params["radt_min"] = 1
 
@@ -86,9 +86,11 @@ params["restart_interval"] = 120 #restart interval (min)
 
 split_output_res = 0 #dx (m) below which to split output in one timestep per file
 
+registries = ["Registry.EM_COMMON", "registry.hyb_coord", "registry.les", "registry.io_boilerplate"] #registries to look for default namelist parameters
+
 # non-namelist parameters that will not be included in namelist file
 del_args =   ["output_streams", "start_time", "end_time", "nz", "dz0","dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
-              "n_rep", "isotropic_res", "pbl_res", "dt", "radt_min"]
+              "n_rep", "isotropic_res", "pbl_res", "dt_f", "radt_min"]
 #%%
 '''Settings for resource requirements of batch jobs'''
 
@@ -155,8 +157,8 @@ if any([c in host for c in clusters]):
         module_load = "module load intel/16.0.3 intel-mpi/5.1.3 hdf5/1.8.16 pnetcdf/1.5.0 netcdf/4.3.2;\
                        export NETCDF=/opt/sw/x86_64/glibc-2.12/ivybridge-ep/netcdf/4.3.2/intel-14.0.2;\
                        export PNETCDF=/opt/sw/x86_64/glibc-2.12/ivybridge-ep/parallel/netcdf/1.5.0/intel-14.0.2"
-        queue = "mem_0128" #partitions on vsc3
-        qos = "devel_0128"
+        queue = "mem_0064" #partitions on vsc3
+        qos = "normal_0064"
 
 else:
     cluster = False

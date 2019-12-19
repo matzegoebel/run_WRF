@@ -545,7 +545,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
 
     #get runtime per timestep
     r = args["dx"]
-    n_steps = 3600*run_hours/args["dt"]
+    n_steps = 3600*run_hours/args["dt_f"]
     identical_runs = None
     runtime_per_step = None
     print_rt_step = False
@@ -614,7 +614,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
     return args, skip
 
 #%%init
-def prepare_init(args, conf, wrf_dir_i, namelist_check=True):
+def prepare_init(args, conf, wrf_dir, namelist_check=True):
     """Sets some namelist parameters based on the config files settings."""
 
     r = args["dx"]
@@ -628,9 +628,9 @@ def prepare_init(args, conf, wrf_dir_i, namelist_check=True):
             args["mix_isotropic"] = 0
 
     #timestep
-    dt_int = math.floor(args["dt"])
+    dt_int = math.floor(args["dt_f"])
     args["time_step"] = dt_int
-    args["time_step_fract_num"] = round((args["dt"] - dt_int)*10)
+    args["time_step_fract_num"] = round((args["dt_f"] - dt_int)*10)
     args["time_step_fract_den"] = 10
     if "radt" not in args:
         args["radt"] = max(args["radt_min"], 10*dt_int/60) #rule of thumb
@@ -710,7 +710,8 @@ def prepare_init(args, conf, wrf_dir_i, namelist_check=True):
 
     # delete non-namelist parameters
     del_args = [*conf.del_args, *[p + "_idx" for p in conf.composite_params.keys()]]
-    namelist = get_namelist.namelist_to_dict("{}/{}/test/{}/namelist.input".format(conf.build_path, wrf_dir_i, conf.ideal_case))
+    wrf_build = "{}/{}".format(conf.build_path, wrf_dir)
+    namelist = get_namelist.namelist_to_dict("{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case), build_path=wrf_build, registries=conf.registries)
     args_clean = deepcopy(args)
     for del_arg in del_args:
         if del_arg in namelist:

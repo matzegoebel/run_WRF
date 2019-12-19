@@ -222,8 +222,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         wrf_dir.append(wrf_dir_i)
 
         #timestep
-        if "dt" not in args:
-            args["dt"] = r/1000*6 #wrf rule of thumb
+        if "dt_f" not in args:
+            args["dt_f"] = r/1000*6 #wrf rule of thumb
 
         if init:
             args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i, namelist_check=namelist_check)
@@ -388,7 +388,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
                 rtri = None
                 if use_job_scheduler:
-                    rtri = args["rt_per_timestep"] * run_hours/args["dt"]
+                    rtri = args["rt_per_timestep"] * run_hours/args["dt_f"]
                     rtr.append(rtri)
 
                 last_id = False
