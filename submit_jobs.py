@@ -103,8 +103,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         if job_scheduler not in ["slurm", "sge"]:
             raise ValueError("Job scheduler {} not implemented. Use SGE or SLURM".format(job_scheduler))
         if job_scheduler == "slurm":
-            if pool_jobs:
-                raise ValueError("Job scheduler SLURM cannot be used for pooling jobs!")
+            #assuming no oversubscription is allowed, pooling is necessary
+            if conf.force_pool:
+                pool_jobs = True
             mail_slurm = []
             for s,r in zip(["n", "b", "e", "a"], ["NONE", "BEGIN", "END", "FAIL"]):
                 if s in mail:
@@ -225,24 +226,24 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         if "dt_f" not in args:
             args["dt_f"] = r/1000*6 #wrf rule of thumb
 
+        queue = conf.queue
         if init:
             args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i, namelist_check=namelist_check)
 
-            #vmem init
-            vmem_init = max(conf.vmem_init_min, int(conf.vmem_init_per_grid_point*args["e_we"]*args["e_sn"]))
-            #job scheduler queue
-            if use_job_scheduler:
-                if job_scheduler == "sge":
-                    if vmem_init > 25e3:
-                        init_queue = "bigmem.q"
-                    else:
-                        init_queue = "std.q"
+            #job scheduler queue and vmem
+            if use_job_scheduler and conf.request_vmem:
+                vmem_init = max(conf.vmem_init_min, int(conf.vmem_init_per_grid_point*args["e_we"]*args["e_sn"]))
+                if ("bigmem_limit" in dir(conf)) and (vmem_init > conf.bigmem_limit):
+                    queue = conf.bigmem_queue
 
         elif use_job_scheduler:
-            args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi, pool_jobs=pool_jobs, restart=restart, test_run=test_run)
+            args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi, pool_jobs=pool_jobs, restart=restart, test_run=test_run, request_vmem=conf.request_vmem)
             if skip:
                 continue
-            vmemi = args["vmem"]
+            if conf.request_vmem:
+                vmemi = args["vmem"]
+            else:
+                vmemi = None
             vmem.append(vmemi)
 
 
@@ -315,14 +316,19 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                     rt_init = misc_tools.format_timedelta(conf.rt_init*60)
                     qout, qerr = [batch_log_dir + IDr + s for s in [".out", ".err"]]
-                    batch_args = [qout, qerr, rt_init, vmem_init, conf.mail_address, mail, IDr]
+                    batch_args = [queue, qout, qerr, rt_init, conf.mail_address, mail, IDr]
                     if job_scheduler == "sge":
-                        batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M -M {} -m {} -N {} -V".format(init_queue, *batch_args)
+                        batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -M {} -m {} -N {} -V ".format(*batch_args)
                         if "h_stack_init" in dir(conf) and conf.h_stack_init is not None:
                             batch_args_str += " -l h_stack={}M".format(round(conf.h_stack_init))
+                        if conf.request_vmem:
+                            batch_args_str += " -l h_vmem={}M".format(vmem_init)
 
                     elif job_scheduler == "slurm":
-                        batch_args_str = "sbatch -o {} -e {} --time={} --mem-per-cpu={}M --mail-user={} --mail-type={} -J {} -n 1 --export=ALL".format(*batch_args)
+                        batch_args_str = "sbatch --qos={}  -p {} -o {} -e {} --time={} --mail-user={} --mail-type={} -J {} -N 1 -n 1 --export=ALL ".format(conf.qos, *batch_args)
+                        if conf.request_vmem:
+                            batch_args_str += " --mem-per-cpu={}M".format(vmem_init)
+
                     comm = batch_args_str + " init_wrf.job"
                 else:
                     comm = "bash init_wrf.job '{}' ".format(args_str_r)
@@ -348,7 +354,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     print("Run not initialized yet! Skipping...")
                     skip = True
                 stream_names = [stream[0] for stream in args["output_streams"].values()]
+                send_rt_signal = conf.send_rt_signal
                 if restart:
+                    send_rt_signal = conf.send_rt_signal_restart
                     run_hours  = misc_tools.prepare_restart(run_dir_r, outpath, stream_names, args["end_time"])
                     if (run_hours is None) or (run_hours <= 0):
                         skip = True
@@ -388,7 +396,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
                 rtri = None
                 if use_job_scheduler:
-                    rtri = args["rt_per_timestep"] * run_hours/args["dt_f"]
+                    rtri = args["rt_per_timestep"] * run_hours/args["dt_f"] *3600 #runtime in seconds
                     rtr.append(rtri)
 
                 last_id = False
@@ -400,14 +408,15 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     resched_i = False
                     #if pool is already too large: cut out last job, which is rescheduled afterwards
                     if pool_jobs and (sum(nslots) > conf.pool_size):
-                        if len(nslots) == 1:
+                        if len(nslots) > 1:
+                            nslots = nslots[:-1]
+                            wrf_dir = wrf_dir[:-1]
+                            vmem = vmem[:-1]
+                            rtr = rtr[:-1]
+                            IDs = IDs[:-1]
+                            resched_i = True
+                        elif job_scheduler == "sge":
                             raise ValueError("Pool size ({}) smaller than number of slots of current job ({})!".format(conf.pool_size, nslots[0]))
-                        nslots = nslots[:-1]
-                        wrf_dir = wrf_dir[:-1]
-                        vmem = vmem[:-1]
-                        rtr = rtr[:-1]
-                        IDs = IDs[:-1]
-                        resched_i = True
 
                     iterate = True
                     while iterate:
@@ -418,38 +427,59 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         if pool_jobs and use_job_scheduler:
                             job_name = "pool_" + "_".join(IDs)
                             if use_job_scheduler:
-                                nperhost =  conf.pool_size
-                                if conf.reduce_pool:
-                                    nperhost_batch = np.array([1, *np.arange(2,29,2)])
-                                    nperhost = nperhost_batch[(nperhost_batch >= sum(nslots)).argmax()] #select available nperhost that is greater and closest to the number of slots
                                 if job_scheduler == "sge":
+                                    nperhost = conf.pool_size
+                                    if conf.reduce_pool:
+                                        #select smallest available nperhost that is greater or equal to the number of requested slots
+                                        pes = os.popen("qconf -spl").read().split("\n")
+                                        nperhost_available = np.array([int(pe[8:pe.index("per")]) for pe in pes if "perhost" in pe])
+                                        nperhost = nperhost_available[nperhost_available >= sum(nslots)].min()
                                     slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
                                 elif job_scheduler == "slurm":
-                                    raise ValueError("Job scheduler SLURM cannot be used for pooling jobs, yet!")
+                                    nodes = math.ceil(sum(nslots)/conf.pool_size)
+                                    slot_comm = " --ntasks-per-node={} -N {}".format(conf.pool_size, nodes)
+
                         else:
                             job_name = IDr
                         wrf_dir = " ".join(wrf_dir)
                         jobs = " ".join(IDs)
                         nslots_str = " ".join([str(ns) for ns in nslots])
-                        comm_args =dict(wrfv=wrf_dir, nslots=nslots_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
-                                        cluster=int(conf.cluster), restart=int(restart), outpath=outpath, module_load=conf.module_load)
+                        comm_args =dict(JOB_NAME=job_name, wrfv=wrf_dir, nslots=nslots_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
+                                        batch=int(use_job_scheduler), cluster=int(conf.cluster), restart=int(restart), outpath=outpath, module_load=conf.module_load)
                         for p, v in comm_args.items():
                             os.environ[p] = str(v)
                         if use_job_scheduler:
                             os.environ["job_scheduler"] = job_scheduler
 
-                            vmemp = int(sum(vmem)/sum(nslots))
-                            rtp = misc_tools.format_timedelta(max(rtr)*3600)
+                            if conf.request_vmem:
+                                vmemp = int(sum(vmem)/sum(nslots))
+                                if ("bigmem_limit" in dir(conf)) and (vmemp > conf.bigmem_limit):
+                                    queue = conf.bigmem_queue
+
+                            rtr_max = max(rtr)
+                            rtp = misc_tools.format_timedelta(rtr_max)
                             qout, qerr = [batch_log_dir + job_name + s for s in [".out", ".err"]]
+                            if rtr_max < send_rt_signal:
+                                raise ValueError("Requested runtime is smaller then the time when the runtime limit signal is sent!")
 
                             #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
-                            batch_args = [conf.queue, qout, qerr, rtp, vmemp, slot_comm, conf.mail_address, mail, job_name]
+                            batch_args = [conf.queue, qout, qerr, rtp, slot_comm, conf.mail_address, mail, job_name]
                             if job_scheduler == "sge":
-                                batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -l h_vmem={}M {} -M {} -m {} -N {} -V".format(*batch_args)
+                                batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={}  {} -M {} -m {} -N {} -V ".format(*batch_args)
                                 if "h_stack" in dir(conf) and conf.h_stack is not None:
                                     batch_args_str += " -l h_stack={}M".format(round(conf.h_stack))
+                                if conf.request_vmem:
+                                    batch_args_str += " -l h_vmem={}M".format(vmemp)
+
+                                batch_args_str += "-l s_rt {}".format(misc_tools.format_timedelta(rtr_max - send_rt_signal))
                             elif job_scheduler == "slurm":
-                                batch_args_str = "sbatch --qos={} -p {} -o {} -e {} --time={} --mem-per-cpu={}M {} --mail-user={} --mail-type={} -J {} --export=ALL".format(conf.qos, *batch_args)
+                                batch_args_str = "sbatch -p {} -o {} -e {} --time={} {} --mail-user={} --mail-type={} -J {} --export=ALL ".format(*batch_args)
+                                if  ("qos" in dir(conf)) and (conf.qos is not None):
+                                    batch_args_str += " --qos={}".format(conf.qos)
+                                if conf.request_vmem:
+                                    batch_args_str += " --mem-per-cpu={}M".format(vmemp)
+                                batch_args_str += "--signal=B:USR1@{}".format(send_rt_signal)
+
                             comm = batch_args_str + " run_wrf.job"
 
                         else:

@@ -3,6 +3,24 @@
 
 set -e
 
+sigusr1handler()
+{
+  #~ if [[ -z "${#jobs[@]}" ]]
+  #~ then
+    #~ exit 1
+  #~ qfi
+  
+  for (( i=0; i<${#jobs[@]}; i++ ))
+  do
+    cd ${run_path}/WRF_${jobs[i]}
+    echo "The job is about to terminate soon! Killing wrf.exe processes..." >> run.log
+    
+    kill ${pid[i]}
+  done
+}
+
+trap sigusr1handler SIGUSR1
+
 if (( cluster == 1 ))
 then
   cluster=true
@@ -24,16 +42,14 @@ wrfv=(${wrfv})
  
 si=0
 pool=false
-if (( ${#jobs[@]} > 1 )) && (( ${pool_jobs} == 1 ))
+echo "JOBID ${SLURM_JOB_ID}"
+if (( ${#jobs[@]} > 1 )) && (( pool_jobs == 1 )) && (( batch == 1 )) && [[ $job_scheduler == "sge" ]]
 then
   pool=true
-  if (( batch == 1 ))
-  then
-    qs=$(qstat -t)
-    hosts=$(python ${code_dir}/pool/get_hosts.py "$JOB_ID" "$qs")
-    hosts=(${hosts})
-    echo "hosts ${hosts[*]}"
-  fi
+  qs=$(qstat -t)
+  hosts=$(python ${code_dir}/pool/get_hosts.py "$JOB_ID" "$qs")
+  hosts=(${hosts})
+  echo "hosts ${hosts[*]}"
 fi
 
 
@@ -43,28 +59,28 @@ trap 'rc=$?' ERR
 
 for (( i=0; i<${#jobs[@]}; i++ ))
 do
-  cd ${run_path}/WRF_${jobs[$i]}
+  cd ${run_path}/WRF_${jobs[i]}
   
   #redirect logs to file
   if (( restart == 1 ))
   then
     exec 1>> "run.log"
   else
-      exec 1> "run.log"
+    exec 1> "run.log"
   fi
   
   exec 2> "run.err"
   echo
   echo
-  echo "Running job: ${jobs[$i]}"
-  nsi=${nslots[$i]}
-  wrf_dir_i=${wrfv[$i]}
+  echo "Running job: ${jobs[i]}"
+  nsi=${nslots[i]}
+  wrf_dir_i=${wrfv[i]}
   echo "slots: $nsi "
 
   if (( nsi > 1 ))
   then
     echo "parallel"
-    if $pool && (( batch == 1 ))
+    if $pool
     then
       echo "si $si"
       hostsi=${hosts[@]:$si:$nsi}
@@ -77,9 +93,9 @@ do
       mpiexec -H $H -rf rankfile.$JOB_ID -mca rmaps_rank_file_physical 1 -np $nsi -v -report-bindings -display-map -display-allocation ./wrf.exe & pid[i]=$!
       si=$((si + nsi))
       sleep 20
-
     else
       mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!
+      echo "mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!"
     fi
   else
     echo "serial run"
@@ -89,42 +105,49 @@ do
   echo
 done
 
+wait
+
 for (( i=0; i<${#jobs[@]}; i++ ))
 do
-  wait ${pid[i]}
-  echo "job ${jobs[$i]} exited with code $?"
+  cd ${run_path}/WRF_${jobs[i]}
+  exec 1>> "run.log"
+  exec 2>> "run.err"
+  echo "job ${jobs[i]} exited with code $?"
 
-  cd ${run_path}/WRF_${jobs[$i]}
-
-  if [[ -f rsl.error.0000 ]]
+  if (( ${nslots[i]} > 1 ))
   then
     cat rsl.error.0000 >> run.log
   fi
 
-  if (( restart == 1 ))
-  then
-    echo
-    echo "Concatenate output from original and restarted run"
-    python -c "import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[$i]}')"
-  fi
-
-
   if (( batch == 1 ))
   then
     #save resource usage of job
-    if (( job_scheduler == "sge" ))
+    if [[ $job_scheduler == "sge" ]]
     then
       qstat -j $JOB_ID > resources.info
-    elif (( job_scheduler == "slurm" ))
+    elif [[ $job_scheduler == "slurm" ]]
     then
-      sacct -j $PBS_JOBID -l -p > resources.info
+      sacct -j $SLURM_JOB_ID -l -p > resources.info
     fi
     #prepend log to run log
     echo -e "$(cat ${run_path}/logs/$JOB_NAME.out)\n$(cat run.log)" > run.log
     echo -e "$(cat ${run_path}/logs/$JOB_NAME.err)\n$(cat run.err)" > run.err
   fi
-
 done
+
+if (( restart == 1 ))
+then
+  for (( i=0; i<${#jobs[@]}; i++ ))
+  do
+    cd ${run_path}/WRF_${jobs[i]}
+    exec 1>> "run.log"
+    exec 2>> "run.err"
+    echo
+    echo "Concatenate output from original and restarted run"
+    python -c "import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[i]}')"
+  done
+fi
+
 
 #echo "trap" $rc
 exit ${rc} 

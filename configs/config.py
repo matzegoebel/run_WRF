@@ -124,6 +124,9 @@ rt = None #None or job runtime in seconds; buffer not used
 runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}
 rt_test = 5 #runtime for test runs
 
+send_rt_signal = 20 #seconds before requested runtime is exhausted and signal is sent to job
+send_rt_signal_restart = 120 #send rt signal earlier for concatenation of output files in restart runs
+
 #paths to search for log files to determine runtime and/or vmem if not specified
 resource_search_paths = [run_path]
 
@@ -141,6 +144,8 @@ reduce_pool = True #reduce pool size to the actual uses number of slots; do not 
 
 host = os.popen("hostname -d").read()
 module_load = ""
+request_vmem = False #request specific values for virtual memory
+
 if any([c in host for c in clusters]):
     cluster = True
     #maximum number of slots that will be requested for the x and y directions
@@ -151,21 +156,30 @@ if any([c in host for c in clusters]):
         #modules to load
         module_load = "module load intel/18.0u1 netcdf-4"
         queue = "std.q" #batch queue for SGE
+        bigmem_queue = "bigmem.q"
+        bigmem_limit = 25e3 #limit (MB) where bigmem_queue is used
         pool_size = 28 #number of cores per pool if job pooling is used
+        request_vmem = True
+
 
     elif "vsc" in host:
         job_scheduler = "slurm"
         module_load = "module load intel/16.0.3 intel-mpi/5.1.3 hdf5/1.8.16 pnetcdf/1.5.0 netcdf/4.3.2;\
                        export NETCDF=/opt/sw/x86_64/glibc-2.12/ivybridge-ep/netcdf/4.3.2/intel-14.0.2;\
                        export PNETCDF=/opt/sw/x86_64/glibc-2.12/ivybridge-ep/parallel/netcdf/1.5.0/intel-14.0.2"
-        queue = "mem_0128" #partitions on vsc3
-        qos = "devel_0128"
-
+        queue = "mem_0064" #partition on vsc3
+        qos = "normal_0064"
+         #minimum pool size; should be equal to the number of available CPUs per node
+        pool_size = int(int(os.popen("sinfo -o %c -h -p {}".format(queue)).read())/2)
+        ignore_vmem = True
 else:
+    job_scheduler = "slurm"
+    queue = "std"
+    qos = None
+    pool_size = int(int(os.popen("sinfo -o %c -h -p {}".format(queue)).read())/2)
     cluster = False
     max_nslotsy = None
     max_nslotsx = None
-    pool_size = 16
 #%%
 
 param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)

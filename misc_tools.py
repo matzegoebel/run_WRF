@@ -539,7 +539,7 @@ def get_job_usage(resource_file):
     return usage
 
 
-def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, restart=False, test_run=False):
+def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, restart=False, test_run=False, request_vmem=True):
     """Set vmem and runtime per time step  based on settings in config file."""
     skip = False
 
@@ -575,43 +575,45 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
 
     if not skip:
         args["rt_per_timestep"] = runtime_per_step*conf.rt_buffer
-        if not restart:
-            print("Runtime: {0:.1f} min".format(args["rt_per_timestep"]*n_steps/60))
         if print_rt_step:
             print("Runtime per time step: {0:.5f} s".format(runtime_per_step))
-
+        if not restart:
+            print("Runtime: {0:.1f} min".format(args["rt_per_timestep"]*n_steps/60))
 
     #virtual memory
-    vmemi = None
-    if test_run:
-        vmemi = conf.vmem_test
-    elif conf.vmem is not None:
-        vmemi = conf.vmem
-    elif conf.vmem_per_grid_point is not None:
-        print("Use vmem per grid point")
-        vmemi = int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"])/nslots
-        if conf.vmem_min is not None:
-            vmemi = max(vmemi, conf.vmem_min)
-    else:
-        print("Get vmem from previous runs")
-        if identical_runs is None:
-            run_dir_0 = run_dir + "_0" #use rep 0 as reference
-            identical_runs = get_identical_runs(run_dir_0, conf.resource_search_paths)
-
-        vmemi = get_vmem(identical_runs)
-        if vmemi is None:
-            print("No vmem specified and no previous runs found. Skipping...")
-            skip = True
+    if request_vmem:
+        vmemi = None
+        if test_run:
+            vmemi = conf.vmem_test
+        elif conf.vmem is not None:
+            vmemi = conf.vmem
+        elif conf.vmem_per_grid_point is not None:
+            print("Use vmem per grid point")
+            vmemi = int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"])/nslots
+            if conf.vmem_min is not None:
+                vmemi = max(vmemi, conf.vmem_min)
         else:
-            vmemi = max(vmemi)
-    if vmemi is not None:
-        vmemi *= nslots*conf.vmem_buffer
+            print("Get vmem from previous runs")
+            if identical_runs is None:
+                run_dir_0 = run_dir + "_0" #use rep 0 as reference
+                identical_runs = get_identical_runs(run_dir_0, conf.resource_search_paths)
 
-    if not skip:
-        print("Use vmem per slot: {0:.1f}M".format(vmemi/nslots))
-        args["vmem"] = vmemi
+            vmemi = get_vmem(identical_runs)
+            if vmemi is None:
+                print("No vmem specified and no previous runs found. Skipping...")
+                skip = True
+            else:
+                vmemi = max(vmemi)
+        if vmemi is not None:
+            vmemi *= nslots*conf.vmem_buffer
+
+        if not skip:
+            print("Use vmem per slot: {0:.1f}M".format(vmemi/nslots))
+            args["vmem"] = vmemi
 
     return args, skip
+
+
 
 #%%init
 def prepare_init(args, conf, wrf_dir, namelist_check=True):

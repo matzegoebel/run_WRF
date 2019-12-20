@@ -27,11 +27,6 @@ params["end_time"] = "2018-06-20_07:00:00" #format %Y-%m-%d_%H:%M:%S
 use_min_gridpoints = True #"x", "y", True (for both) or False
 params["min_gridpoints_x"] = 33 #minimum number of grid points in x direction
 params["min_gridpoints_y"] = 11 #minimum number of grid points in y direction
-pool_size = 4
-
-job_scheduler = "slurm"
-queue = "mem_0064" #partitions on vsc3
-qos = "normal_0064"
 
 #%%
 param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)
