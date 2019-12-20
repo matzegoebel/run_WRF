@@ -20,9 +20,9 @@ The log output is written to `init.log/init.err` and `run.log/run.err` in the re
 
 If the simulation folder (in init mode) or the output files (in simulation mode) already exist, the desired action can be specified with the `-e` option: Skipping this run (`-e s`), overwriting (`-e o`) or backing up the data (`-e b`).
 
-When run on a cluster, the `-j` flag allows submitting the jobs with a job scheduler, `sge` or `slurm` (set type in config file). Email settings for the job scheduler can be set with the  `-m` option. To control which modules are loaded for cluster jobs, take a look at `init_wrf.job` and `run_wrf.job`.
+When run on a cluster, the `-j` flag allows submitting the jobs with a job scheduler, `SGE` or `SLURM`. The job scheduler and other cluster specific settings such as required modules and queues can be set in the config file for each cluster in use. In the default config file settings for the LEO cluster of the University of Innsbruck and the Vienna Scientific Cluster (*VSC*) are included. Email settings for the job scheduler can be set with the `-m` option. 
 
-The package simplifies requesting job resources like virtual memory, runtime and number of CPUs. If the runtime or virtual memory of jobs is not specified in the config file, the program searches for simulations with an identical namelist file (except for some parameters irrelevant to the runtime per time step) and uses the runtime and virtual memory information in the respective log file. For this purpose, you can create short test simulations with the `-T` (and `-j`) option. This sets the number of repetitions to 1, the runtime to the value of `rt_test` and the virtual memory to `vmem_test` as defined in the config file.
+The package simplifies requesting job resources like virtual memory, runtime and number of CPUs. If the runtime or virtual memory of jobs is not specified in the config file, the program searches for simulations with an identical namelist file (except for some parameters irrelevant to the runtime per time step) and uses the runtime and virtual memory information in the respective log file. For this purpose, you can create short test simulations with the `-T` (and `-j`) option. This sets the number of repetitions to 1, the runtime to the value of `rt_test` and the virtual memory to `vmem_test` as defined in the config file. On the *VSC* cluster only one job per node is allowed. The specification of virtual memory is thus not necessary and omitted by default.
 
 If not using a job scheduler, the simulations are started simultaneously and run in the background, by default. The `-w` option allows waiting for a simulation (or pool of simulations, see below) to finish, before submitting the next. 
 
@@ -32,8 +32,8 @@ The option `-t` allows checking the functioning of the python script without sub
 
 The `-d` option leads to "_debug" being appended to the build directory name. This is for convenience, when you want to debug `ideal.exe` or `wrf.exe` with `gdb`, subsequently. The respective WRF build, must be configured with `-d` or `-D`. 
 
-If you want to run several simulations on the same cluster node, you can use the `-p` option. This gathers jobs until the specified pool size is reached and pins them to specific slots on the requested node. If you do not want to share the node with other users, you can fill up the whole node by specifying a pool size as large as the available slots on a node.
-This option can also be used without job scheduler. Combined with the `-w` option, you can ensure that only `pool_size` cores are used simultaneously.
+If you want to run several simulations on the same cluster node, you can use the `-p` option. This gathers jobs until the specified pool size is reached and runs them simultaneously in one batch job. If you do not want to share the node with other users, you can fill up the whole node by specifying a pool size as large as the available slots on a node. On the *VSC* cluster only one job per node is allowed. Therefore job pooling is important to make best use of the available resources and thus switched on by default.
+The pooling option can also be used without job scheduler. Combined with the `-w` option, you can ensure that only `pool_size` cores are used simultaneously.
 
 ## Requirements
 The package is written for a Linux environment. For Windows, it may have to be adjusted.
