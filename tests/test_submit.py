@@ -30,29 +30,13 @@ code_dir = "/".join(test_dir.split("/")[:-1])
 #%%
 
 def test_basic():
-    os.chdir(code_dir)
-    for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
-        if os.path.isdir(d):
-            shutil.rmtree(d)
-
-    for add in ["_mpi", ""]:
-        target_dir = "{}/{}{}/test/{}/".format(conf.build_path, conf.wrf_dir_pre, add, conf.ideal_case)
-        shutil.copy("{}/test_data/IO_test.txt".format(test_dir), target_dir)
-        shutil.copy("{}/test_data/namelists/namelist.input".format(test_dir), target_dir)
 
     with pytest.raises(RuntimeError, match="Parameter dx used in submit_jobs.py already defined in namelist.input! Rename this parameter!"):
         submit_jobs(config_file="test.config_test_del_args", init=True)
 
-    #check skipping non-initialized runs
-    with Capturing() as output:
-        submit_jobs(init=False, config_file="test.config_test")
-    print(output)
-    assert Counter(output)["Run not initialized yet! Skipping..."] == 2
-
-
-    #initialize and run wrf
-    submit_jobs(init=True, exist="s", config_file="test.config_test")
-    submit_jobs(init=False, wait=True, exist="s", config_file="test.config_test")
+    #run wrf
+    submit_jobs(init=True, config_file="test.config_test")
+    submit_jobs(init=False, wait=True, exist="o", config_file="test.config_test")
 
     #check output data
     outfiles = ['fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
@@ -62,8 +46,7 @@ def test_basic():
     t_corr = pd.date_range(start="2018-06-20T06:00:00", end='2018-06-20T08:00:00', freq="10min")
     assert (t == t_corr).all()
 
-def test_output_exist():
-    os.chdir(code_dir)
+    #test behaviour if run already exists
     for run in os.listdir(conf.run_path):
         file = "{}/{}/wrfinput_d01".format(conf.run_path, run)
         if os.path.isfile(file):
@@ -81,32 +64,25 @@ def test_output_exist():
                 if "Skipping..." not in message:
                     assert count[success[init]] == combs["n_rep"].sum()
 
-def test_bak_creation():
-    os.chdir(code_dir)
-    submit_jobs(init=False, exist="b", wait=True, config_file="test.config_test")
+    #backup created?
     bak = ['fastout_pytest_lin_0_bak_0',
            'wrfout_pytest_lin_0_bak_0',
-           'fastout_pytest_lin_0_bak_1',
-           'wrfout_pytest_lin_0_bak_1',
            'fastout_pytest_kessler_0_bak_0',
-           'wrfout_pytest_kessler_0_bak_0',
-           'fastout_pytest_kessler_0_bak_1',
-           'wrfout_pytest_kessler_0_bak_1']
+           'wrfout_pytest_kessler_0_bak_0']
+
     assert sorted(os.listdir(outd + "/bak")) == sorted(bak)
 
     with pytest.raises(ValueError, match="Value 'a' for -e option not defined!"):
         submit_jobs(init=True, exist="a", config_file="test.config_test")
 
-def test_restart():
-    os.chdir(code_dir)
     with Capturing() as output:
         combs = submit_jobs(init=False, restart=True, wait=True, config_file="test.config_test_rst")
     count = Counter(output)
     print(output)
     for m in ["Restart run from 2018-06-20 08:00:00", 'd01 2018-06-20_10:00:00 wrf: SUCCESS COMPLETE WRF']:
         assert count[m] == combs["n_rep"].sum()
+
     #check output data
-    outd = os.path.join(conf.outpath, conf.outdir)
     outfiles = ['rst', 'bak', 'fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
     assert sorted(os.listdir(outd)) == sorted(outfiles)
     file = Dataset(outd + "/fastout_pytest_lin_0")
@@ -115,7 +91,6 @@ def test_restart():
     assert (t == t_corr).all()
 
 def test_repeats():
-    os.chdir(code_dir)
     combs = submit_jobs(init=True, exist="o", config_file="test.config_test_reps")
     with Capturing() as output:
         submit_jobs(init=False, wait=True, exist="o", config_file="test.config_test_reps")
@@ -124,10 +99,8 @@ def test_repeats():
     assert count[success[False]] == combs["n_rep"].sum()
 
 
-def test_mpi():
-    os.chdir(code_dir)
+def test_mpi_and_batch():
     combs = submit_jobs(init=True, wait=True, exist="o", config_file="test.config_test_mpi")
-
     with Capturing() as output:
         submit_jobs(init=False, pool_jobs=True, wait=True, exist="o", config_file="test.config_test_mpi")
     print(output)
@@ -137,29 +110,78 @@ def test_mpi():
     m = "d01 2018-06-20_07:00:00 wrf: SUCCESS COMPLETE WRF"
     assert count[m] == combs["n_rep"].sum()
 
-def test_get_rt_vmem():
-    os.chdir(code_dir)
+    rundirs = []
     for run in os.listdir(conf.run_path):
-        rundir ="{}/{}/".format(conf.run_path, run)
+        rundir = "{}/{}/".format(conf.run_path, run)
+        rundirs.append(rundir)
         shutil.copy("tests/test_data/resources.info", rundir)
+        shutil.copy("tests/test_data/runs/WRF_pytest_eta_0/run.log", rundir)
 
+    #test SGE
     with Capturing() as output:
-        combs = submit_jobs(init=False, check_args=True, use_job_scheduler=True, exist="o", config_file="test.config_test_mpi")
+        combs = submit_jobs(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_sge")
     print(output)
     count = Counter(output)
+    batch_comm = "qsub -cwd -q std.q -o {0}/logs/pytest_lin_0.out -e {0}/logs/pytest_lin_0.err -l h_rt=000:00:30 "\
+                 " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N pytest_lin_0 -V  -l h_vmem=148M "\
+                 " -l s_rt 000:00:10  run_wrf.job".format(conf.run_path)
+    assert batch_comm == output[-1]
+
     messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 148.3M']
     for m in messages:
         assert count[m] == combs["n_rep"].sum()
-    rundirs = [rd + "_0" for rd in combs["run_dir"].values]
-    timing = misc_tools.get_runtime_all(rundirs, all_times=False)["timing"].values
-    messages = ["Runtime per time step: {0:.5f} s".format(t) for t in timing]
-    for m in messages:
-        assert count[m] == 1
+
+    rundirs_0 = combs["run_dir"].values + "_0"
+    timing = misc_tools.get_runtime_all(rundirs_0, all_times=False)["timing"].values
+    message_rt = "Runtime per time step: {0:.5f} s".format(timing[0])
+    assert count[message_rt] == 2
+
+    #test SLURM
+    with Capturing() as output:
+        combs = submit_jobs(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_slurm")
+    print(output)
+    count = Counter(output)
+    batch_comm = "sbatch -p mem_0064 -o {0}/logs/pool_pytest_kessler_0_pytest_lin_0.out -e {0}/logs/pool_pytest_kessler_0_pytest_lin_0.err --time=000:00:30 "\
+                 "--ntasks-per-node=8 -N 1 --mail-user=matthias.goebel@uibk.ac.at --mail-type=END,FAIL -J pool_pytest_kessler_0_pytest_lin_0 "\
+                 "--export=ALL  --qos=normal_0064  --signal=B:USR1@20  run_wrf.job".format(conf.run_path)
+    assert batch_comm == output[-1]
+    assert count['Get runtime from previous runs'] == combs["n_rep"].sum()
+    assert count[message_rt] == 2
+
+
+#%%
+
+@pytest.fixture(autouse=True)
+def run_around_tests():
+
+    # Code that will run before each test
+
+    os.chdir(code_dir)
+    #remove test data
+    for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
+        if os.path.isdir(d):
+            shutil.rmtree(d)
+    #copy namelist and io file for tests
+    for add in ["_mpi", ""]:
+        target_dir = "{}/{}{}/test/{}/".format(conf.build_path, conf.wrf_dir_pre, add, conf.ideal_case)
+        shutil.copy("{}/test_data/IO_test.txt".format(test_dir), target_dir)
+        shutil.copy("{}/test_data/namelists/namelist.input".format(test_dir), target_dir)
+
+    #check skipping non-initialized runs
+    with Capturing() as output:
+        submit_jobs(init=False, config_file="test.config_test")
+    assert Counter(output)["Run not initialized yet! Skipping..."] == 2
+
+
+
+    # A test function will be run at this point
+    yield
+
+
+    # Code that will run after each test
 
     for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
         shutil.rmtree(d)
-
-
 
 #TODO
 #Domain size must be multiple of lx

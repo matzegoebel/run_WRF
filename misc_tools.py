@@ -297,6 +297,8 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
         dirs = [os.path.expanduser(d) for d in dirs]
         runs = [glob.glob(d + "/WRF_*{}*".format(id_filter)) for d in dirs]
         runs = flatten_list(runs)
+    else:
+        runs = make_list(runs)
     if remove is None:
         remove = []
     if levels is not None:
@@ -587,10 +589,14 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
             if len(timing) > 0:
                 runtime_per_step, rt_sd = timing["timing"].mean(), timing["timing_sd"].mean()
                 print("Runtime per time step standard deviation: {0:.5f} s".format(rt_sd))
+            else:
+                skip = True
+                print("Could not retrieve runtime from previous runs. Skipping...")
 
-        if runtime_per_step is None:
-            print("No runtime specified and no previous runs found. Skipping...")
+        else:
+            print("No previous runs found. Skipping...")
             skip = True
+
         print_rt_step = True
 
     if not skip:
@@ -620,14 +626,17 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
 
             vmemi = get_vmem(identical_runs)
             if vmemi is None:
-                print("No vmem specified and no previous runs found. Skipping...")
                 skip = True
+                if len(identical_runs) == 0:
+                    print("No previous runs found. Skipping...")
+                else:
+                    print("Could not retrieve runtime from previous runs. Skipping...")
             else:
                 vmemi = max(vmemi)
         if vmemi is not None:
             vmemi *= nslots*conf.vmem_buffer
 
-        if not skip:
+        if vmemi is not None:
             print("Use vmem per slot: {0:.1f}M".format(vmemi/nslots))
             args["vmem"] = vmemi
 

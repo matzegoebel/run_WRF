@@ -320,14 +320,14 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     if job_scheduler == "sge":
                         batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -M {} -m {} -N {} -V ".format(*batch_args)
                         if "h_stack_init" in dir(conf) and conf.h_stack_init is not None:
-                            batch_args_str += " -l h_stack={}M".format(round(conf.h_stack_init))
+                            batch_args_str += " -l h_stack={}M ".format(round(conf.h_stack_init))
                         if conf.request_vmem:
-                            batch_args_str += " -l h_vmem={}M".format(vmem_init)
+                            batch_args_str += " -l h_vmem={}M ".format(vmem_init)
 
                     elif job_scheduler == "slurm":
                         batch_args_str = "sbatch --qos={}  -p {} -o {} -e {} --time={} --mail-user={} --mail-type={} -J {} -N 1 -n 1 --export=ALL ".format(conf.qos, *batch_args)
                         if conf.request_vmem:
-                            batch_args_str += " --mem-per-cpu={}M".format(vmem_init)
+                            batch_args_str += " --mem-per-cpu={}M ".format(vmem_init)
 
                     comm = batch_args_str + " init_wrf.job"
                 else:
@@ -437,7 +437,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                     slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
                                 elif job_scheduler == "slurm":
                                     nodes = math.ceil(sum(nslots)/conf.pool_size)
-                                    slot_comm = " --ntasks-per-node={} -N {}".format(conf.pool_size, nodes)
+                                    slot_comm = "--ntasks-per-node={} -N {}".format(conf.pool_size, nodes)
 
                         else:
                             job_name = IDr
@@ -467,18 +467,17 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             if job_scheduler == "sge":
                                 batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={}  {} -M {} -m {} -N {} -V ".format(*batch_args)
                                 if "h_stack" in dir(conf) and conf.h_stack is not None:
-                                    batch_args_str += " -l h_stack={}M".format(round(conf.h_stack))
+                                    batch_args_str += " -l h_stack={}M ".format(round(conf.h_stack))
                                 if conf.request_vmem:
-                                    batch_args_str += " -l h_vmem={}M".format(vmemp)
-
-                                batch_args_str += "-l s_rt {}".format(misc_tools.format_timedelta(rtr_max - send_rt_signal))
+                                    batch_args_str += " -l h_vmem={}M ".format(vmemp)
+                                batch_args_str += " -l s_rt {} ".format(misc_tools.format_timedelta(rtr_max - send_rt_signal))
                             elif job_scheduler == "slurm":
                                 batch_args_str = "sbatch -p {} -o {} -e {} --time={} {} --mail-user={} --mail-type={} -J {} --export=ALL ".format(*batch_args)
                                 if  ("qos" in dir(conf)) and (conf.qos is not None):
-                                    batch_args_str += " --qos={}".format(conf.qos)
+                                    batch_args_str += " --qos={} ".format(conf.qos)
                                 if conf.request_vmem:
-                                    batch_args_str += " --mem-per-cpu={}M".format(vmemp)
-                                batch_args_str += "--signal=B:USR1@{}".format(send_rt_signal)
+                                    batch_args_str += " --mem-per-cpu={}M ".format(vmemp)
+                                batch_args_str += " --signal=B:USR1@{} ".format(send_rt_signal)
 
                             comm = batch_args_str + " run_wrf.job"
 
