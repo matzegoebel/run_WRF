@@ -12,6 +12,8 @@ For additional parameters in the config file, that are not namelist parameters, 
 To initialize the simulations, run `python submit_jobs.py` with the `-i` flag and then again without this flag to start the simulations. The python script executes the bash scripts `init_wrf.job` and `run_wrf.job`, respectively. The former script copies the binaries of a specified WRF build to a new simulation directory, modifies the namelist parameters, selects the desired input sounding and executes `ideal.exe` and the latter executes `wrf.exe` in serial or parallel mode.
 When run in parallel mode, the script assumes the name of the parallel build directory ends with "_mpi".
 
+With the `-v` option (verbose mode) the arguments of the call to the bash scripts are displayed. In this way you can check if the namelist parameters that will be set for each configuration are as desired. 
+
 With the `-c` option you can specify an alternative config file (default is `config`) located in (a subdirectory of) the folder `configs`. For instance, the config file `test_sfclay.py` is located in `configs/example/` and can be accessed with `python submit_jobs.py -i -c example.config_sfclay`. This example config file also shows how to use the parameters defined in another config file, such that only the parameters which are different in the new file have to be specified.
 
 When initializing the simulations, the namelist settings are checked for sanity and consistency based on best practice guidelines for WRF. Warnings and---for severe problems---errors are raised. To ignore the errors and proceed with initializing the simulations, use the `-n` option. 

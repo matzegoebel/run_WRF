@@ -649,6 +649,14 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
 #%%init
 def prepare_init(args, conf, wrf_dir, namelist_check=True):
     """Sets some namelist parameters based on the config files settings."""
+    print("Setting namelist parameters\n")
+    wrf_build = "{}/{}".format(conf.build_path, wrf_dir)
+    namelist = get_namelist.namelist_to_dict("{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case), build_path=wrf_build, registries=conf.registries)
+    namelist_upd = deepcopy(namelist)
+    namelist_upd.update(args)
+
+    check_p_diff = lambda p,val=0: (p in namelist_upd) and (namelist_upd[p] != val)
+    check_p_diff_2 = lambda p,val=0: (p not in args) and check_p_diff(p, val)
 
     r = args["dx"]
     if "dy" not in args:
@@ -673,7 +681,7 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     if "eta_levels" not in args:
         args["eta_levels"], dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
                                                           dz0=args["dz0"], plot=False, table=False)
-        print("Created vertical grid:\nLowest level at {0:.1f} m\nthickness of uppermost layer: {1:.1f} m\n".format(dz[0], dz[-2]))
+        print("Created vertical grid:\nLowest level at {0:.1f} m\nthickness of uppermost layer: {1:.1f} m".format(dz[0], dz[-2]))
     args["eta_levels"] = "'" + ",".join(args["eta_levels"].astype(str)) + "'"
 
     #split output in one timestep per file
@@ -698,42 +706,61 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
 
     #specified heat fluxes or land surface model
     if "spec_hfx" in args:
-        args["ra_lw_physics"] = 0
-        args["ra_sw_physics"] = 0
+        print("Specified heatflux used")
+        phys = ["ra_lw_physics", "ra_lw_physics", "sf_surface_physics"]
+        for p in phys:
+            if check_p_diff(p):
+                print("WARNING: Setting {}=0 as surface heat flux is specified".format(p))
+                args[p] = 0
         args["tke_heat_flux"] = args["spec_hfx"]
-        args["sf_surface_physics"] = 0
-        if "isfflx" not in args:
+        if "isfflx" in args:
+            if args["isfflx"] == 1:
+                print("WARNING: Isfflx={} not compatible with specified heat flux. Setting isfflx=2".format(args["isfflx"]))
+                args["isfflx"] = 2
+        elif check_p_diff("isfflx", 2):
             args["isfflx"] = 2
+            print("Setting isfflx=2 .")
     else:
-        if "isfflx" not in args:
+        for p in ["tke_heat_flux", "tke_drag_coefficient"]:
+            if check_p_diff(p):
+                print("WARNING: Setting {}=0 as spec_hfx is not set".format(p))
+                args[p] = 0.
+        if check_p_diff("isfflx", 1):
             args["isfflx"] = 1
-        args["tke_heat_flux"] = 0.
-        args["tke_drag_coefficient"] = 0.
+            print("Setting isfflx=1")
+
 
     #pbl scheme
     if r >= args["pbl_res"]:
         pbl_scheme = args["bl_pbl_physics"]
-        if "km_opt" not in args:
+        if check_p_diff_2("km_opt", 4):
             args["km_opt"] = 4
+            print("WARNING: km_opt not set. Setting to 4 as PBL scheme is used.")
+
     else:
         pbl_scheme = 0
-        if "km_opt" not in args:
+        if check_p_diff_2("km_opt", 2):
             args["km_opt"] = 2
-        if "diff_opt" not in args:
+            print("WARNING: km_opt not set. Setting to 2 as PBL scheme is used.")
+        if check_p_diff_2("diff_opt", 2):
             args["diff_opt"] = 2
+            print("WARNING: diff_opt not set. Setting to 2 as PBL scheme is used.")
+
 
 
     args["bl_pbl_physics"] = pbl_scheme
 
     #choose surface layer scheme that is compatible with PBL scheme
-    if "sf_sfclay_physics" not in args:
-        if pbl_scheme in [1,2,3,4,5,7,10]:
-            sfclay_scheme = pbl_scheme
-        elif pbl_scheme == 6:
-            sfclay_scheme = 5
-        else:
-            sfclay_scheme = 1
-        args["sf_sfclay_physics"] = sfclay_scheme
+    if pbl_scheme in [1,2,3,4,5,7,10]:
+        sfclay_scheme = pbl_scheme
+    elif pbl_scheme == 6:
+        sfclay_scheme = 5
+    else:
+        sfclay_scheme = 1
+    p = "sf_sfclay_physics"
+    if check_p_diff_2(p, sfclay_scheme):
+        print("Setting sf_sfclay_physics={} for compatibility with PBL scheme.".format(sfclay_scheme))
+        args[p] = sfclay_scheme
 
     if "iofields_filename" in args:
         if args["iofields_filename"] == "":
@@ -743,8 +770,6 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
 
     # delete non-namelist parameters
     del_args = [*conf.del_args, *[p + "_idx" for p in conf.composite_params.keys()]]
-    wrf_build = "{}/{}".format(conf.build_path, wrf_dir)
-    namelist = get_namelist.namelist_to_dict("{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case), build_path=wrf_build, registries=conf.registries)
     args_clean = deepcopy(args)
     for del_arg in del_args:
         if del_arg in namelist:
@@ -752,6 +777,7 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
         if del_arg in args_clean:
             del args_clean[del_arg]
     namelist.update(args_clean)
+
     if "dz" in locals():
         namelist["dz"] = dz
     if namelist_check:
@@ -775,7 +801,7 @@ def check_namelist_best_practice(namelist):
 
     raise_err = False
     dx = namelist["dx"]
-    print("Checking consistency of namelist settings. Horizontal grid spacing: dx={0:.1f} m".format(dx))
+    print("Checking consistency of namelist settings for horizontal grid spacing of dx={0:.1f} m".format(dx))
 
     #dt
     dt =  namelist["time_step"] + namelist["time_step_fract_num"]/namelist["time_step_fract_den"]

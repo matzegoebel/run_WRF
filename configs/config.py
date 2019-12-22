@@ -95,7 +95,8 @@ del_args =   ["output_streams", "start_time", "end_time", "nz", "dz0","dz_method
 #%%
 '''Settings for resource requirements of batch jobs'''
 
-#virtual memory: numbers need adjustment
+#virtual memory (only relevant for SGE)
+#numbers need adjustment
 vmem_init_per_grid_point = 0.3 #virtual memory (MB) per horizontal grid point to request for WRF initialization (ideal.exe)
 vmem_init_min = 2000 #minimum virtual memory (MB) for WRF initialization
 
@@ -119,10 +120,11 @@ rt_init = 10
 # runtime for wrf.exe: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from previous identical runs if present
 rt_buffer = 2 #buffer factor to multiply rt with
-rt = None #None or job runtime in seconds; buffer not used
+rt = None #None or job runtime in minutes; buffer not used
 # if rt is None: runtime per time step in seconds for different dx
 runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}
-rt_test = 5 #runtime for test runs
+rt_test = 5 #runtime (min) for test runs
+
 
 send_rt_signal = 20 #seconds before requested runtime is exhausted and signal is sent to job
 send_rt_signal_restart = 120 #send rt signal earlier for concatenation of output files in restart runs
@@ -145,6 +147,7 @@ reduce_pool = True #reduce pool size to the actual uses number of slots; do not 
 host = os.popen("hostname -d").read()
 module_load = ""
 request_vmem = False #request specific values for virtual memory
+force_pool = False
 
 if any([c in host for c in clusters]):
     cluster = True
@@ -172,6 +175,7 @@ if any([c in host for c in clusters]):
          #minimum pool size; should be equal to the number of available CPUs per node
         pool_size = int(int(os.popen("sinfo -o %c -h -p {}".format(queue)).read())/2)
         ignore_vmem = True
+        force_pool = True #always use pooling
 else:
     pool_size = 8
     cluster = False
@@ -180,6 +184,5 @@ else:
 #%%
 
 param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)
-
 
 #Below you can manually add parameters to the DataFrame combs

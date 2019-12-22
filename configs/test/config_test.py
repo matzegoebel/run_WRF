@@ -179,7 +179,7 @@ else:
     job_scheduler = "slurm"
     queue = "std"
     qos = None
-    pool_size = int(int(os.popen("sinfo -o %c -h -p {}".format(queue)).read())/2)
+    pool_size = 4
     cluster = False
     max_nslotsy = None
     max_nslotsx = None
