@@ -18,6 +18,7 @@ import shutil
 import time
 from netCDF4 import Dataset
 import misc_tools
+import get_namelist
 import wrf
 import pandas as pd
 
@@ -47,9 +48,14 @@ def test_basic():
     #test namelist
     rpath = combs["run_dir"][0] + "_0"
     ID = "_".join(rpath.split("/")[-1].split("_")[1:])
-    namelist = misc_tools.read_file(rpath + "/namelist.input")
-    namelist_corr = misc_tools.read_file("./tests/test_data/namelists/namelist.{}".format(ID))
-    assert namelist == namelist_corr
+    namelists = []
+    namelists.append(get_namelist.namelist_to_dict(rpath + "/namelist.input"))
+    namelists.append(get_namelist.namelist_to_dict("./tests/test_data/namelists/namelist.{}".format(ID)))
+
+    for key in set([*namelists[0].keys(), *namelists[1].keys()]):
+        if "_outname" not in key:
+            assert namelists[0][key] == namelists[1][key]
+
     input_sounding = misc_tools.read_file(rpath + "/input_sounding")
     input_sounding_corr = misc_tools.read_file(rpath + "/input_sounding_meanwind")
     assert input_sounding == input_sounding_corr
