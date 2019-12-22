@@ -173,10 +173,7 @@ if any([c in host for c in clusters]):
         pool_size = int(int(os.popen("sinfo -o %c -h -p {}".format(queue)).read())/2)
         ignore_vmem = True
 else:
-    job_scheduler = "slurm"
-    queue = "std"
-    qos = None
-    pool_size = int(int(os.popen("sinfo -o %c -h -p {}".format(queue)).read())/2)
+    pool_size = 8
     cluster = False
     max_nslotsy = None
     max_nslotsx = None

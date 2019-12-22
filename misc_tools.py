@@ -58,6 +58,16 @@ def find_nproc(n, min_n_per_proc=25, even_split=False):
 
 
 #%%general helpful functions
+
+def list_equal(*elements):
+    """Check if all given elements are equal."""
+    l0 = elements[0]
+    for l in elements[1:]:
+        if l != l0:
+            return False
+
+    return True
+
 def transpose_list(l):
     """
     Transpose list of lists.
@@ -124,6 +134,16 @@ def format_timedelta(td):
     minutes, seconds = divmod(remainder, 60)
     return '{:03}:{:02}:{:02}'.format(hours, minutes, seconds)
 
+def ls_t(pattern):
+    """Return files matching pattern sorted by modification date."""
+    files = os.popen("ls -t {}".format(pattern)).read().split("\n")
+    files = remove_empty_str(files)
+
+    return files
+
+def remove_empty_str(l):
+    """Remove empty strings from list."""
+    return [i for i in l if i != ""]
 
 #%%config grid related
 
@@ -920,45 +940,39 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
 def concat_restart(path, id_filter=""):
     """Concatenate output from restarted run and original run."""
     path = path + "/"
-    old_files_0 = glob.glob("{}/rst/*{}_rst_0".format(path, id_filter))
-    if len(old_files_0) == 0:
+    old_files_IDs = glob.glob("{}/rst/*{}_rst_*".format(path, id_filter))
+    old_files_IDs = set([f[:f.index("_rst_")].split("/")[-1] for f in old_files_IDs])
+    if len(old_files_IDs) == 0:
         print("No files to concatenate!")
-    for file in old_files_0:
-        ID = file.split("/")[-1]
-        ID = ID[:ID.index("rst")-1]
+    for ID in old_files_IDs:
         print("Process file {}".format(ID))
         new_file = path + ID
 
-        old_files = glob.glob("{}/rst/{}_rst_*".format(path, ID))
+        old_files = ls_t("{}/rst/{}_rst_*".format(path, ID))[::-1]
         old_files = [o for o in old_files if o[-4:] != "_cut"]
-        rst_inds = [int(f.split("_")[-1]) for f in old_files]
-        rst_inds = list(np.argsort(rst_inds))
-        if "" in old_files:
-            old_files.remove("")
         time = None
         if os.path.isfile(new_file):
             all_files = [*old_files, new_file]
-            rst_inds.append(-1)
         else:
             all_files = old_files
 
         all_files_cut = []
-        for rst_ind in rst_inds:
-            cfile = all_files[rst_ind]
+        time_prev = None
+        for cfile in all_files:
             ds = Dataset(cfile, "r+")
-            time_next = wrf.extract_times(ds, timeidx=None)
-            if time is not None:
-                if time[-1] >= time_next[0]:
-                    start_idx = np.where(time[-1]==time_next)[0][0] + 1
+            time = wrf.extract_times(ds, timeidx=None)
+            if time_prev is not None:
+                if time_prev[-1] >= time[0]:
+                    start_idx = np.where(time_prev[-1]==time)[0][0] + 1
                     ds.close()
-                    if start_idx < len(time_next):
-                        err = os.system("ncks -O -d Time,{},{} {} {}".format(start_idx, len(time_next)-1, cfile, cfile + "_cut"))
+                    if start_idx < len(time):
+                        err = os.system("ncks -O -d Time,{},{} {} {}".format(start_idx, len(time)-1, cfile, cfile + "_cut"))
                         if err != 0:
                             raise Exception("Error in ncks when reducing {}".format(cfile))
                     else:
                         print("File {} is redundant!".format(cfile))
                         continue
-                elif time[0] >= time_next[0]:
+                elif time_prev[0] >= time[0]:
                     raise RuntimeError("Error in concatenating output for restarted runs!")
                 else:
                     os.system("cp {} {}".format(cfile, cfile + "_cut"))
@@ -966,28 +980,26 @@ def concat_restart(path, id_filter=""):
                 os.system("cp {} {}".format(cfile, cfile + "_cut"))
 
             all_files_cut.append(cfile + "_cut")
-            time = time_next
+            time_prev = time
 
-        if len(all_files_cut) > 0:
-            new_concat = new_file + "_concat"
-            if os.path.isfile(new_concat):
-                os.remove(new_concat)
-            err = os.system("ncrcat {} {}".format(" ".join(all_files_cut), new_concat))
-            if err != 0:
-                raise Exception("Error in ncrcat when concatenating output of original and restarted runs" )
-            file_final = Dataset(new_file + "_concat")
-            time_final = wrf.extract_times(file_final, timeidx=None)
-            file_final.close()
+        new_concat = new_file + "_concat"
+        if os.path.isfile(new_concat):
+            os.remove(new_concat)
+        err = os.system("ncrcat {} {}".format(" ".join(all_files_cut), new_concat))
+        if err != 0:
+            raise Exception("Error in ncrcat when concatenating output of original and restarted runs" )
+        file_final = Dataset(new_file + "_concat")
+        time_final = wrf.extract_times(file_final, timeidx=None)
+        file_final.close()
 
-            res = np.median(time_final[1:] - time_final[:-1])
-            time_corr = np.arange(time_final[0], time_final[-1] + res, res)
-            if (len(time_corr) != len(time_final)) or (time_corr != time_final).any():
-                raise RuntimeError("Error in concatenated time dimension for final file {}".format(file))
-            for f in all_files_cut + all_files:
-                os.remove(f)
-            os.rename(new_file + "_concat", new_file)
-        else:
-            print("\nNo files to concatenate")
+        res = np.median(time_final[1:] - time_final[:-1])
+        time_corr = np.arange(time_final[0], time_final[-1] + res, res)
+        if (len(time_corr) != len(time_final)) or (time_corr != time_final).any():
+            raise RuntimeError("Error in concatenated time dimension for final file {}".format(ID))
+        for f in all_files_cut + all_files:
+            os.remove(f)
+        os.rename(new_file + "_concat", new_file)
+
 
 #%%
 
