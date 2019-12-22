@@ -20,6 +20,7 @@ from netCDF4 import Dataset
 import misc_tools
 import wrf
 import pandas as pd
+from pathlib import Path as fopen
 
 success = {True : 'wrf: SUCCESS COMPLETE IDEAL INIT', False : 'd01 2018-06-20_08:00:00 wrf: SUCCESS COMPLETE WRF'}
 outd = os.path.join(conf.outpath, conf.outdir)
@@ -27,10 +28,16 @@ outd = os.path.join(conf.outpath, conf.outdir)
 test_dir = os.getcwd()
 code_dir = "/".join(test_dir.split("/")[:-1])
 
+batch_dict = {"slurm" : "sbatch", "sge" : "qsub"}
+
 #%%
 
 def test_basic():
+    """
+    Test basic submit functionality.
 
+    Initialize and run WRF; Check behaviour when run already exists; Restart run; Check that errors are raised
+    """
     with pytest.raises(RuntimeError, match="Parameter dx used in submit_jobs.py already defined in namelist.input! Rename this parameter!"):
         submit_jobs(config_file="test.config_test_del_args", init=True)
 
@@ -91,6 +98,7 @@ def test_basic():
     assert (t == t_corr).all()
 
 def test_repeats():
+    """Test config repetitions functionality."""
     combs = submit_jobs(init=True, exist="o", config_file="test.config_test_reps")
     with Capturing() as output:
         submit_jobs(init=False, wait=True, exist="o", config_file="test.config_test_reps")
@@ -100,6 +108,7 @@ def test_repeats():
 
 
 def test_mpi_and_batch():
+    """Test MPI runs and check commands generated for job schedulers (without running them)"""
     combs = submit_jobs(init=True, wait=True, exist="o", config_file="test.config_test_mpi")
     with Capturing() as output:
         submit_jobs(init=False, pool_jobs=True, wait=True, exist="o", config_file="test.config_test_mpi")
@@ -149,10 +158,45 @@ def test_mpi_and_batch():
     assert count[message_rt] == 2
 
 
+def test_scheduler_full():
+    """Test runs using a job scheduler if available"""
+    #Check if job scheduler is available
+    if os.popen("command -v {}".format(batch_dict[conf.job_scheduler])).read() != "":
+        combs = submit_jobs(init=True,  exist="o", config_file="test.config_test_mpi")
+        with Capturing() as output:
+            submit_jobs(init=False, use_job_scheduler=True, test_run=True, exist="o", config_file="test.config_test_mpi")
+        print(output)
+        job_sched = conf.job_scheduler.lower()
+
+        if job_sched  == "slurm":
+            jobs = ["pool_pytest_kessler_0_pytest_lin_0"]
+            comm = "squeue -n "
+        elif job_sched  == "slurm":
+            jobs = ["pytest_lin_0", "pytest_kessler_0"]
+            comm = "qstat -j /h"
+
+        finished = False
+        while not finished:
+            finished = True
+            time.sleep(5)
+            for j in jobs:
+                status = os.popen(comm + j).read().split("\n")
+                status = misc_tools.remove_empty_str(status)
+                if len(status) > 1:
+                    finished = False
+
+        rundirs = combs["run_dir"].values + "_0"
+        for rundir in rundirs:
+            runlog = misc_tools.read_file(rundir + "/run.log")
+            m = "d01 2018-06-20_07:00:00 wrf: SUCCESS COMPLETE WRF"
+            assert m in runlog
+
+
 #%%
 
 @pytest.fixture(autouse=True)
 def run_around_tests():
+    """Delete test data before and after every test and transfer test namelist and iofiles before the tests"""
 
     # Code that will run before each test
 
@@ -181,7 +225,8 @@ def run_around_tests():
     # Code that will run after each test
 
     for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
-        shutil.rmtree(d)
+        if os.path.isdir(d):
+            shutil.rmtree(d)
 
 #TODO
 #Domain size must be multiple of lx

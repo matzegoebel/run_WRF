@@ -144,6 +144,8 @@ def ls_t(pattern):
 def remove_empty_str(l):
     """Remove empty strings from list."""
     return [i for i in l if i != ""]
+def read_file(file):
+    return fopen(file).read_text()
 
 #%%config grid related
 
