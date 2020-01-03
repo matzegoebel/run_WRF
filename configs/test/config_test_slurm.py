@@ -24,5 +24,5 @@ queue = "mem_0064" #partition on vsc3
 qos = "normal_0064"
  #minimum pool size; should be equal to the number of available CPUs per node
 pool_size = 8
-ignore_vmem = True
+request_vmem = True
 force_pool = True #always use pooling

@@ -179,7 +179,7 @@ def test_scheduler_full():
     if os.popen("command -v {}".format(batch_dict[conf.job_scheduler])).read() != "":
         combs = submit_jobs(init=True,  exist="o", config_file="test.config_test_mpi")
         with Capturing() as output:
-            submit_jobs(init=False, use_job_scheduler=True, test_run=True, exist="o", config_file="test.config_test_mpi")
+            submit_jobs(init=False, use_job_scheduler=True, test_run=True, exist="o", verbose=True, config_file="test.config_test_mpi")
         print(output)
         job_sched = conf.job_scheduler.lower()
 
