@@ -22,7 +22,7 @@ from pathlib import Path as fopen
 
 #%%
 def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_job_scheduler=False,
-           check_args=False, pool_jobs=False, mail="ea", wait=False, namelist_check=True, test_run=False, verbose=False):
+           check_args=False, pool_jobs=False, mail="ea", wait=False, no_namelist_check=False, test_run=False, verbose=False):
     """
     Submit idealized WRF experiments. Refer to README.md for more information.
 
@@ -50,8 +50,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         If using a job scheduler, defines when mail is sent. Either 'n' for no mails, or a combination of 'b' (beginning of job), 'e' (end), 'a' (abort)', 's' (suspended). Default: 'ea'
     wait : bool, optional
         Wait until job is finished before submitting the next.
-    namelist_check : bool, optional
-        Perform sanity check of namelist parameters.
+    no_namelist_check : bool, optional
+        Do not perform sanity check of namelist parameters.
     test_run : bool, optional
         Do short test runs on cluster to find out required runtime and virtual memory
     verbose : bool, optional
@@ -228,7 +228,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
         queue = conf.queue
         if init:
-            args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i, namelist_check=namelist_check)
+            args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i, namelist_check=not no_namelist_check)
 
             #job scheduler queue and vmem
             if use_job_scheduler and conf.request_vmem:
@@ -556,7 +556,7 @@ if __name__ == "__main__":
                     "pool_jobs":      ("-p", "--pool", "store_true"),
                     "mail":           ("-m", "--mail", "store"),
                     "wait":           ("-w", "--wait", "store_true"),
-                    "namelist_check": ("-n", "--no_namelist_check", "store_false"),
+                    "no_namelist_check": ("-n", "--no_namelist_check", "store_false"),
                     "test_run":        ("-T", "--test_run", "store_true"),
                     "verbose":        ("-v", "--verbose", "store_true")
                     }
