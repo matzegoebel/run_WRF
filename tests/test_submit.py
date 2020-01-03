@@ -78,8 +78,7 @@ def test_basic():
         for i, (exist, message) in enumerate(exist_message):
             if init or i > 0:
                 print(exist, message)
-                with Capturing() as output:
-                    combs = submit_jobs(init=init, exist=exist, wait=True, config_file="test.config_test")
+                combs, output = capture_submit(init=init, exist=exist, wait=True, config_file="test.config_test")
                 print(output)
                 count = Counter(output)
                 assert count[message] == combs["n_rep"].sum()
@@ -95,10 +94,8 @@ def test_basic():
     assert sorted(os.listdir(outd + "/bak")) == sorted(bak)
 
     with pytest.raises(ValueError, match="Value 'a' for -e option not defined!"):
-        submit_jobs(init=True, exist="a", config_file="test.config_test")
-
-    with Capturing() as output:
-        combs = submit_jobs(init=False, restart=True, wait=True, config_file="test.config_test_rst")
+        combs = submit_jobs(init=True, exist="a", config_file="test.config_test")
+        _, output = capture_submit(init=False, restart=True, wait=True, config_file="test.config_test_rst")
     count = Counter(output)
     print(output)
     for m in ["Restart run from 2018-06-20 08:00:00", 'd01 2018-06-20_10:00:00 wrf: SUCCESS COMPLETE WRF']:
@@ -115,8 +112,7 @@ def test_basic():
 def test_repeats():
     """Test config repetitions functionality."""
     combs = submit_jobs(init=True, exist="o", config_file="test.config_test_reps")
-    with Capturing() as output:
-        submit_jobs(init=False, wait=True, exist="o", config_file="test.config_test_reps")
+    _, output = capture_submit(init=False, wait=True, exist="o", config_file="test.config_test_reps")
     print(output)
     count = Counter(output)
     assert count[success[False]] == combs["n_rep"].sum()
@@ -125,8 +121,7 @@ def test_repeats():
 def test_mpi_and_batch():
     """Test MPI runs and check commands generated for job schedulers (without running them)"""
     combs = submit_jobs(init=True, wait=True, exist="o", config_file="test.config_test_mpi")
-    with Capturing() as output:
-        submit_jobs(init=False, pool_jobs=True, wait=True, exist="o", config_file="test.config_test_mpi")
+    _, output = capture_submit(init=False, pool_jobs=True, wait=True, exist="o", config_file="test.config_test_mpi")
     print(output)
     count = Counter(output)
     m = "Submit IDs: ['pytest_kessler_0', 'pytest_lin_0']"
@@ -142,13 +137,12 @@ def test_mpi_and_batch():
         shutil.copy("tests/test_data/runs/WRF_pytest_eta_0/run.log", rundir)
 
     #test SGE
-    with Capturing() as output:
-        combs = submit_jobs(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_sge")
+    _, output = capture_submit(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_sge")
     print(output)
     count = Counter(output)
     batch_comm = "qsub -cwd -q std.q -o {0}/logs/pytest_lin_0.out -e {0}/logs/pytest_lin_0.err -l h_rt=000:00:30 "\
                  " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N pytest_lin_0 -V  -l h_vmem=148M "\
-                 " -l s_rt 000:00:10  run_wrf.job".format(conf.run_path)
+                 " -l s_rt=000:00:10  run_wrf.job".format(conf.run_path)
     assert batch_comm == output[-1]
 
     messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 148.3M']
@@ -161,8 +155,7 @@ def test_mpi_and_batch():
     assert count[message_rt] == 2
 
     #test SLURM
-    with Capturing() as output:
-        combs = submit_jobs(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_slurm")
+    _, output = capture_submit(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_slurm")
     print(output)
     count = Counter(output)
     batch_comm = "sbatch -p mem_0064 -o {0}/logs/pool_pytest_kessler_0_pytest_lin_0.out -e {0}/logs/pool_pytest_kessler_0_pytest_lin_0.err --time=000:00:30 "\
@@ -178,17 +171,18 @@ def test_scheduler_full():
     #Check if job scheduler is available
     if os.popen("command -v {}".format(batch_dict[conf.job_scheduler])).read() != "":
         combs = submit_jobs(init=True,  exist="o", config_file="test.config_test_mpi")
-        with Capturing() as output:
-            submit_jobs(init=False, use_job_scheduler=True, test_run=True, exist="o", verbose=True, config_file="test.config_test_mpi")
+        _, output = capture_submit(init=False, use_job_scheduler=True, test_run=True, exist="o", verbose=True, config_file="test.config_test_mpi")
         print(output)
         job_sched = conf.job_scheduler.lower()
 
         if job_sched  == "slurm":
             jobs = ["pool_pytest_kessler_0_pytest_lin_0"]
             comm = "squeue -n "
-        elif job_sched  == "slurm":
+        elif job_sched  == "sge":
             jobs = ["pytest_lin_0", "pytest_kessler_0"]
-            comm = "qstat -j /h"
+            comm = "qstat -j "
+        else:
+            raise ValueError("Job scheduler {} not known!".format(job_sched))
 
         finished = False
         while not finished:
@@ -197,7 +191,10 @@ def test_scheduler_full():
             for j in jobs:
                 status = os.popen(comm + j).read().split("\n")
                 status = misc_tools.remove_empty_str(status)
-                if len(status) > 1:
+
+                if "Following jobs do not exist:" in status:
+                    pass
+                elif len(status) > 1:
                     finished = False
 
         rundirs = combs["run_dir"].values + "_0"
@@ -227,8 +224,7 @@ def run_around_tests():
         shutil.copy("{}/test_data/namelists/namelist.input".format(test_dir), target_dir)
 
     #check skipping non-initialized runs
-    with Capturing() as output:
-        submit_jobs(init=False, config_file="test.config_test")
+    _, output = capture_submit(init=False, config_file="test.config_test")
     assert Counter(output)["Run not initialized yet! Skipping..."] == 2
 
 
@@ -239,4 +235,14 @@ def run_around_tests():
     for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
         if os.path.isdir(d):
             shutil.rmtree(d)
+
+def capture_submit(*args, **kwargs):
+    try:
+        with Capturing() as output:
+            combs = submit_jobs(*args, **kwargs)
+    except Exception as e:
+        print(output)
+        raise(e)
+
+    return combs, output
 
