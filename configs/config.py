@@ -65,7 +65,7 @@ params["dt_f"] = None  #time step (s), if None calculated as dt = 6 s/m *dx/1000
 #minimum time between radiation calls (min); if radt is not specified: radt=max(radt_min, 10*dt)
 params["radt_min"] = 1
 
-params["input_sounding"] = "meanwind" #name of input sounding to use (final name is then created: input_sounding_$name)
+params["input_sounding"] = "shalconv" #name of input sounding to use (final name is then created: input_sounding_$name)
 
 params["isotropic_res"] = 100 #dx (m) from and below which mixing is isotropic
 params["pbl_res"] = 500 #dx (m) from and above which to use PBL scheme; this also changes km_opt
@@ -176,10 +176,15 @@ if any([c in host for c in clusters]):
         pool_size = int(int(os.popen("sinfo -o %c -h -p {}".format(queue)).read())/2)
         force_pool = True #always use pooling
 else:
-    pool_size = 8
+    job_scheduler = "slurm"
+    queue = "std"
+    qos = None
+    pool_size = 4
     cluster = False
     max_nslotsy = None
     max_nslotsx = None
+    force_pool = True
+
 #%%
 
 param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)

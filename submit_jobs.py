@@ -226,17 +226,19 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         if "dt_f" not in args:
             args["dt_f"] = r/1000*6 #wrf rule of thumb
 
-        queue = conf.queue
         if init:
             args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i, namelist_check=not no_namelist_check)
-
             #job scheduler queue and vmem
             if use_job_scheduler and conf.request_vmem:
                 vmem_init = max(conf.vmem_init_min, int(conf.vmem_init_per_grid_point*args["e_we"]*args["e_sn"]))
                 if ("bigmem_limit" in dir(conf)) and (vmem_init > conf.bigmem_limit):
                     queue = conf.bigmem_queue
+                else:
+                    queue = conf.queue
+
 
         elif use_job_scheduler:
+            queue = conf.queue
             args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi, pool_jobs=pool_jobs, restart=restart, test_run=test_run, request_vmem=conf.request_vmem)
             if skip:
                 continue

@@ -24,6 +24,7 @@ import sys
 import get_namelist
 import vertical_grid
 from pathlib import Path as fopen
+import xarray as xr
 
 #%%nproc
 
@@ -647,6 +648,27 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
 
 
 #%%init
+def read_input_sounding(path, scm=False):
+    """Read potential temperature, height and surface pressure from WRF input sounding file"""
+    input_sounding_df = pd.read_csv(path, sep=" ", header=None, index_col=0, names=np.arange(5), skipinitialspace=True)
+    if scm:
+        cols = ["u", "v", "theta", "qv"]
+        t0, q0, p0 = input_sounding_df.iloc[0,-3:]
+        input_sounding_df = input_sounding_df.iloc[:, :-1]
+    else:
+        cols = ["theta", "u", "v", "qv"]
+        input_sounding_df[4] /= 1000
+        header = input_sounding_df.iloc[0]
+        p0, t0, q0 = header.name, *header.iloc[:2]
+        q0 /= 1000
+        input_sounding_df = input_sounding_df.iloc[1:]
+
+    input_sounding_df.columns = cols
+    input_sounding_df.index.name = "level"
+    input_sounding = xr.Dataset(input_sounding_df)
+    
+    return input_sounding, p0
+        
 def prepare_init(args, conf, wrf_dir, namelist_check=True):
     """Sets some namelist parameters based on the config files settings."""
     print("Setting namelist parameters\n")
@@ -679,11 +701,16 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     #vert. domain
     args["e_vert"] = args["nz"]
     if "eta_levels" not in args:
+
+        input_sounding_path = "{}/test/{}/input_sounding_{}".format(wrf_build, conf.ideal_case, args["input_sounding"])
+        input_sounding, p0 = read_input_sounding(input_sounding_path, scm="scm" in conf.ideal_case)        
+        theta = input_sounding["theta"]
         args["eta_levels"], dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
-                                                          dz0=args["dz0"], plot=False, table=False)
+                                                          dz0=args["dz0"], theta=theta, p0=p0*100, plot=False, table=False)
         print("Created vertical grid:\nLowest level at {0:.1f} m\nthickness of uppermost layer: {1:.1f} m".format(dz[0], dz[-2]))
     args["eta_levels"] = "'" + ",".join(args["eta_levels"].astype(str)) + "'"
-
+    if "scm" in conf.ideal_case:
+        print("WARNING: Eta levels are neglected in the standard initialization of the single column model case!")
     #split output in one timestep per file
     one_frame = False
     if r <= conf.split_output_res:

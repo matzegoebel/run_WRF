@@ -20,9 +20,14 @@ Lukas Strauss
 # Import modules.
 import numpy as np
 import matplotlib.pyplot as plt
+from metpy import calc as metcalc
+from metpy.units import units as metunits
+from metpy import constants as metconst
+import scipy as sp
+import tools
+import xarray as xr
 
 # Import user modules.
-import isa
 import os
 
 figloc = "~"
@@ -30,6 +35,24 @@ figloc = os.path.expanduser(figloc)
 #-------------------------------------------------------------------------------
 # FUNCTIONS
 #-------------------------------------------------------------------------------
+
+def pressure_from_theta(theta, p0=1e5):
+    """Calculate pressure from potential temperature and surface pressure"""
+    cp = metconst.Cp_d
+    g = metconst.g
+    c = (metconst.Cp_d/metconst.Rd).m/1000
+    integral = -sp.integrate.cumtrapz(1/theta.values, theta.level.values)*metunits.meter/metunits.K
+    p = theta.copy()
+    if "unit" in dir(p0):
+        units = p0.units
+    else:
+        units = ""
+    p = p.assign_attrs(units=units)
+    pt = p0*(g/cp*integral + 1)**c    
+    p[:] =  np.concatenate(([p0],pt))
+    
+    return p
+
 def strheta_1(nlev, eta1, eta2, deta0, n2):
     """Generate a three-layer grid.
 
@@ -195,7 +218,7 @@ def strheta_2(nlev, eta1, deta0):
     return eta,deta
 
 
-def create_levels(nz=150, ztop=15000, method=0, dz0=10, etaz1=0.87, etaz2=0.4, n2=37, plot=True, table=True, savefig=False, imgtype="pdf"):
+def create_levels(nz=150, ztop=15000, method=0, dz0=10, etaz1=0.87, etaz2=0.4, n2=37, theta=None, p0=None, plot=True, table=True, savefig=False, imgtype="pdf"):
 #for method 0 (linearly increasing dz from dz0 at z=z0 to dzt at z=ztop)
    # dzt = 200
 #for method 1 (ARPS method)
@@ -226,10 +249,16 @@ def create_levels(nz=150, ztop=15000, method=0, dz0=10, etaz1=0.87, etaz2=0.4, n
         etaz, detaz = strheta_1(nz, etaz1, etaz2, detaz0, n2)
         z = ztop + etaz * (z0 - ztop)
 
+    if theta is None:
+       # ptop = isa.pressure(ztop)
+       # p = np.array(list(map(isa.pressure, z)))
+        ptop = metcalc.height_to_pressure_std(ztop*metunits.m).m*100
+        p = metcalc.height_to_pressure_std(z*metunits.m).m*100
+    else:
+        pth = pressure_from_theta(theta, p0=p0)
+        p = pth.interp(level=z, kwargs=dict(fill_value="extrapolate")).values
+        ptop = pth.interp(level=ztop, kwargs=dict(fill_value="extrapolate")).values 
 
-    #ptop = 100e2
-    ptop = isa.pressure(ztop)
-    p = np.array(list(map(isa.pressure, z)))
     psfc = p.max()
     # Define stretched grid in pressure-based eta coordinate.
     eta = (p - ptop) / (psfc-ptop)
@@ -322,7 +351,15 @@ def create_levels(nz=150, ztop=15000, method=0, dz0=10, etaz1=0.87, etaz2=0.4, n
 
 
 if __name__ == '__main__':
-
-    eta, dz = create_levels(nz=176, ztop=15000, method=0, dz0=10, etaz1=0.87, etaz2=0.4, n2=37, plot=True, table=True, savefig=False)
+    p0 = 1e5
+    slope_t, intercept_t = 0.004, 296#0.004, 293
+    levels = np.arange(0, 12001, 20)
+    theta = xr.DataArray(dims=["level"], coords={"level" : levels})
+    theta["level"] = theta.level.assign_attrs(units="m")
+    theta = theta.level * slope_t + intercept_t
+    theta = theta.assign_attrs(units="K")
+    # p = pressure_from_theta(theta, p0=p0)
+    # p.interp(level=z)
+    eta, dz = create_levels(nz=160, ztop=12000, method=0, dz0=20, etaz1=0.87, etaz2=0.4, n2=37, theta=theta,p0=p0, plot=True, table=True, savefig=False)
     print(', '.join(['%.6f'%eta_tmp for eta_tmp in eta]))
 
