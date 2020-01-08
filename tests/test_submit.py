@@ -174,7 +174,7 @@ def test_scheduler_full():
     """Test runs using a job scheduler if available"""
     #Check if job scheduler is available
     if os.popen("command -v {}".format(batch_dict[conf.job_scheduler])).read() != "":
-        combs = submit_jobs(init=True,  exist="o", config_file="test.config_test_mpi")
+        combs = submit_jobs(init=True, exist="o", config_file="test.config_test_mpi")
         _, output = capture_submit(init=False, use_job_scheduler=True, test_run=True, exist="o", verbose=True, config_file="test.config_test_mpi")
         print(output)
         job_sched = conf.job_scheduler.lower()
