@@ -26,6 +26,10 @@ success = {True : 'wrf: SUCCESS COMPLETE IDEAL INIT', False : 'd01 2018-06-20_08
 outd = os.path.join(conf.outpath, conf.outdir)
 
 test_dir = os.getcwd()
+if test_dir[-6:] != "/tests":
+    os.chdir("tests")
+    test_dir = os.getcwd()
+
 code_dir = "/".join(test_dir.split("/")[:-1])
 
 batch_dict = {"slurm" : "sbatch", "sge" : "qsub"}

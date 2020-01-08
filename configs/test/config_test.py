@@ -173,7 +173,7 @@ if any([c in host for c in clusters]):
         qos = "normal_0064"
          #minimum pool size; should be equal to the number of available CPUs per node
         pool_size = int(int(os.popen("sinfo -o %c -h -p {}".format(queue)).read())/2)
-        force_pool = True #always use pooling
+        force_pool = True #always use pooling as vsc only offers exclusive nodes
 else:
     job_scheduler = "slurm"
     queue = "std"

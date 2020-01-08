@@ -708,7 +708,7 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
         args["eta_levels"], dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
                                                           dz0=args["dz0"], theta=theta, p0=p0*100, plot=False, table=False)
         print("Created vertical grid:\nLowest level at {0:.1f} m\nthickness of uppermost layer: {1:.1f} m".format(dz[0], dz[-2]))
-    args["eta_levels"] = "'" + ",".join(args["eta_levels"].astype(str)) + "'"
+    args["eta_levels"] = "'" + ",".join(["{0:.6f}".format(e) for e in  args["eta_levels"]])  + "'"  
     if "scm" in conf.ideal_case:
         print("WARNING: Eta levels are neglected in the standard initialization of the single column model case!")
     #split output in one timestep per file
