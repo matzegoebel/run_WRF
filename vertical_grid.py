@@ -218,7 +218,7 @@ def strheta_2(nlev, eta1, deta0):
     return eta,deta
 
 
-def create_levels(nz=150, ztop=15000, method=0, dz0=10, etaz1=0.87, etaz2=0.4, n2=37, theta=None, p0=None, plot=True, table=True, savefig=False, imgtype="pdf"):
+def create_levels(nz=None, ztop=None, method=0, dz0=None, dzmax=None, etaz1=None, etaz2=None, n2=None, theta=None, p0=None, plot=True, table=True, savefig=False, imgtype="pdf"):
 #for method 0 (linearly increasing dz from dz0 at z=z0 to dzt at z=ztop)
    # dzt = 200
 #for method 1 (ARPS method)
@@ -233,18 +233,41 @@ def create_levels(nz=150, ztop=15000, method=0, dz0=10, etaz1=0.87, etaz2=0.4, n
 #        n2 = 37
     z0 = 0
     if method == 0: # linearly increasing dz from dz0 at z=z0 to dzt at z=ztop
+        stop = False
+        search_nz = False
+        if nz is None:
+            if dzmax is None:
+                raise ValueError("For vertical grid method 0: if nz is not defined, dzmax must be defined!")
+            nz = int(ztop/dzmax)
+            search_nz = True
+
+        while not stop:
+            roots = np.roots((nz - 2)*[dz0]+ [dz0-ztop])
+            c = roots[~np.iscomplex(roots)].real
+            c = float(c[c > 0])
+            #if nz is not given, check if dzmax threshold is reached
+            if search_nz:
+                dzmax_c = dz0*c**(nz-2)
+                if dzmax_c <= dzmax:
+                    stop = True
+            else:
+                stop = True
+            if not stop:
+                nz += 1
+                
         z = np.zeros(nz)
-        roots = np.roots((nz - 2)*[dz0]+ [dz0-ztop])
-        c = roots[~np.iscomplex(roots)].real
-        c = float(c[c > 0])
         for i in range(nz - 1):
             z[i+1] = dz0 + z[i] * c
 
     elif method == 1: # 2- layer
+        if any([arg is None for arg in [nz,etaz1]]):
+            raise ValueError("For vertical grid method 1, nz and etaz1 must be defined!")
         detaz0 = dz0/(ztop - dz0)
         etaz, detaz = strheta_2(nz, etaz1, detaz0)
         z = ztop + etaz * (z0 - ztop)
     elif method == 2:  # ARPS method 3-layer
+        if any([arg is None for arg in [nz,etaz1,etaz2,n2]]):
+            raise ValueError("For vertical grid method 2, etaz1, etaz2, and n2 must be defined!")
         detaz0 = dz0/(ztop - dz0)
         etaz, detaz = strheta_1(nz, etaz1, etaz2, detaz0, n2)
         z = ztop + etaz * (z0 - ztop)

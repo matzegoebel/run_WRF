@@ -699,15 +699,23 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
         args["radt"] = max(args["radt_min"], 10*dt_int/60) #rule of thumb
 
     #vert. domain
-    args["e_vert"] = args["nz"]
     if "eta_levels" not in args:
-
         input_sounding_path = "{}/test/{}/input_sounding_{}".format(wrf_build, conf.ideal_case, args["input_sounding"])
         input_sounding, p0 = read_input_sounding(input_sounding_path, scm="scm" in conf.ideal_case)        
         theta = input_sounding["theta"]
-        args["eta_levels"], dz = vertical_grid.create_levels(nz=args["nz"], ztop=args["ztop"], method=args["dz_method"],
-                                                          dz0=args["dz0"], theta=theta, p0=p0*100, plot=False, table=False)
-        print("Created vertical grid:\nLowest level at {0:.1f} m\nthickness of uppermost layer: {1:.1f} m".format(dz[0], dz[-2]))
+        if ("dzmax" in args) and (args["dzmax"] == "dx"):
+            args["dzmax"] = r
+        vert_keys = ["nz", "dzmax", "etaz1", "etaz2", "n2"]
+        vert_args = {}
+        for key in vert_keys:
+            if key in args:
+                vert_args[key] = args[key]
+        
+        args["eta_levels"], dz = vertical_grid.create_levels(ztop=args["ztop"], method=args["dz_method"], dz0=args["dz0"],theta=theta, 
+                                                             p0=p0*100, plot=False, table=False, **vert_args)
+        args["e_vert"] = len(args["eta_levels"])
+        print("Created vertical grid:\n{0} levels\nlowest level at {1:.1f} m\nthickness of uppermost layer: {2:.1f} m\n".format(args["e_vert"], dz[0], dz[-2]))
+
     args["eta_levels"] = "'" + ",".join(["{0:.6f}".format(e) for e in  args["eta_levels"]])  + "'"  
     if "scm" in conf.ideal_case:
         print("WARNING: Eta levels are neglected in the standard initialization of the single column model case!")

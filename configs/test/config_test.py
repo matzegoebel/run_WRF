@@ -54,12 +54,14 @@ params["min_gridpoints_y"] = 2 #minimum number of grid points in y direction (in
 #if use_min_gridpoints: force x and y extents to be multiples of lx and ly, respectively
 force_domain_multiple = False #"x", "y", True (for both) or False
 
-#vertical grid
+#control vertical grid creation (see vertical_grid.py for details on the different methods)
 params["ztop"] = 5000 #top of domain (m)
 params["zdamp"] = int(params["ztop"]/3) #depth of damping layer (m)
 params["nz"] = 60 #number of vertical levels
 params["dz0"] = 20 #height of first model level (m)
+params["dzmax"] = None #if nz is None and for dz_method=0 only: specify maximum vertical grid spacing instead of nz; either float or "dx" to make it equal to dx
 params["dz_method"] = 0 #method for creating vertical grid as defined in vertical_grid.py
+
 params["dt_f"] = None  #time step (s), if None calculated as dt = 6 s/m *dx/1000; can be float
 #minimum time between radiation calls (min); if radt is not specified: radt=max(radt_min, 10*dt)
 params["radt_min"] = 1
@@ -89,7 +91,7 @@ split_output_res = 0 #dx (m) below which to split output in one timestep per fil
 registries = ["Registry.EM_COMMON", "registry.hyb_coord", "registry.les", "registry.io_boilerplate"] #registries to look for default namelist parameters
 
 # non-namelist parameters that will not be included in namelist file
-del_args =   ["output_streams", "start_time", "end_time", "nz", "dz0","dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
+del_args =   ["output_streams", "start_time", "end_time", "nz", "dz0", "dzmax", "dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
               "n_rep", "isotropic_res", "pbl_res", "dt_f", "radt_min"]
 #%%
 '''Settings for resource requirements of batch jobs'''
