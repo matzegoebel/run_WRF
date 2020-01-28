@@ -666,9 +666,9 @@ def read_input_sounding(path, scm=False):
     input_sounding_df.columns = cols
     input_sounding_df.index.name = "level"
     input_sounding = xr.Dataset(input_sounding_df)
-    
+
     return input_sounding, p0
-        
+
 def prepare_init(args, conf, wrf_dir, namelist_check=True):
     """Sets some namelist parameters based on the config files settings."""
     print("Setting namelist parameters\n")
@@ -700,9 +700,9 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
 
     #vert. domain
     if "eta_levels" not in args:
-        input_sounding_path = "{}/test/{}/input_sounding_{}".format(wrf_build, conf.ideal_case, args["input_sounding"])
-        input_sounding, p0 = read_input_sounding(input_sounding_path, scm="scm" in conf.ideal_case)        
-        theta = input_sounding["theta"]
+        # input_sounding_path = "{}/test/{}/input_sounding_{}".format(wrf_build, conf.ideal_case, args["input_sounding"])
+        # input_sounding, p0 = read_input_sounding(input_sounding_path, scm="scm" in conf.ideal_case)
+        # theta = input_sounding["theta"]
         if ("dzmax" in args) and (args["dzmax"] == "dx"):
             args["dzmax"] = r
         vert_keys = ["nz", "dzmax", "etaz1", "etaz2", "n2"]
@@ -710,13 +710,13 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
         for key in vert_keys:
             if key in args:
                 vert_args[key] = args[key]
-        
-        args["eta_levels"], dz = vertical_grid.create_levels(ztop=args["ztop"], method=args["dz_method"], dz0=args["dz0"],theta=theta, 
-                                                             p0=p0*100, plot=False, table=False, **vert_args)
+
+        args["eta_levels"], dz = vertical_grid.create_levels(args["ztop"], args["dz0"], method=args["dz_method"],
+                                                             plot=False, table=False, **vert_args)
         args["e_vert"] = len(args["eta_levels"])
         print("Created vertical grid:\n{0} levels\nlowest level at {1:.1f} m\nthickness of uppermost layer: {2:.1f} m\n".format(args["e_vert"], dz[0], dz[-2]))
 
-    args["eta_levels"] = "'" + ",".join(["{0:.6f}".format(e) for e in  args["eta_levels"]])  + "'"  
+    args["eta_levels"] = "'" + ",".join(["{0:.6f}".format(e) for e in  args["eta_levels"]])  + "'"
     if "scm" in conf.ideal_case:
         print("WARNING: Eta levels are neglected in the standard initialization of the single column model case!")
     #split output in one timestep per file
@@ -1082,7 +1082,7 @@ def get_node_size_slurm(queue):
         print("WARNING: Different node sizes for the given queues: {}\n Choosing smaller one...".format(dict(zip(queue, node_size))))
     return node_size.min()
 #%%
-    
+
 
 
 class Capturing(list):

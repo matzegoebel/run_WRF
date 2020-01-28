@@ -48,9 +48,9 @@ def pressure_from_theta(theta, p0=1e5):
     else:
         units = ""
     p = p.assign_attrs(units=units)
-    pt = p0*(g/cp*integral + 1)**c    
+    pt = p0*(g/cp*integral + 1)**c
     p[:] =  np.concatenate(([p0],pt))
-    
+
     return p
 
 def strheta_1(nlev, eta1, eta2, deta0, n2):
@@ -217,8 +217,17 @@ def strheta_2(nlev, eta1, deta0):
 
     return eta,deta
 
+def tanh_method(nz, dz0, dzmax=200, alpha=0.5):
+    ind = np.arange(1, nz+1)
+    a = (1+nz)/2
+    dzm = (dzmax+dz0)/2
+    dz = dzm + (dz0 - dzm)/np.tanh(2*alpha)*np.tanh(2*alpha*(ind-a)/(1-a))
+    z = np.cumsum(dz)
 
-def create_levels(nz=None, ztop=None, method=0, dz0=None, dzmax=None, etaz1=None, etaz2=None, n2=None, theta=None, p0=None, plot=True, table=True, savefig=False, imgtype="pdf"):
+    return z
+
+
+def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, etaz1=None, etaz2=None, n2=None, theta=None, p0=None, plot=True, table=True, savefig=False, imgtype="pdf"):
 #for method 0 (linearly increasing dz from dz0 at z=z0 to dzt at z=ztop)
    # dzt = 200
 #for method 1 (ARPS method)
@@ -254,7 +263,7 @@ def create_levels(nz=None, ztop=None, method=0, dz0=None, dzmax=None, etaz1=None
                 stop = True
             if not stop:
                 nz += 1
-                
+
         z = np.zeros(nz)
         for i in range(nz - 1):
             z[i+1] = dz0 + z[i] * c
@@ -267,10 +276,13 @@ def create_levels(nz=None, ztop=None, method=0, dz0=None, dzmax=None, etaz1=None
         z = ztop + etaz * (z0 - ztop)
     elif method == 2:  # ARPS method 3-layer
         if any([arg is None for arg in [nz,etaz1,etaz2,n2]]):
-            raise ValueError("For vertical grid method 2, etaz1, etaz2, and n2 must be defined!")
+            raise ValueError("For vertical grid method 2, nz, etaz1, etaz2, and n2 must be defined!")
         detaz0 = dz0/(ztop - dz0)
         etaz, detaz = strheta_1(nz, etaz1, etaz2, detaz0, n2)
         z = ztop + etaz * (z0 - ztop)
+
+    elif method == 3:
+        z = tanh_method(nz, dz0, dzmax)
 
     if theta is None:
        # ptop = isa.pressure(ztop)
@@ -280,7 +292,7 @@ def create_levels(nz=None, ztop=None, method=0, dz0=None, dzmax=None, etaz1=None
     else:
         pth = pressure_from_theta(theta, p0=p0)
         p = pth.interp(level=z, kwargs=dict(fill_value="extrapolate")).values
-        ptop = pth.interp(level=ztop, kwargs=dict(fill_value="extrapolate")).values 
+        ptop = pth.interp(level=ztop, kwargs=dict(fill_value="extrapolate")).values
 
     psfc = p.max()
     # Define stretched grid in pressure-based eta coordinate.
@@ -383,6 +395,9 @@ if __name__ == '__main__':
     theta = theta.assign_attrs(units="K")
     # p = pressure_from_theta(theta, p0=p0)
     # p.interp(level=z)
-    eta, dz = create_levels(nz=160, ztop=12000, method=0, dz0=20, etaz1=0.87, etaz2=0.4, n2=37, theta=theta,p0=p0, plot=True, table=True, savefig=False)
+   # eta, dz = create_levels(nz=160, ztop=12000, method=0, dz0=20, etaz1=0.87, etaz2=0.4, n2=37, theta=theta,p0=p0, plot=True, table=True, savefig=False)
+   # eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, theta=theta,p0=p0)
+    eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=20, dzmax=200, theta=theta, p0=p0)
+
     print(', '.join(['%.6f'%eta_tmp for eta_tmp in eta]))
 
