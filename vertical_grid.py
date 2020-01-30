@@ -7,9 +7,9 @@ layer and a two-layer grid. See the code for more.
 
 Authors
 -------
-Stefano Serafin
+Stefano Serafin and Matthias Göbel
     - stretching functions
-Lukas Strauss
+Lukas Strauss and Matthias Göbel
     - plotting, testing
 
 """
@@ -53,7 +53,7 @@ def pressure_from_theta(theta, p0=1e5):
 
     return p
 
-def strheta_1(nlev, eta1, eta2, deta0, n2):
+def strheta_1(nlev, etaz1, etaz2, deta0, detamax=None, n2=None):
     """Generate a three-layer grid.
 
     The grid spacing is constant in the first and third layer.
@@ -62,9 +62,9 @@ def strheta_1(nlev, eta1, eta2, deta0, n2):
     ----------
     nlev : int
         Number of vertical levels.
-    eta1 : float
+    etaz1 : float
         Bottom of the second layer.
-    eta2 : float
+    etaz2 : float
         Bottom of the third layer.
     deta0 : float
         Grid spacing in eta in the first layer.
@@ -83,13 +83,18 @@ def strheta_1(nlev, eta1, eta2, deta0, n2):
     # Determine the number of grid points in the two lowest layers,
     # numbered 0-1-2 bottom to top
 
-    n0 = int((1.-eta1)/deta0)
-    n1 = int(nlev - n0 - n2 - 1)
+    n0 = int((1.-etaz1)/deta0)
 
     # The delta eta in the upper layer is necessarily determined by the
     # stretching function in the intermediate layer (see below)
-
-    deta2 = 2.*(eta1-eta2)/n1-deta0
+    if detamax is None:
+        n1 = int(nlev - n0 - n2 - 1)
+        detamax = 2.*(etaz1-etaz2)/n1-deta0
+    else:
+        n2 = int(2.*(etaz1-etaz2)/(detamax+deta0))
+        n1 = int(nlev - n0 - n2 - 1)
+    if n1 <= 0:
+        raise ValueError("Too few vertical levels! Need at least {}!".format(n0+n2+2))
 
     # Pre-allocate arrays for eta and delta eta
 
@@ -107,13 +112,13 @@ def strheta_1(nlev, eta1, eta2, deta0, n2):
     # is a cosine square function, which varies smoothly and has a maximum in
     # the middle of the stretching layer.
     # The amplitude of the cosine^2 function that describes the stretching
-    # is dictated by eta1, eta2, deta0 and the number of levels in the
+    # is dictated by etaz1, etaz2, deta0 and the number of levels in the
     # stretching layer.
     # It can be demonstrated that deta stretches from deta0 to deta2, with
-    # deta2 = 2.*(eta1-eta2)/n1-deta0
-    # Consequence: there is no guarantee that deta2 = eta2/n2.
+    # deta2 = 2.*(etaz1-etaz2)/n1-deta0
+    # Consequence: there is no guarantee that deta2 = etaz2/n2.
 
-    ampl = 4*(eta1-eta2-n1*deta0)/(n1**2)
+    ampl = 4*(etaz1-etaz2-n1*deta0)/(n1**2)
     for i in range(n0,n0+n1):
       j = i-n0
       deta[i] = deta0 + ampl*(j/2.-n1/(4.*np.pi)*np.sin(2.*np.pi*j/n1))
@@ -129,7 +134,7 @@ def strheta_1(nlev, eta1, eta2, deta0, n2):
     # Layer 2 (top): constant deta = deta2
 
     for i in range(n0+n1,nlev-1):
-      deta[i] = deta2
+      deta[i] = detamax
       eta[i+1] = eta[i]-deta[i]
 
     # Generally, the coordinate of the uppermost level eta.min() will not be
@@ -141,7 +146,7 @@ def strheta_1(nlev, eta1, eta2, deta0, n2):
 
     return eta, deta
 
-def strheta_2(nlev, eta1, deta0):
+def strheta_2(nlev, etaz1, deta0):
     """Generate a two-layer grid.
 
     The grid spacing is constant in the first layer and increases in the second.
@@ -150,7 +155,7 @@ def strheta_2(nlev, eta1, deta0):
     ----------
     nlev : int
         Number of vertical levels.
-    eta1 : float
+    etaz1 : float
         Bottom of the second layer.
     deta0 : float
         Grid spacing in eta in the first layer.
@@ -167,14 +172,14 @@ def strheta_2(nlev, eta1, deta0):
     # Determine the number of grid points in the two layers,
     # numbered 0-1 bottom to top
 
-    n0 = int((1.-eta1)/deta0)
+    n0 = int((1.-etaz1)/deta0)
     n1 = int(nlev - n0 - 1)
 
     # The delta eta at the model top, that is, for the first
     # hypothetical layer above model top, is necessarily determined
     # by the stretching function (see below)
 
-    detamax = deta0+2.*np.pi**2./(np.pi**2.-4.)*(eta1-deta0*n1)/n1
+    detamax = deta0+2.*np.pi**2./(np.pi**2.-4.)*(etaz1-deta0*n1)/n1
 
     # Pre-allocate arrays for eta and delta eta
 
@@ -192,10 +197,10 @@ def strheta_2(nlev, eta1, deta0):
     # is a cosine square function, which varies smoothly and has a maximum
     # at the domain top.
     # The amplitude of the cosine^2 function that describes the stretching
-    # is dictated by eta1, deta0 and the number of levels in the
+    # is dictated by etaz1, deta0 and the number of levels in the
     # stretching layer.
 
-    ampl = 4.*np.pi**2./(np.pi**2.-4.)*(eta1-n1*deta0)/(n1**2.)
+    ampl = 4.*np.pi**2./(np.pi**2.-4.)*(etaz1-n1*deta0)/(n1**2.)
     for i in range(n0,nlev-1):
       j = i-n0
       deta[i] = deta0 + ampl*(j/2.-n1/(2.*np.pi)*np.sin(np.pi*j/n1))
@@ -217,21 +222,117 @@ def strheta_2(nlev, eta1, deta0):
 
     return eta,deta
 
-def tanh_method(nz, dz0, dzmax=200, alpha=0.5):
-    ind = np.arange(1, nz+1)
-    a = (1+nz)/2
-    dzm = (dzmax+dz0)/2
-    dz = dzm + (dz0 - dzm)/np.tanh(2*alpha)*np.tanh(2*alpha*(ind-a)/(1-a))
-    z = np.cumsum(dz)
+# def sin_3layer(dz0, dzmax, ztop, z1, z2):
 
-    return z
+#     n1 = z1/dz0
+#     n2 = (ztop-z2)/dzmax
+
+#     if int(n1) != n1:
+#         raise ValueError("z1 must be a multiple of dz0!")
+#     if int(n2) != n2:
+#         raise ValueError("ztop-z2 must be a multiple of dzmax!")
+#     if  z1 >= z2:
+#         raise ValueError("z1 must be smaller than z2!")
+
+#     dz1 = np.ones(int(n1))*dz0
+#     dz3 = np.ones(int(n2))*dzmax
+#     dz2 = []
+#     a = dzmax - dz0
+#     b = (z1 + z2)/2
+#     zi = z1
+#     while zi <= z2:
+#         dzi = (dzmax - dz0)/2*np.sin(np.pi/(z2-z1)*(zi-(z1+z2)/2)) + (dzmax + dz0)/2
+#         zi += dzi
+#         dz2.append(dzi)
+#     dz = [*dz1,*dz2,*dz3]
+
+# dz0 = 50
+# nz = 35
+# z1 = 200
+# z2 = 10000
+# ztop = 16000
+
+def tanh_method(nz, dz0, ztop, z1, z2, alpha=1):
+    """
+    Vertical grid with three layers. Spacing dz=dz0 in the first up to z1, then hyperbolic stretching
+    until z2 and then constant again up top ztop.
 
 
-def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, etaz1=None, etaz2=None, n2=None, theta=None, p0=None, plot=True, table=True, savefig=False, imgtype="pdf"):
+    Parameters
+    ----------
+    nz : int
+        number of levels.
+    dz0 : float
+        spacing in the first layer (m).
+    z1 : float
+        top of first layer (m).
+    z2 : float
+        top of second layer (m).
+    ztop : float
+        domain top (m).
+    alpha : float, optional
+        stretching coefficient. The default is 1.
+
+    Returns
+    -------
+    z : numpy array of floats
+        vertical levels.
+    dz : numpy array of floats
+        spacing for all levels.
+
+    """
+
+    #domain depths
+    D1 = z1
+    D2 = z2 - z1
+    D3 = ztop - z2
+    n1 = D1/dz0
+    if n1 != int(n1):
+        raise ValueError("z1 should be a multiple of dz0")
+    if  z1 >= z2:
+        raise ValueError("z1 must be smaller than z2!")
+    #solve for mean spacing in intermediate layer dzm
+    q = n1 - nz + 1
+    a = 2*q
+    b = 2*D2 + D3 - q*dz0
+    c = -dz0*D2
+    dzm = 1/(2*a)*(-b-(b**2-4*a*c)**0.5)
+    if dzm < dz0:
+        raise ValueError("Vertical grid creation failed! Try more levels or different thicknesses.")
+
+
+    #get upper layer spacing
+    dzu = 2*dzm-dz0
+
+    #calculate grid points in layers and adjust spacings
+    n2 = round(D2/dzm)
+    dzm = D2/n2
+    n3 = round(D3/dzu)
+    dzu = D3/n3
+    #spacings for constant layers 1 and 3
+    dz1 = np.repeat(dz0, n1)
+    dz3 = np.repeat(dzu, n3)
+
+    #get spacing in layer 2 by stretching
+    ind = np.arange(1, n2+1)
+    a = (1 + n2)/2
+    dz2 = dzm + (dz0 - dzm)/np.tanh(2*alpha)*np.tanh(2*alpha*(ind-a)/(1-a))
+
+    dz = np.concatenate((dz1,dz2,dz3))
+    z = np.insert(np.cumsum(dz),0,0)
+    return z, dz
+
+# z, dz = tanh_method(100, 20, 200,12200, 1)
+# plt.plot( z[:-1], dz)
+
+# plt.plot(dz)
+
+
+def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None, plot=True, table=True, savefig=False, imgtype="pdf", **kwargs):
 #for method 0 (linearly increasing dz from dz0 at z=z0 to dzt at z=ztop)
    # dzt = 200
 #for method 1 (ARPS method)
-#        detaz0 = 0.0008
+#        deta0 = 0.0008
 #        etaz1 = 0.999
 # for method 2:
         #schmidli:
@@ -241,6 +342,8 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, etaz1=None, etaz2=No
 #        nz = 143
 #        n2 = 37
     z0 = 0
+    if (method > 0) and (nz is None):
+        raise ValueError("For vertical grid method {}, nz must be defined!".format(nz))
     if method == 0: # linearly increasing dz from dz0 at z=z0 to dzt at z=ztop
         stop = False
         search_nz = False
@@ -269,20 +372,24 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, etaz1=None, etaz2=No
             z[i+1] = dz0 + z[i] * c
 
     elif method == 1: # 2- layer
-        if any([arg is None for arg in [nz,etaz1]]):
-            raise ValueError("For vertical grid method 1, nz and etaz1 must be defined!")
+
         detaz0 = dz0/(ztop - dz0)
-        etaz, detaz = strheta_2(nz, etaz1, detaz0)
+        etaz, detaz = strheta_2(nz, deta0=detaz0, **kwargs)
         z = ztop + etaz * (z0 - ztop)
     elif method == 2:  # ARPS method 3-layer
-        if any([arg is None for arg in [nz,etaz1,etaz2,n2]]):
-            raise ValueError("For vertical grid method 2, nz, etaz1, etaz2, and n2 must be defined!")
-        detaz0 = dz0/(ztop - dz0)
-        etaz, detaz = strheta_1(nz, etaz1, etaz2, detaz0, n2)
-        z = ztop + etaz * (z0 - ztop)
 
+        detaz0 = dz0/ztop# - dz0)
+        detazmax = None
+        if dzmax is not None:
+            detazmax = dzmax/ztop
+        etaz, detaz = strheta_1(nz, deta0=detaz0, detamax=detazmax, **kwargs)
+        z = ztop + etaz * (z0 - ztop)
     elif method == 3:
-        z = tanh_method(nz, dz0, dzmax)
+        z,_ = tanh_method(nz, dz0, ztop, **kwargs)
+
+    else:
+        raise ValueError("Vertical grid method {} not implemented!".format(method))
+
 
     if theta is None:
        # ptop = isa.pressure(ztop)
@@ -293,6 +400,9 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, etaz1=None, etaz2=No
         pth = pressure_from_theta(theta, p0=p0)
         p = pth.interp(level=z, kwargs=dict(fill_value="extrapolate")).values
         ptop = pth.interp(level=ztop, kwargs=dict(fill_value="extrapolate")).values
+
+    if np.round(z[-1],3) != ztop:
+        raise ValueError("Uppermost level ({}) is not at ztop ({})!".format(z[-1], ztop))
 
     psfc = p.max()
     # Define stretched grid in pressure-based eta coordinate.
@@ -381,7 +491,6 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, etaz1=None, etaz2=No
         print('-'*len(header))
 
 
-
     return eta, dz
 
 
@@ -396,8 +505,11 @@ if __name__ == '__main__':
     # p = pressure_from_theta(theta, p0=p0)
     # p.interp(level=z)
    # eta, dz = create_levels(nz=160, ztop=12000, method=0, dz0=20, etaz1=0.87, etaz2=0.4, n2=37, theta=theta,p0=p0, plot=True, table=True, savefig=False)
-   # eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, theta=theta,p0=p0)
-    eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=20, dzmax=200, theta=theta, p0=p0)
+    # eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, theta=theta,p0=p0)
+    eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=100, z1=20 , z2=2000, alpha=2, theta=theta, p0=p0)
+    # eta, dz = create_levels(ztop=16000, dz0=50, method=3, nz=35, z1=200, z2=10000, alpha=1, theta=theta, p0=p0)
+
+
 
     print(', '.join(['%.6f'%eta_tmp for eta_tmp in eta]))
 
