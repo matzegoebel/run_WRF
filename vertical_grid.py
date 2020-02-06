@@ -307,8 +307,11 @@ def tanh_method(nz, dz0, ztop, z1, z2, alpha=1):
     #calculate grid points in layers and adjust spacings
     n2 = round(D2/dzm)
     dzm = D2/n2
+    # D2 = n2*dzm
     n3 = round(D3/dzu)
     dzu = D3/n3
+    # D3 = n3*dzu
+
     #spacings for constant layers 1 and 3
     dz1 = np.repeat(dz0, n1)
     dz3 = np.repeat(dzu, n3)
@@ -506,7 +509,8 @@ if __name__ == '__main__':
     # p.interp(level=z)
    # eta, dz = create_levels(nz=160, ztop=12000, method=0, dz0=20, etaz1=0.87, etaz2=0.4, n2=37, theta=theta,p0=p0, plot=True, table=True, savefig=False)
     # eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, theta=theta,p0=p0)
-    eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=100, z1=20 , z2=2000, alpha=2, theta=theta, p0=p0)
+   # eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=71, z1=20 , z2=2000, alpha=.5, theta=theta, p0=p0)
+    eta, dz = create_levels(ztop=10000, dz0=20, method=3, nz=73, z1=100 , z2=2000, alpha=1, theta=theta, p0=p0)
     # eta, dz = create_levels(ztop=16000, dz0=50, method=3, nz=35, z1=200, z2=10000, alpha=1, theta=theta, p0=p0)
 
 

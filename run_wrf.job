@@ -19,6 +19,7 @@ sigusr1handler()
   done
 }
 
+#catch signal for soft runtime limit
 trap sigusr1handler SIGUSR1
 
 if (( cluster == 1 ))
