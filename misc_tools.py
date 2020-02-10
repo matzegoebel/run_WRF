@@ -183,31 +183,37 @@ def grid_combinations(param_grid, add_params=None, return_df=False):
         included parameters for each composite parameter
 
     """
-    d = deepcopy(param_grid)
-    param_grid_flat = deepcopy(param_grid)
-    params = []
-    composite_params = {}
-    for param,val in d.items():
-        if type(val) == dict:
-            val_list = list(val.values())
-            lens = np.array([len(l) for l in val_list])
-            if (lens[0] != lens).any():
-                raise ValueError("All parameter ranges that belong to the same composite must have equal lengths!")
-            val_list.append(np.arange(lens[0]))
-            params.extend([*val.keys(), param + "_idx"])
-            composite_params[param] = list(val.keys())
+    if param_grid is None:
+        composite_params = None
+        param_grid_flat = None
+        combs = [odict({})]
 
-            d[param] = transpose_list(val_list)
-            for k in val.keys():
-                param_grid_flat[k] = val[k]
-            del param_grid_flat[param]
-        else:
-            params.append(param)
+    else:
+        d = deepcopy(param_grid)
+        param_grid_flat = deepcopy(param_grid)
+        params = []
+        composite_params = {}
+        for param,val in d.items():
+            if type(val) == dict:
+                val_list = list(val.values())
+                lens = np.array([len(l) for l in val_list])
+                if (lens[0] != lens).any():
+                    raise ValueError("All parameter ranges that belong to the same composite must have equal lengths!")
+                val_list.append(np.arange(lens[0]))
+                params.extend([*val.keys(), param + "_idx"])
+                composite_params[param] = list(val.keys())
 
-    combs = list(itertools.product(*d.values()))
-    for i,comb in enumerate(combs):
-        c = flatten_list(comb)
-        combs[i] = odict(zip(params,c))
+                d[param] = transpose_list(val_list)
+                for k in val.keys():
+                    param_grid_flat[k] = val[k]
+                del param_grid_flat[param]
+            else:
+                params.append(param)
+
+        combs = list(itertools.product(*d.values()))
+        for i,comb in enumerate(combs):
+            c = flatten_list(comb)
+            combs[i] = odict(zip(params,c))
 
     combs_full = deepcopy(combs)
     if add_params is not None:
@@ -244,27 +250,33 @@ def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
         output ID
 
     """
-    ID = deepcopy(param_comb)
-    for p, v in param_grid.items():
-        if type(v) == dict:
-            if param_names is None:
-                raise ValueError("param_names cannot be None if composite parameters are used!")
-            for pc in v.keys():
-                del ID[pc]
-        if (param_names is not None) and (p in param_names):
-            namep = param_names[p]
+    ID_str = ""
+    ID = None
+    if param_grid is not None:
+        ID = deepcopy(param_comb)
+        for p, v in param_grid.items():
             if type(v) == dict:
-                ID[p] = namep[ID[p + "_idx"]]
-                del ID[p + "_idx"]
-            else:
-                if type(namep) == dict:
-                    ID[p] = namep[ID[p]]
+                if param_names is None:
+                    raise ValueError("param_names cannot be None if composite parameters are used!")
+                for pc in v.keys():
+                    del ID[pc]
+            if (param_names is not None) and (p in param_names):
+                namep = param_names[p]
+                if type(v) == dict:
+                    ID[p] = namep[ID[p + "_idx"]]
+                    del ID[p + "_idx"]
                 else:
-                    ID[p] = namep[param_grid[p].index(ID[p])]
+                    if type(namep) == dict:
+                        ID[p] = namep[ID[p]]
+                    else:
+                        ID[p] = namep[param_grid[p].index(ID[p])]
 
-    ID_str = "_".join([str(v) for v in ID.values()])
+        ID_str = "_".join([str(v) for v in ID.values()])
+
     if runID is not None:
-        ID_str =  runID + "_" + ID_str
+        if ID_str != "":
+            ID_str = "_" + ID_str
+        ID_str = runID + ID_str
 
     return ID_str, ID
 
@@ -805,7 +817,11 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
         # args_str = args_str + """ iofields_filename "'{}'" """.format(args["iofields_filename"])
 
     # delete non-namelist parameters
-    del_args = [*conf.del_args, *[p + "_idx" for p in conf.composite_params.keys()]]
+    if conf.composite_params is not None:
+        composite_keys = conf.composite_params.keys()
+    else:
+        composite_keys = []
+    del_args = [*conf.del_args, *[p + "_idx" for p in composite_keys]]
     args_clean = deepcopy(args)
     for del_arg in del_args:
         if del_arg in namelist:
