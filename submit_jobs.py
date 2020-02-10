@@ -341,11 +341,12 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     err = os.system(comm)
 
                     initlog = fopen(run_dir_r + "/init.log").read_text().split("\n")
-                    if "_mpi" in wrf_dir_i:
-                        success = initlog[-3]
-                    else:
-                        success = initlog[-2]
-                    success = success.strip()
+                    if len(initlog) > 200:
+                        if "_mpi" in wrf_dir_i:
+                            success = initlog[-3]
+                        else:
+                            success = initlog[-2]
+                        success = success.strip()
                     print(success)
                     if "SUCCESS COMPLETE IDEAL INIT" not in success:
                         initerr = fopen(run_dir_r + "/init.err").read_text()
