@@ -91,7 +91,7 @@ split_output_res = 0 #dx (m) below which to split output in one timestep per fil
 registries = ["Registry.EM_COMMON", "registry.hyb_coord", "registry.les", "registry.io_boilerplate"] #registries to look for default namelist parameters
 
 # non-namelist parameters that will not be included in namelist file
-del_args =   ["output_streams", "start_time", "end_time", "nz", "dz0", "dzmax", "dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
+del_args =   ["output_streams", "start_time", "end_time", "dz0", "dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
               "n_rep", "isotropic_res", "pbl_res", "dt_f", "radt_min"]
 #%%
 '''Settings for resource requirements of batch jobs'''

@@ -705,11 +705,12 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
         # theta = input_sounding["theta"]
         if ("dzmax" in args) and (args["dzmax"] == "dx"):
             args["dzmax"] = r
-        vert_keys = ["nz", "dzmax", "etaz1", "etaz2", "n2"]
+        vert_keys = ["nz", "dzmax", "etaz1", "etaz2", "n2", "z1", "z2", "alpha"]
         vert_args = {}
         for key in vert_keys:
             if key in args:
                 vert_args[key] = args[key]
+                del args[key]
 
         args["eta_levels"], dz = vertical_grid.create_levels(args["ztop"], args["dz0"], method=args["dz_method"],
                                                              plot=False, table=False, **vert_args)
