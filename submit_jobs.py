@@ -129,10 +129,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         else:
             print("Run WRF simulations")
 
-
-    print("Configs:")
-    print(pd.DataFrame(param_combs))
-    print("-"*40)
+    if conf.param_grid is not None:
+        print("Configs:")
+        print(pd.DataFrame(param_combs))
+        print("-"*40)
     for i in range(len(combs)):
         args = deepcopy(pd.Series(combs[i]).dropna().to_dict())
         param_comb = param_combs[i]
