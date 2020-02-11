@@ -24,7 +24,6 @@ from metpy import calc as metcalc
 from metpy.units import units as metunits
 from metpy import constants as metconst
 import scipy as sp
-import tools
 import xarray as xr
 
 # Import user modules.

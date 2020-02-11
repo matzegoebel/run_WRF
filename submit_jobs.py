@@ -120,7 +120,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     vmem = []
     nslots = []
 
-    #%%
+
     if init:
         print("Initialize WRF simulations")
     else:
