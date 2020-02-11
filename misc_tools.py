@@ -537,6 +537,7 @@ def get_vmem(runs, logfile="resources.info"):
             for mag, factor in zip(("M", "G"), (1, 1000)):
                 if mag in vmem_r:
                     vmem_r_num = float(vmem_r[:vmem_r.index(mag)])*factor
+                    break
             if vmem_r_num is not None:
                 vmem.append(vmem_r_num)
     if len(vmem) > 0:
@@ -625,14 +626,14 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
     if request_vmem:
         vmemi = None
         if test_run:
-            vmemi = conf.vmem_test
+            vmemi = conf.vmem_test*nslots
         elif conf.vmem is not None:
-            vmemi = conf.vmem
+            vmemi = conf.vmem*nslots
         elif conf.vmem_per_grid_point is not None:
             print("Use vmem per grid point")
-            vmemi = int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"])/nslots
+            vmemi = int(conf.vmem_per_grid_point*args["e_we"]*args["e_sn"])
             if conf.vmem_min is not None:
-                vmemi = max(vmemi, conf.vmem_min)
+                vmemi = max(vmemi, conf.vmem_min*nslots)
         else:
             print("Get vmem from previous runs")
             if identical_runs is None:
@@ -648,10 +649,9 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
                     print("Could not retrieve runtime from previous runs. Skipping...")
             else:
                 vmemi = max(vmemi)
-        if vmemi is not None:
-            vmemi *= nslots*conf.vmem_buffer
 
         if vmemi is not None:
+            vmemi *= conf.vmem_buffer
             print("Use vmem per slot: {0:.1f}M".format(vmemi/nslots))
             args["vmem"] = vmemi
 
