@@ -9,12 +9,12 @@ sigusr1handler()
   #~ then
     #~ exit 1
   #~ qfi
-  
+
   for (( i=0; i<${#jobs[@]}; i++ ))
   do
     cd ${run_path}/WRF_${jobs[i]}
     echo "The job is about to terminate soon! Killing wrf.exe processes..." >> run.log
-    
+
     kill ${pid[i]}
   done
 }
@@ -40,7 +40,7 @@ jobs=(${jobs})
 nslots=(${nslots})
 wrfv=(${wrfv})
 
- 
+
 si=0
 pool=false
 echo "JOBID ${SLURM_JOB_ID}"
@@ -61,7 +61,7 @@ trap 'rc=$?' ERR
 for (( i=0; i<${#jobs[@]}; i++ ))
 do
   cd ${run_path}/WRF_${jobs[i]}
-  
+
   #redirect logs to file
   if (( restart == 1 ))
   then
@@ -69,7 +69,7 @@ do
   else
     exec 1> "run.log"
   fi
-  
+
   exec 2> "run.err"
   echo
   echo
@@ -102,7 +102,7 @@ do
     echo "serial run"
     ./wrf.exe & pid[i]=$!
   fi
-  echo 
+  echo
   echo
 done
 
@@ -123,12 +123,13 @@ do
   if (( batch == 1 ))
   then
     #save resource usage of job
+    currtime=$(date +%d-%m-%Y_%H:%M:%S)
     if [[ $job_scheduler == "sge" ]]
     then
-      qstat -j $JOB_ID > resources.info
+      qstat -j $JOB_ID > resources_${currtime}.info
     elif [[ $job_scheduler == "slurm" ]]
     then
-      sacct -j $SLURM_JOB_ID -l -p > resources.info
+      sacct -j $SLURM_JOB_ID -l -p > resources_${currtime}.info
     fi
     #prepend log to run log
     echo -e "$(cat ${run_path}/logs/$JOB_NAME.out)\n$(cat run.log)" > run.log
@@ -151,4 +152,4 @@ fi
 
 
 #echo "trap" $rc
-exit ${rc} 
+exit ${rc}

@@ -509,7 +509,7 @@ def get_identical_runs(run_dir, search_paths):
     return identical_runs
 
 
-def get_vmem(runs, logfile="resources.info"):
+def get_vmem(runs):
     """
     Get maximum used virtual memory of SGE jobs from log files in the given directories.
 
@@ -530,16 +530,18 @@ def get_vmem(runs, logfile="resources.info"):
         return
     vmem = []
     for i, r in enumerate(runs):
-        resource_file = r + "/" + logfile
-        if os.path.isfile(resource_file):
-            vmem_r = get_job_usage(resource_file)["maxvmem"]
-            vmem_r_num = None
-            for mag, factor in zip(("M", "G"), (1, 1000)):
-                if mag in vmem_r:
-                    vmem_r_num = float(vmem_r[:vmem_r.index(mag)])*factor
-                    break
-            if vmem_r_num is not None:
-                vmem.append(vmem_r_num)
+        rfiles = glob.glob(r+"resources*.info")
+        for rf in rfiles:
+            resource_file = r + "/" + rf
+            if os.path.isfile(resource_file):
+                vmem_r = get_job_usage(resource_file)["maxvmem"]
+                vmem_r_num = None
+                for mag, factor in zip(("M", "G"), (1, 1000)):
+                    if mag in vmem_r:
+                        vmem_r_num = float(vmem_r[:vmem_r.index(mag)])*factor
+                        break
+                if vmem_r_num is not None:
+                    vmem.append(vmem_r_num)
     if len(vmem) > 0:
         return vmem
 
