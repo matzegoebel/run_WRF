@@ -14,7 +14,6 @@ import os
 import datetime
 import argparse
 import glob
-import misc_tools
 import importlib
 import inspect
 from copy import deepcopy
@@ -63,6 +62,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         DataFrame with settings for all submitted configurations.
 
     """
+
+    import misc_tools
 
     if (not init) and (outdir is not None):
         print("WARNING: option -o ignored when not in initialization mode!\n")
