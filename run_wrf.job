@@ -1,26 +1,9 @@
 #!/bin/bash
 
+start_time=$(date +%s)
 
 set -e
 
-sigusr1handler()
-{
-  #~ if [[ -z "${#jobs[@]}" ]]
-  #~ then
-    #~ exit 1
-  #~ qfi
-
-  for (( i=0; i<${#jobs[@]}; i++ ))
-  do
-    cd ${run_path}/WRF_${jobs[i]}
-    echo "The job is about to terminate soon! Killing wrf.exe processes..." >> run.log
-
-    kill ${pid[i]}
-  done
-}
-
-#catch signal for soft runtime limit
-trap sigusr1handler SIGUSR1
 
 if (( cluster == 1 ))
 then
@@ -105,20 +88,32 @@ do
   echo
   echo
 done
+echo "runtime limit: ${rtlimit}"
+currtime=$(date +%d-%m-%Y_%H:%M:%S)
+while [[ $(($(date +%s) - start_time)) -le ${rtlimit} ]]
+do
+ # echo  "Elapsed time (s): $(($(date +%s) - start_time))"
+  echo "" >> vmem_usage
+  top -bn 1 -u $USER | grep -E "wrf.exe|mpiexec" | awk '{ printf("%-8s\n", $5) };' | paste -sd+ | bc >> vmemusage_$currtime
+  sleep 1
+done
 
-wait
 
 for (( i=0; i<${#jobs[@]}; i++ ))
 do
   cd ${run_path}/WRF_${jobs[i]}
   exec 1>> "run.log"
   exec 2>> "run.err"
-  echo "job ${jobs[i]} exited with code $?"
 
   if (( ${nslots[i]} > 1 ))
   then
     cat rsl.error.0000 >> run.log
   fi
+
+  echo "The job is about to terminate soon! Killing wrf.exe processes..."
+  kill ${pid[i]} &
+
+  echo "job ${jobs[i]} exited with code $?"
 
   if (( batch == 1 ))
   then

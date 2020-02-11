@@ -107,7 +107,7 @@ vmem = None #virtual memory per slot (MB) to request for running WRF (wrf.exe)
 vmem_per_grid_point = None #vmem (MB) per horizontal grid point per job (not per slot!)
 vmem_min = None #minimum virtual memory (MB) per slot for running WRF
 
-vmem_buffer = 1.3 #buffer factor for virtual memory
+vmem_buffer = 2. #buffer factor for virtual memory (not used for test runs or if vmem is given)
 vmem_test = 1000  #virtual memory per slot (MB) for test runs
 
 
@@ -120,7 +120,7 @@ h_stack = None
 rt_init = 10
 # runtime for wrf.exe: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from previous identical runs if present
-rt_buffer = 2 #buffer factor to multiply rt with
+rt_buffer = 2 #buffer factor to multiply rt with (not used for test runs or if rt is given)
 rt = None #None or job runtime in minutes; buffer not used
 # if rt is None: runtime per time step in seconds for different dx
 runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}

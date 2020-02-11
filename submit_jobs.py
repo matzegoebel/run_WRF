@@ -476,7 +476,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                     batch_args_str += " -l h_stack={}M ".format(round(conf.h_stack))
                                 if conf.request_vmem:
                                     batch_args_str += " -l h_vmem={}M ".format(vmemp)
-                                batch_args_str += " -l s_rt={} ".format(misc_tools.format_timedelta(rtr_max - send_rt_signal))
+
+                                os.environ["rtlimit"] = str(int(rtr_max - send_rt_signal))
                             elif job_scheduler == "slurm":
                                 batch_args_str = "sbatch -p {} -o {} -e {} --time={} {} --mail-user={} --mail-type={} -J {} --export=ALL ".format(*batch_args)
                                 if  ("qos" in dir(conf)) and (conf.qos is not None):
