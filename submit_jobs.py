@@ -341,15 +341,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 if not check_args:
                     err = os.system(comm)
 
-                    initlog = fopen(run_dir_r + "/init.log").read_text().split("\n")
-                    if len(initlog) > 200:
-                        if "_mpi" in wrf_dir_i:
-                            success = initlog[-3]
-                        else:
-                            success = initlog[-2]
-                        success = success.strip()
-                    print(success)
-                    if "SUCCESS COMPLETE IDEAL INIT" not in success:
+                    initlog = fopen(run_dir_r + "/init.log").read_text()
+                    if "wrf: SUCCESS COMPLETE IDEAL INIT" in initlog:
+                        print("wrf: SUCCESS COMPLETE IDEAL INIT")
+                    else:
                         initerr = fopen(run_dir_r + "/init.err").read_text()
                         print(initerr)
                         raise RuntimeError("Initialization failed!")
