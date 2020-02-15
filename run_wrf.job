@@ -91,26 +91,29 @@ do
 done
 currtime=$(date +%d-%m-%Y_%H:%M:%S)
 
-if [[ ${rtlimit} ]]
-then
-  elapsed_t=$(($(date +%s) - start_time))
-else
-  elapsed_t=0
-  rtlimit=1
-fi
+#~ sleep 10
+#~ top -u $USER -bn 1 > ../pidlog
 
 finished=() #finished jobs
 #write vmem usage to file until processes are finished or hard time limit almost reached
 while [[ ${#finished[@]} -lt $njobs ]] && [[ ${elapsed_t} -le ${rtlimit} ]]
 do
+  if [[ ${rtlimit} ]]
+  then
+    elapsed_t=$(($(date +%s) - start_time))
+  else
+    elapsed_t=0
+    rtlimit=1
+  fi
+  
   for (( i=0; i<$njobs; i++ ))
   do
     cd ${run_path}/WRF_${jobs[i]}
     exec 1>> "run.log"
     exec 2>> "run.err"
+
     if [[ $(ps -o pid= -p ${pid[i]}) ]] #check if process is running
     then
-      sleep 1
        # echo  "Elapsed time (s): $(($(date +%s) - start_time))"
       children=$(pgrep -P ${pid[i]} -d " ")
       children_l=($children)
@@ -122,13 +125,14 @@ do
       all_pids_arr=(${all_pids_arr})
       all_pids=$(IFS=, ; echo "${all_pids_arr[*]}")
       echo "${jobs[i]} $all_pids" >> ../pidlog
-      top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $6) };' | paste -sd+ | bc >> vmemusage_$currtime
+      top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $5) };' | paste -sd+ | bc >> vmemusage_$currtime
     elif [[ ! " ${finished[@]} " =~ " ${i} " ]] #append job to finished array if it is not yet in it
     then
       finished+=($i)
      # echo "finished ${finished[@]}"
     fi
   done
+  sleep 1
 done
     
 
