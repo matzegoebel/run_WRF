@@ -20,6 +20,7 @@ code_dir=$(pwd)
 
 echo "jobs: $jobs"
 jobs=(${jobs})
+njobs=${#jobs[@]}
 nslots=(${nslots})
 wrfv=(${wrfv})
 
@@ -27,7 +28,7 @@ wrfv=(${wrfv})
 si=0
 pool=false
 echo "JOBID ${SLURM_JOB_ID}"
-if (( ${#jobs[@]} > 1 )) && (( pool_jobs == 1 )) && (( batch == 1 )) && [[ $job_scheduler == "sge" ]]
+if (( $njobs > 1 )) && (( pool_jobs == 1 )) && (( batch == 1 )) && [[ $job_scheduler == "sge" ]]
 then
   pool=true
   qs=$(qstat -t)
@@ -41,7 +42,7 @@ pid=()
 set +e
 trap 'rc=$?' ERR
 
-for (( i=0; i<${#jobs[@]}; i++ ))
+for (( i=0; i<$njobs; i++ ))
 do
   cd ${run_path}/WRF_${jobs[i]}
 
@@ -88,37 +89,68 @@ do
   echo
   echo
 done
-echo "runtime limit: ${rtlimit}"
 currtime=$(date +%d-%m-%Y_%H:%M:%S)
-while [[ $(($(date +%s) - start_time)) -le ${rtlimit} ]]
+
+if [[ ${rtlimit} ]]
+then
+  elapsed_t=$(($(date +%s) - start_time))
+else
+  elapsed_t=0
+  rtlimit=1
+fi
+
+finished=() #finished jobs
+#write vmem usage to file until processes are finished or hard time limit almost reached
+while [[ ${#finished[@]} -lt $njobs ]] && [[ ${elapsed_t} -le ${rtlimit} ]]
 do
- # echo  "Elapsed time (s): $(($(date +%s) - start_time))"
-  echo "" >> vmem_usage
-  top -bn 1 -u $USER | grep -E "wrf.exe|mpiexec" | awk '{ printf("%-8s\n", $5) };' | paste -sd+ | bc >> vmemusage_$currtime
-  sleep 1
+  for (( i=0; i<$njobs; i++ ))
+  do
+    cd ${run_path}/WRF_${jobs[i]}
+    exec 1>> "run.log"
+    exec 2>> "run.err"
+    if [[ $(ps -o pid= -p ${pid[i]}) ]] #check if process is running
+    then
+      sleep 1
+       # echo  "Elapsed time (s): $(($(date +%s) - start_time))"
+      children=$(pgrep -P ${pid[i]} -d " ")
+      children_l=($children)
+      if [[ ${#children_l[@]} == 1 ]]
+      then
+        children="$children $(pgrep -P $children -d " ")"
+      fi
+      all_pids_arr="${pid[i]} $children"
+      all_pids_arr=(${all_pids_arr})
+      all_pids=$(IFS=, ; echo "${all_pids_arr[*]}")
+      echo "${jobs[i]} $all_pids" >> ../pidlog
+      top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $6) };' | paste -sd+ | bc >> vmemusage_$currtime
+    elif [[ ! " ${finished[@]} " =~ " ${i} " ]] #append job to finished array if it is not yet in it
+    then
+      finished+=($i)
+     # echo "finished ${finished[@]}"
+    fi
+  done
 done
+    
 
-
-for (( i=0; i<${#jobs[@]}; i++ ))
+#clean up
+for (( i=0; i<$njobs; i++ ))
 do
-  cd ${run_path}/WRF_${jobs[i]}
-  exec 1>> "run.log"
-  exec 2>> "run.err"
-
   if (( ${nslots[i]} > 1 ))
   then
     cat rsl.error.0000 >> run.log
   fi
 
-  echo "The job is about to terminate soon! Killing wrf.exe processes..."
-  kill ${pid[i]} &
+  if [[ ! " ${finished[@]} " =~ " ${i} " ]]
+  then
+    echo "The job is about to terminate soon! Killing wrf.exe processes..."
+    kill ${pid[i]} &
+  fi
 
   echo "job ${jobs[i]} exited with code $?"
 
   if (( batch == 1 ))
   then
     #save resource usage of job
-    currtime=$(date +%d-%m-%Y_%H:%M:%S)
     if [[ $job_scheduler == "sge" ]]
     then
       qstat -j $JOB_ID > resources_${currtime}.info
@@ -130,21 +162,17 @@ do
     echo -e "$(cat ${run_path}/logs/$JOB_NAME.out)\n$(cat run.log)" > run.log
     echo -e "$(cat ${run_path}/logs/$JOB_NAME.err)\n$(cat run.err)" > run.err
   fi
+
+  if (( restart == 1 ))
+  then
+      cd ${run_path}/WRF_${jobs[i]}
+      exec 1>> "run.log"
+      exec 2>> "run.err"
+      echo
+      echo "Concatenate output from original and restarted run"
+      python -c "import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[i]}')"
+  fi
 done
-
-if (( restart == 1 ))
-then
-  for (( i=0; i<${#jobs[@]}; i++ ))
-  do
-    cd ${run_path}/WRF_${jobs[i]}
-    exec 1>> "run.log"
-    exec 2>> "run.err"
-    echo
-    echo "Concatenate output from original and restarted run"
-    python -c "import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[i]}')"
-  done
-fi
-
 
 #echo "trap" $rc
 exit ${rc}

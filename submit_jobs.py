@@ -227,6 +227,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         if "dt_f" not in args:
             args["dt_f"] = r/1000*6 #wrf rule of thumb
 
+        vmemi = None
         if init:
             args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i, namelist_check=not no_namelist_check)
             #job scheduler queue and vmem
@@ -245,9 +246,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 continue
             if conf.request_vmem:
                 vmemi = args["vmem"]
-            else:
-                vmemi = None
-            vmem.append(vmemi)
+        vmem.append(vmemi)
 
 
         #not needed; just for completeness of dataframe:
@@ -474,6 +473,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
                                 os.environ["rtlimit"] = str(int(rtr_max - send_rt_signal))
                             elif job_scheduler == "slurm":
+                                os.environ["rtlimit"] = ""
                                 batch_args_str = "sbatch -p {} -o {} -e {} --time={} {} --mail-user={} --mail-type={} -J {} --export=ALL ".format(*batch_args)
                                 if  ("qos" in dir(conf)) and (conf.qos is not None):
                                     batch_args_str += " --qos={} ".format(conf.qos)
