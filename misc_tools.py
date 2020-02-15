@@ -530,18 +530,19 @@ def get_vmem(runs):
         return
     vmem = []
     for i, r in enumerate(runs):
-        rfiles = glob.glob(r + "/vmemusage*")
+       #rfiles = glob.glob(r + "/vmemusage*")
+        rfiles = glob.glob(r + "/resources*")
         for resource_file in rfiles:
-            vmem_r = np.loadtxt(resource_file)
-            if len(vmem_r) > 0:
-
-            # vmem_r = get_job_usage(resource_file)["maxvmem"]
-            # vmem_r_num = None
-            # for mag, factor in zip(("M", "G"), (1, 1000)):
-            #     if mag in vmem_r:
-            #         vmem_r_num = float(vmem_r[:vmem_r.index(mag)])*factor
-            #         break
-                vmem.append(max(vmem_r)/1024)
+            # vmem_r = np.loadtxt(resource_file)
+            # if len(vmem_r) > 0:
+            vmem_r_str = get_job_usage(resource_file)["maxvmem"]
+            vmem_r = None
+            for mag, factor in zip(("M", "G"), (1, 1000)):
+                if mag in vmem_r_str:
+                    vmem_r = float(vmem_r_str[:vmem_r_str.index(mag)])*factor
+                    break
+            vmem.append(vmem_r)
+            #vmem.append(max(vmem_r)/1024)
     if len(vmem) > 0:
         return vmem
 
