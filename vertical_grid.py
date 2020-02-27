@@ -509,7 +509,7 @@ if __name__ == '__main__':
    # eta, dz = create_levels(nz=160, ztop=12000, method=0, dz0=20, etaz1=0.87, etaz2=0.4, n2=37, theta=theta,p0=p0, plot=True, table=True, savefig=False)
     # eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, theta=theta,p0=p0)
    # eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=71, z1=20 , z2=2000, alpha=.5, theta=theta, p0=p0)
-    eta, dz = create_levels(ztop=10000, dz0=30, method=3, nz=62, z1=150 , z2=2000, alpha=1., theta=theta, p0=p0)
+    eta, dz = create_levels(ztop=15000, dz0=30, method=3, nz=62, z1=150 , z2=2000, alpha=1., theta=theta, p0=p0)
     # eta, dz = create_levels(ztop=16000, dz0=50, method=3, nz=35, z1=200, z2=10000, alpha=1, theta=theta, p0=p0)
 
 
