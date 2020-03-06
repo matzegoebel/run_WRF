@@ -95,15 +95,21 @@ sleep 10
 top -u $USER -bn 1 >> ../pidlog
 
 finished=() #finished jobs
+
+elapsed_t=0
+enforce_rtlimit=true
+if [[ -z ${rtlimit} ]]
+then
+  enforce_rtlimit=false
+  rtlimit=1
+fi
+
 #wait until processes are finished or hard time limit almost reached
 while [[ ${#finished[@]} -lt $njobs ]] && [[ ${elapsed_t} -le ${rtlimit} ]]
 do
-  if [[ ${rtlimit} ]]
+  if ${enforce_rtlimit}
   then
     elapsed_t=$(($(date +%s) - start_time))
-  else
-    elapsed_t=0
-    rtlimit=1
   fi
   
   for (( i=0; i<$njobs; i++ ))
@@ -139,6 +145,9 @@ done
 #clean up
 for (( i=0; i<$njobs; i++ ))
 do
+  cd ${run_path}/WRF_${jobs[i]}
+  exec 1>> "run.log"
+  exec 2>> "run.err"
   if (( ${nslots[i]} > 1 ))
   then
     cat rsl.error.0000 >> run.log
@@ -169,9 +178,6 @@ do
 
   if (( restart == 1 ))
   then
-      cd ${run_path}/WRF_${jobs[i]}
-      exec 1>> "run.log"
-      exec 2>> "run.err"
       echo
       echo "Concatenate output from original and restarted run"
       python -c "import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[i]}')"

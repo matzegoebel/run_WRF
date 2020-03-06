@@ -464,6 +464,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
                             #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                             batch_args = [conf.queue, qout, qerr, rtp, slot_comm, conf.mail_address, mail, job_name]
+                            os.environ["rtlimit"] = str(int(rtr_max - send_rt_signal))
+
                             if job_scheduler == "sge":
                                 batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={}  {} -M {} -m {} -N {} -V ".format(*batch_args)
                                 if "h_stack" in dir(conf) and conf.h_stack is not None:
@@ -471,19 +473,17 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                 if conf.request_vmem:
                                     batch_args_str += " -l h_vmem={}M ".format(vmemp)
 
-                                os.environ["rtlimit"] = str(int(rtr_max - send_rt_signal))
                             elif job_scheduler == "slurm":
-                                os.environ["rtlimit"] = ""
                                 batch_args_str = "sbatch -p {} -o {} -e {} --time={} {} --mail-user={} --mail-type={} -J {} --export=ALL ".format(*batch_args)
                                 if  ("qos" in dir(conf)) and (conf.qos is not None):
                                     batch_args_str += " --qos={} ".format(conf.qos)
                                 if conf.request_vmem:
                                     batch_args_str += " --mem-per-cpu={}M ".format(vmemp)
-                                batch_args_str += " --signal=B:USR1@{} ".format(send_rt_signal)
 
                             comm = batch_args_str + " run_wrf.job"
 
                         else:
+                            os.environ["rtlimit"] = ""
                             comm = "bash run_wrf.job"
                             if not wait:
                                 comm += " &"

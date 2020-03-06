@@ -30,7 +30,7 @@ code_dir = "/".join(test_dir.split("/")[:-1])
 
 batch_dict = {"slurm" : "sbatch", "sge" : "qsub"}
 
-#%%
+#%%tests
 
 def test_basic():
     """
@@ -132,20 +132,21 @@ def test_mpi_and_batch():
     rundirs = []
     for run in os.listdir(conf.run_path):
         rundir = "{}/{}/".format(conf.run_path, run)
-        rundirs.append(rundir)
-        shutil.copy("tests/test_data/resources.info", rundir)
-        shutil.copy("tests/test_data/runs/WRF_pytest_eta_0/run.log", rundir)
+        if os.path.isdir(rundir):
+            rundirs.append(rundir)
+            shutil.copy("tests/test_data/resources.info", rundir)
+            shutil.copy("tests/test_data/runs/WRF_pytest_eta_0/run.log", rundir)
 
     #test SGE
     _, output = capture_submit(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_sge")
     print(output)
     count = Counter(output)
     batch_comm = "qsub -cwd -q std.q -o {0}/logs/pytest_lin_0.out -e {0}/logs/pytest_lin_0.err -l h_rt=000:00:30 "\
-                 " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N pytest_lin_0 -V  -l h_vmem=148M "\
-                 " -l s_rt=000:00:10  run_wrf.job".format(conf.run_path)
+                 " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N pytest_lin_0 -V  -l h_vmem=171M "\
+                 " run_wrf.job".format(conf.run_path)
     assert batch_comm == output[-1]
 
-    messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 148.3M']
+    messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 171.2M']
     for m in messages:
         assert count[m] == combs["n_rep"].sum()
 
@@ -160,7 +161,7 @@ def test_mpi_and_batch():
     count = Counter(output)
     batch_comm = "sbatch -p mem_0064 -o {0}/logs/pool_pytest_kessler_0_pytest_lin_0.out -e {0}/logs/pool_pytest_kessler_0_pytest_lin_0.err --time=000:00:30 "\
                  "--ntasks-per-node=8 -N 1 --mail-user=matthias.goebel@uibk.ac.at --mail-type=END,FAIL -J pool_pytest_kessler_0_pytest_lin_0 "\
-                 "--export=ALL  --qos=normal_0064  --signal=B:USR1@20  run_wrf.job".format(conf.run_path)
+                 "--export=ALL  --qos=normal_0064  run_wrf.job".format(conf.run_path)
     assert batch_comm == output[-1]
     assert count['Get runtime from previous runs'] == combs["n_rep"].sum()
     assert count[message_rt] == 2
@@ -204,7 +205,7 @@ def test_scheduler_full():
             assert m in runlog
 
 
-#%%
+#%%helper functions
 
 @pytest.fixture(autouse=True)
 def run_around_tests():
