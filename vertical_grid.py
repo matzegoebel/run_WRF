@@ -19,21 +19,107 @@ Lukas Strauss and Matthias Göbel
 #-------------------------------------------------------------------------------
 # Import modules.
 import numpy as np
-import matplotlib.pyplot as plt
+
+
 from metpy import calc as metcalc
 from metpy.units import units as metunits
 from metpy import constants as metconst
 import scipy as sp
-import xarray as xr
-
-# Import user modules.
 import os
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib import rc
+rc('text',usetex=True)
+rc('text.latex', preamble=r'\usepackage{color}')
+from matplotlib.backends.backend_pgf import FigureCanvasPgf
+matplotlib.backend_bases.register_backend('pdf', FigureCanvasPgf)
 
-figloc = "~"
+pgf_with_latex = {
+    "text.usetex": True,            # use LaTeX to write all text
+    "pgf.rcfonts": False,           # Ignore Matplotlibrc
+    "pgf.preamble": [
+        r'\usepackage{color}'     # xcolor for colours
+    ]
+}
+matplotlib.rcParams.update(pgf_with_latex)
+
+figloc = "~/"
 figloc = os.path.expanduser(figloc)
 #-------------------------------------------------------------------------------
 # FUNCTIONS
 #-------------------------------------------------------------------------------
+def calc_B_hybrid(eta, eta_c=0.2):
+    b = eta_c
+    b2 = b**2
+    c1 = 2*b2
+    c2 = -b*(4+b+b2)
+    c3 = 2*(1+b+b2)
+    c4 = -1 - b
+    B = (c1 + c2*eta + c3*eta**2 + c4*eta**3)/(1-b)**3
+    B = np.where(eta < eta_c, 0, B)
+
+    return B
+
+def pd_from_eta_hybrid(eta, eta_c=0.2, pt=100, ps=1000, p0=1000):
+    """
+    Calculate dry pressure corresponding to WRF hybrid eta coordinate
+    value using the US standard atmosphere
+
+    Parameters
+    ----------
+    eta : float
+        eta value (0 to 1).
+    eta_c : float, optional
+        eta value where coordinate becomes isobaric. The default is 0.2.
+    pt : float, optional
+        pressure at model top (hPa). The default is 100.
+    ps : float, optional
+        pressure at surface (hPa). The default is 1000.
+    p0 : float, optional
+        reference sea-level pressure (hPa). The default is 1000.
+
+    Returns
+    -------
+    pd : float
+        dry pressure (hPa).
+
+    """
+
+
+    B = calc_B_hybrid(eta, eta_c)
+    pd = B*(ps-pt) + (eta-B)*(p0-pt) + pt
+
+    return pd
+
+def height_from_eta(eta, eta_c=0.2, pt=100, ps=1000, p0=1000):
+    """
+    Calculate height corresponding to WRF hybrid eta coordinate
+    value using the US standard atmosphere
+
+    Parameters
+    ----------
+    eta : float
+        eta value (0 to 1).
+    eta_c : float, optional
+        eta value where coordinate becomes isobaric. The default is 0.2.
+    pt : float, optional
+        pressure at model top (hPa). The default is 100.
+    ps : float, optional
+        pressure at surface (hPa). The default is 1000.
+    p0 : float, optional
+        reference sea-level pressure (hPa). The default is 1000.
+
+    Returns
+    -------
+    z : float
+        height (m).
+
+    """
+    pd = pd_from_eta_hybrid(eta, eta_c, pt, ps, p0)*metunits.hPa
+    z = metcalc.pressure_to_height_std(pd)
+
+    return z
+#%%
 
 def pressure_from_theta(theta, p0=1e5):
     """Calculate pressure from potential temperature and surface pressure"""
@@ -251,9 +337,9 @@ def strheta_2(nlev, etaz1, deta0):
 # z2 = 10000
 # ztop = 16000
 
-def tanh_method(nz, dz0, ztop, z1, z2, alpha=1):
+def tanh_method(nz, dz1, dz3, ztop, D1=0, alpha=1):
     """
-    Vertical grid with three layers. Spacing dz=dz0 in the first up to z1, then hyperbolic stretching
+    Vertical grid with three layers. Spacing dz=dz1 in the first up to z1, then hyperbolic stretching
     until z2 and then constant again up top ztop.
 
 
@@ -261,14 +347,15 @@ def tanh_method(nz, dz0, ztop, z1, z2, alpha=1):
     ----------
     nz : int
         number of levels.
-    dz0 : float
+    dz1 : float
         spacing in the first layer (m).
-    z1 : float
-        top of first layer (m).
-    z2 : float
-        top of second layer (m).
+    dz3 : float
+        spacing in the third layer (m).
     ztop : float
         domain top (m).
+    D1 : float
+        depth of first layer (m).
+
     alpha : float, optional
         stretching coefficient. The default is 1.
 
@@ -281,47 +368,35 @@ def tanh_method(nz, dz0, ztop, z1, z2, alpha=1):
 
     """
 
-    #domain depths
-    D1 = z1
-    D2 = z2 - z1
-    D3 = ztop - z2
-    n1 = D1/dz0
+    n1 = D1/dz1
     if n1 != int(n1):
-        raise ValueError("z1 should be a multiple of dz0")
-    if  z1 >= z2:
-        raise ValueError("z1 must be smaller than z2!")
-    #solve for mean spacing in intermediate layer dzm
-    q = n1 - nz + 1
-    a = 2*q
-    b = 2*D2 + D3 - q*dz0
-    c = -dz0*D2
-    dzm = 1/(2*a)*(-b-(b**2-4*a*c)**0.5)
-    if dzm < dz0:
-        raise ValueError("Vertical grid creation failed! Try more levels or different thicknesses.")
+        raise ValueError("Depth of layer 1 is not a multiple of its grid spacing!")
+    n1 = int(n1)
+    #average spacing in intermediate layer
+    dzm = (dz1 + dz3)/2
 
+    #determine n2 from constraints
+    n2 = round((ztop - D1 + (n1 - nz + 1)*dz3)/(dzm-dz3))
+    D2 = dzm*n2
+    n3 = nz - 1 - n2 - n1
+    D3 = dz3*n3
+    ztop = D1 + D2 + D3
+    nz = n1 + n2 + n3 + 1
 
-    #get upper layer spacing
-    dzu = 2*dzm-dz0
-
-    #calculate grid points in layers and adjust spacings
-    n2 = round(D2/dzm)
-    dzm = D2/n2
-    # D2 = n2*dzm
-    n3 = round(D3/dzu)
-    dzu = D3/n3
-    # D3 = n3*dzu
-
-    #spacings for constant layers 1 and 3
-    dz1 = np.repeat(dz0, n1)
-    dz3 = np.repeat(dzu, n3)
+    for i,n in enumerate((n2,n3)):
+        if n != abs(int(n)):
+            raise ValueError("Vertical grid creation failed!")# Try more levels, higher grid spacing or lower model top.")
 
     #get spacing in layer 2 by stretching
     ind = np.arange(1, n2+1)
     a = (1 + n2)/2
-    dz2 = dzm + (dz0 - dzm)/np.tanh(2*alpha)*np.tanh(2*alpha*(ind-a)/(1-a))
+    dz2 = dzm + (dz1 - dzm)/np.tanh(2*alpha)*np.tanh(2*alpha*(ind-a)/(1-a))
 
-    dz = np.concatenate((dz1,dz2,dz3))
+    #build spacings and levels
+    dz = np.concatenate((np.repeat(dz1, n1), dz2, np.repeat(dz3, n3)))
     z = np.insert(np.cumsum(dz),0,0)
+    np.testing.assert_allclose(ztop, z[-1])
+
     return z, dz
 
 # z, dz = tanh_method(100, 20, 200,12200, 1)
@@ -329,7 +404,7 @@ def tanh_method(nz, dz0, ztop, z1, z2, alpha=1):
 
 # plt.plot(dz)
 
-
+#%%
 def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None, plot=True, table=True, savefig=False, imgtype="pdf", **kwargs):
 #for method 0 (linearly increasing dz from dz0 at z=z0 to dzt at z=ztop)
    # dzt = 200
@@ -387,7 +462,7 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None,
         etaz, detaz = strheta_1(nz, deta0=detaz0, detamax=detazmax, **kwargs)
         z = ztop + etaz * (z0 - ztop)
     elif method == 3:
-        z,_ = tanh_method(nz, dz0, ztop, **kwargs)
+        z,_ = tanh_method(nz, dz0, dzmax, ztop, **kwargs)
 
     else:
         raise ValueError("Vertical grid method {} not implemented!".format(method))
@@ -403,7 +478,7 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None,
         p = pth.interp(level=z, kwargs=dict(fill_value="extrapolate")).values
         ptop = pth.interp(level=ztop, kwargs=dict(fill_value="extrapolate")).values
 
-    if np.round(z[-1],3) != ztop:
+    if (method != 3) and (np.round(z[-1],3) != ztop):
         raise ValueError("Uppermost level ({}) is not at ztop ({})!".format(z[-1], ztop))
 
     psfc = p.max()
@@ -433,28 +508,25 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None,
     zPBLref = z0 + 1000
     zTPref = 11000
     if plot:
-        fig, axes = plt.subplots(ncols=2, figsize=(16, 13), sharey=True)
+        fig, ax1a = plt.subplots(figsize=(5, 4))
+        ms = 2
         # z
-        ax1a = axes[0]
-        ax1a.plot(dz, z, 'bo', ms=4)
-        ax1a.set_xlim(0, 500)
+        ax1a.plot(dz, z, 'ko', ms=ms)
+        ax1a.set_xlim(0, 210)
         ax1a.grid(c=(0.8, 0.8, 0.8))
-        ax1a.set_ylabel('z (m MSL)')
-        ax1a.set_xlabel('dz (m)', color="b")
+        ax1a.set_ylabel('height (m)')
+        ax1a.set_xlabel('$\Delta z$ (m)')
 
         ax1b = ax1a.twiny()
-        ax1b.plot(alpha_z, z, 'go', ms=4)
-        ax1b.set_xlim(0.95, 1.15)
-        ax1b.set_xlabel('dz(n) / dz(n-1)', color="g")
-        # alpha_eta
-        ax2a = axes[1]
-        ax2a.plot(alpha, z, 'bo', ms=4)
-        ax2a.set_xlim(0.8, 1.35)
-        ax2a.grid(c=(0.8, 0.8, 0.8))
-        ax2a.set_ylabel('z (m MSL)')
-        ax2a.set_xlabel('eta stretching factor alpha')
+        ax1b.plot(alpha_z, z, 'o', c="blue", ms=ms)
+        ax1b.set_xlim(0.97, 1.125)
+        xlabel = r"\textcolor{blue}{$\Delta z (i)$/$\Delta z (i-1)$}, \textcolor{red}{$\Delta \eta (i)$/$\Delta \eta (i-1)$}"
+        ax1b.set_xlabel(xlabel)
+        ax1b.plot(alpha, z, 'o', c="red", ms=ms)
 
-        for ax in [ax1a, ax1b, ax2a]:
+        # alpha_eta
+
+        for ax in [ax1a, ax1b,]:
             ax.set_ylim(0, max(z))
 #            ax.axhline(z1, ls='--', c=(0.9, 0.9, 0.9))
             ax.axhline(zPBLref, ls=':', c='k')
@@ -463,7 +535,7 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None,
 
         # Save figure.
         if savefig:
-            fig.savefig(figloc + 'wrf_stretched_grid_etaz.%s'%imgtype)
+            fig.savefig(figloc + '/wrf_stretched_grid_etaz.%s'%imgtype)
 
     #---------------------------------------------------------------------------
     # Print vertical grid data.
@@ -495,24 +567,46 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None,
 
     return eta, dz
 
-
+#%%
 if __name__ == '__main__':
-    p0 = 1e5
-    slope_t, intercept_t = 0.004, 296#0.004, 293
-    levels = np.arange(0, 12001, 20)
-    theta = xr.DataArray(dims=["level"], coords={"level" : levels})
-    theta["level"] = theta.level.assign_attrs(units="m")
-    theta = theta.level * slope_t + intercept_t
-    theta = theta.assign_attrs(units="K")
+    p0 = 1013.25
+
+    # slope_t, intercept_t = 0.004, 296#0.004, 293
+    # levels = np.arange(0, 12001, 20)
+    # theta = xr.DataArray(dims=["level"], coords={"level" : levels})
+    # theta["level"] = theta.level.assign_attrs(units="m")
+    # theta = theta.level * slope_t + intercept_t
+    # theta = theta.assign_attrs(units="K")
     # p = pressure_from_theta(theta, p0=p0)
     # p.interp(level=z)
    # eta, dz = create_levels(nz=160, ztop=12000, method=0, dz0=20, etaz1=0.87, etaz2=0.4, n2=37, theta=theta,p0=p0, plot=True, table=True, savefig=False)
     # eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, theta=theta,p0=p0)
    # eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=71, z1=20 , z2=2000, alpha=.5, theta=theta, p0=p0)
-    eta, dz = create_levels(ztop=15000, dz0=30, method=3, nz=62, z1=150 , z2=2000, alpha=1., theta=theta, p0=p0)
+    eta, dz = create_levels(ztop=15000, dz0=20, dzmax=100, method=3, nz=230, D1=0, alpha=1., p0=p0, savefig=True)
     # eta, dz = create_levels(ztop=16000, dz0=50, method=3, nz=35, z1=200, z2=10000, alpha=1, theta=theta, p0=p0)
-
-
-
     print(', '.join(['%.6f'%eta_tmp for eta_tmp in eta]))
+#%%
+    pt = metcalc.height_to_pressure_std(15000*metunits.m).m
+    eta_c = .2
+    pss = np.arange(1000,799,-50)
+    plt.figure(figsize=(5,5))
+    for ps in pss:
+
+        pd = pd_from_eta_hybrid(eta, eta_c, pt, ps)
+
+        z = height_from_eta(eta, eta_c, pt, ps).m*1000
+        z = z - z[0]
+        dz = z[1:] - z[:-1]
+        dp = pd[1:] - pd[:-1]
+         # alpha = np.diff(eta)[1:] / np.diff(eta)[:-1]
+         # alpha = np.append(np.append(np.nan,alpha),np.nan)
+        alpha_z = np.diff(z)[1:] / np.diff(z)[:-1]
+
+        plt.plot(dz, z[:-1], ".", label=ps)
+        #plt.plot(dp, pd[:-1], ".")
+        #plt.plot(eta, pd, ".")
+
+        plt.ylabel("height (m)")
+        plt.xlabel("dz (m)")
+    plt.legend()
 
