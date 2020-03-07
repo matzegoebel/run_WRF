@@ -29,19 +29,19 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import rc
-rc('text',usetex=True)
-rc('text.latex', preamble=r'\usepackage{color}')
-from matplotlib.backends.backend_pgf import FigureCanvasPgf
-matplotlib.backend_bases.register_backend('pdf', FigureCanvasPgf)
+# rc('text',usetex=True)
+# rc('text.latex', preamble=r'\usepackage{color}')
+# from matplotlib.backends.backend_pgf import FigureCanvasPgf
+# matplotlib.backend_bases.register_backend('pdf', FigureCanvasPgf)
 
-pgf_with_latex = {
-    "text.usetex": True,            # use LaTeX to write all text
-    "pgf.rcfonts": False,           # Ignore Matplotlibrc
-    "pgf.preamble": [
-        r'\usepackage{color}'     # xcolor for colours
-    ]
-}
-matplotlib.rcParams.update(pgf_with_latex)
+# pgf_with_latex = {
+#     "text.usetex": True,            # use LaTeX to write all text
+#     "pgf.rcfonts": False,           # Ignore Matplotlibrc
+#     "pgf.preamble": [
+#         r'\usepackage{color}'     # xcolor for colours
+#     ]
+# }
+# matplotlib.rcParams.update(pgf_with_latex)
 
 figloc = "~/"
 figloc = os.path.expanduser(figloc)
@@ -582,14 +582,14 @@ if __name__ == '__main__':
    # eta, dz = create_levels(nz=160, ztop=12000, method=0, dz0=20, etaz1=0.87, etaz2=0.4, n2=37, theta=theta,p0=p0, plot=True, table=True, savefig=False)
     # eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, theta=theta,p0=p0)
    # eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=71, z1=20 , z2=2000, alpha=.5, theta=theta, p0=p0)
-    eta, dz = create_levels(ztop=15000, dz0=20, dzmax=100, method=3, nz=230, D1=0, alpha=1., p0=p0, savefig=True)
+    eta, dz = create_levels(ztop=15000, dz0=20, dzmax=200, method=3, nz=120, D1=200, alpha=1., p0=p0, savefig=True)
     # eta, dz = create_levels(ztop=16000, dz0=50, method=3, nz=35, z1=200, z2=10000, alpha=1, theta=theta, p0=p0)
     print(', '.join(['%.6f'%eta_tmp for eta_tmp in eta]))
 #%%
     pt = metcalc.height_to_pressure_std(15000*metunits.m).m
-    eta_c = .2
+    eta_c = .0
     pss = np.arange(1000,799,-50)
-    plt.figure(figsize=(5,5))
+    plt.figure(figsize=(20,20))
     for ps in pss:
 
         pd = pd_from_eta_hybrid(eta, eta_c, pt, ps)
@@ -602,11 +602,14 @@ if __name__ == '__main__':
          # alpha = np.append(np.append(np.nan,alpha),np.nan)
         alpha_z = np.diff(z)[1:] / np.diff(z)[:-1]
 
-        plt.plot(dz, z[:-1], ".", label=ps)
+        #plt.plot(dz, z[:-1], ".", label=ps)
         #plt.plot(dp, pd[:-1], ".")
-        #plt.plot(eta, pd, ".")
+       # plt.plot(dp, ".")
+
+        plt.plot(eta, pd, ".")
 
         plt.ylabel("height (m)")
         plt.xlabel("dz (m)")
     plt.legend()
-
+    # plt.xlim(16, 22)
+    # plt.ylim(-5,300)
