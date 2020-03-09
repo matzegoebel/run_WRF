@@ -78,7 +78,7 @@ params["bl_pbl_physics"] = 2
 
 #indices for output streams and their respective name and output interval (minutes, floats allowed)
 # 0 is the standard output stream
-params["output_streams"] = {4: ["wrfout", 30.], 0: ["fastout", 10.] }
+params["output_streams"] = {24: ["wrfout", 30.], 0: ["fastout", 10.] }
 
 # filename where output variables for standard and auxiliary streams are modified:
 # if None: use specified value in namelist.input: if "" no file is used

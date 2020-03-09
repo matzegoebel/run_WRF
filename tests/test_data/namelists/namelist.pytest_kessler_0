@@ -26,11 +26,11 @@
  io_form_input                       = 2
  io_form_boundary                    = 2
  iofields_filename = "IO_test.txt"
- auxhist4_outname = "/home/matze/phd/results/wrf/test/pytest/wrfout_pytest_kessler_0"
- auxhist4_interval_m = 30
- auxhist4_interval_s                 = 0,
- frames_per_auxhist4                 = 100000,
- io_form_auxhist4                    = 2
+ auxhist24_outname = "/home/matze/phd/results/wrf/test/pytest/wrfout_pytest_kessler_0"
+ auxhist24_interval_m = 30
+ auxhist24_interval_s                 = 0,
+ frames_per_auxhist24                 = 100000,
+ io_form_auxhist24                    = 2
 
 
  /
