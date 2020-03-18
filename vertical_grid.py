@@ -35,10 +35,11 @@ from matplotlib import rc
 # matplotlib.backend_bases.register_backend('pdf', FigureCanvasPgf)
 
 # pgf_with_latex = {
+#     "pgf.texsystem": "pdflatex",     # Use xetex for processing
 #     "text.usetex": True,            # use LaTeX to write all text
 #     "pgf.rcfonts": False,           # Ignore Matplotlibrc
 #     "pgf.preamble": [
-#         r'\usepackage{color}'     # xcolor for colours
+#         r'\usepackage{xcolor}'     # xcolor for colours
 #     ]
 # }
 # matplotlib.rcParams.update(pgf_with_latex)
@@ -337,7 +338,7 @@ def strheta_2(nlev, etaz1, deta0):
 # z2 = 10000
 # ztop = 16000
 
-def tanh_method(nz, dz1, dz3, ztop, D1=0, alpha=1):
+def tanh_method(nz, ztop, dz1, dz3=None, D1=0, alpha=1):
     """
     Vertical grid with three layers. Spacing dz=dz1 in the first up to z1, then hyperbolic stretching
     until z2 and then constant again up top ztop.
@@ -347,12 +348,12 @@ def tanh_method(nz, dz1, dz3, ztop, D1=0, alpha=1):
     ----------
     nz : int
         number of levels.
-    dz1 : float
-        spacing in the first layer (m).
-    dz3 : float
-        spacing in the third layer (m).
     ztop : float
         domain top (m).
+    dz1 : float
+        spacing in the first layer (m).
+    dz3 : float or None
+        spacing in the third layer (m). If None, only two layers are used.
     D1 : float
         depth of first layer (m).
 
@@ -372,20 +373,25 @@ def tanh_method(nz, dz1, dz3, ztop, D1=0, alpha=1):
     if n1 != int(n1):
         raise ValueError("Depth of layer 1 is not a multiple of its grid spacing!")
     n1 = int(n1)
-    #average spacing in intermediate layer
-    dzm = (dz1 + dz3)/2
+    if dz3 is None: #only two layer
+        n2 = nz - n1 - 1
+        dzm = (ztop - D1)/n2
+        n3 = 0
+    else:
+        #average spacing in intermediate layer
+        dzm = (dz1 + dz3)/2
 
-    #determine n2 from constraints
-    n2 = round((ztop - D1 + (n1 - nz + 1)*dz3)/(dzm-dz3))
-    D2 = dzm*n2
-    n3 = nz - 1 - n2 - n1
-    D3 = dz3*n3
-    ztop = D1 + D2 + D3
-    nz = n1 + n2 + n3 + 1
+        #determine n2 from constraints
+        n2 = round((ztop - D1 + (n1 - nz + 1)*dz3)/(dzm-dz3))
+        D2 = dzm*n2
+        n3 = nz - 1 - n2 - n1
+        D3 = dz3*n3
+        ztop = D1 + D2 + D3
+        nz = n1 + n2 + n3 + 1
 
-    for i,n in enumerate((n2,n3)):
-        if n != abs(int(n)):
-            raise ValueError("Vertical grid creation failed!")# Try more levels, higher grid spacing or lower model top.")
+        for i,n in enumerate((n2,n3)):
+            if n != abs(int(n)):
+                raise ValueError("Vertical grid creation failed!")# Try more levels, higher grid spacing or lower model top.")
 
     #get spacing in layer 2 by stretching
     ind = np.arange(1, n2+1)
@@ -462,7 +468,7 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None,
         etaz, detaz = strheta_1(nz, deta0=detaz0, detamax=detazmax, **kwargs)
         z = ztop + etaz * (z0 - ztop)
     elif method == 3:
-        z,_ = tanh_method(nz, dz0, dzmax, ztop, **kwargs)
+        z,_ = tanh_method(nz, ztop, dz0, dzmax, **kwargs)
 
     else:
         raise ValueError("Vertical grid method {} not implemented!".format(method))
@@ -512,14 +518,13 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None,
         ms = 2
         # z
         ax1a.plot(dz, z, 'ko', ms=ms)
-        ax1a.set_xlim(0, 210)
+        ax1a.set_xlim(0, np.nanmax(dz)+20)
         ax1a.grid(c=(0.8, 0.8, 0.8))
         ax1a.set_ylabel('height (m)')
         ax1a.set_xlabel('$\Delta z$ (m)')
 
         ax1b = ax1a.twiny()
         ax1b.plot(alpha_z, z, 'o', c="blue", ms=ms)
-        ax1b.set_xlim(0.97, 1.125)
         xlabel = r"\textcolor{blue}{$\Delta z (i)$/$\Delta z (i-1)$}, \textcolor{red}{$\Delta \eta (i)$/$\Delta \eta (i-1)$}"
         ax1b.set_xlabel(xlabel)
         ax1b.plot(alpha, z, 'o', c="red", ms=ms)
@@ -582,7 +587,8 @@ if __name__ == '__main__':
    # eta, dz = create_levels(nz=160, ztop=12000, method=0, dz0=20, etaz1=0.87, etaz2=0.4, n2=37, theta=theta,p0=p0, plot=True, table=True, savefig=False)
     # eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, theta=theta,p0=p0)
    # eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=71, z1=20 , z2=2000, alpha=.5, theta=theta, p0=p0)
-    eta, dz = create_levels(ztop=15000, dz0=20, dzmax=200, method=3, nz=120, D1=200, alpha=1., p0=p0, savefig=True)
+    #eta, dz = create_levels(ztop=15000, dz0=20, dzmax=250, method=3, nz=120, D1=200, alpha=1., p0=p0, savefig=True)
+    eta, dz = create_levels(ztop=20000, dz0=20, method=3, nz=150, D1=0, alpha=1., p0=p0, savefig=True)
     # eta, dz = create_levels(ztop=16000, dz0=50, method=3, nz=35, z1=200, z2=10000, alpha=1, theta=theta, p0=p0)
     print(', '.join(['%.6f'%eta_tmp for eta_tmp in eta]))
 #%%
