@@ -61,7 +61,7 @@ def calc_B_hybrid(eta, eta_c=0.2):
 
     return B
 
-def pd_from_eta_hybrid(eta, eta_c=0.2, pt=100, ps=1000, p0=1000):
+def pd_from_eta_hybrid(eta, eta_c=0.2, pt=100, ps=1013.25, p0=1013.25):
     """
     Calculate dry pressure corresponding to WRF hybrid eta coordinate
     value using the US standard atmosphere
@@ -92,7 +92,7 @@ def pd_from_eta_hybrid(eta, eta_c=0.2, pt=100, ps=1000, p0=1000):
 
     return pd
 
-def height_from_eta(eta, eta_c=0.2, pt=100, ps=1000, p0=1000):
+def height_from_eta(eta, eta_c=0.2, pt=100, ps=1013.25, p0=1013.25):
     """
     Calculate height corresponding to WRF hybrid eta coordinate
     value using the US standard atmosphere
@@ -534,8 +534,8 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None,
         for ax in [ax1a, ax1b,]:
             ax.set_ylim(0, max(z))
 #            ax.axhline(z1, ls='--', c=(0.9, 0.9, 0.9))
-            ax.axhline(zPBLref, ls=':', c='k')
-            ax.axhline(zTPref, ls=':', c='k')
+            # ax.axhline(zPBLref, ls=':', c='k')
+            # ax.axhline(zTPref, ls=':', c='k')
 #            ax.axhline(z2, ls='--', c=(0.9, 0.9, 0.9))
 
         # Save figure.
@@ -585,37 +585,40 @@ if __name__ == '__main__':
     # p = pressure_from_theta(theta, p0=p0)
     # p.interp(level=z)
    # eta, dz = create_levels(nz=160, ztop=12000, method=0, dz0=20, etaz1=0.87, etaz2=0.4, n2=37, theta=theta,p0=p0, plot=True, table=True, savefig=False)
-    # eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, theta=theta,p0=p0)
+    #eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, p0=p0)
    # eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=71, z1=20 , z2=2000, alpha=.5, theta=theta, p0=p0)
     #eta, dz = create_levels(ztop=15000, dz0=20, dzmax=250, method=3, nz=120, D1=200, alpha=1., p0=p0, savefig=True)
-    eta, dz = create_levels(ztop=20000, dz0=20, method=3, nz=150, D1=0, alpha=1., p0=p0, savefig=True)
+    eta, dz = create_levels(ztop=15000, dz0=20, method=3, nz=70, D1=0, alpha=1., p0=p0, savefig=True)
     # eta, dz = create_levels(ztop=16000, dz0=50, method=3, nz=35, z1=200, z2=10000, alpha=1, theta=theta, p0=p0)
     print(', '.join(['%.6f'%eta_tmp for eta_tmp in eta]))
 #%%
+
+#%%
+    fig, ax1a = plt.subplots(figsize=(5, 4))
+    ax1b = ax1a.twiny()
+
+    ms = 3.
+    alpha = np.diff(eta)[1:] / np.diff(eta)[:-1]
     pt = metcalc.height_to_pressure_std(15000*metunits.m).m
-    eta_c = .0
-    pss = np.arange(1000,799,-50)
-    plt.figure(figsize=(20,20))
-    for ps in pss:
-
-        pd = pd_from_eta_hybrid(eta, eta_c, pt, ps)
-
+    eta_c = .2
+    zss = [1000, 0]
+    symb = "o"
+    for zs, mf in zip(zss, ["w", None]):
+        ps = metcalc.height_to_pressure_std(zs*metunits.m).m
         z = height_from_eta(eta, eta_c, pt, ps).m*1000
-        z = z - z[0]
-        dz = z[1:] - z[:-1]
-        dp = pd[1:] - pd[:-1]
-         # alpha = np.diff(eta)[1:] / np.diff(eta)[:-1]
-         # alpha = np.append(np.append(np.nan,alpha),np.nan)
-        alpha_z = np.diff(z)[1:] / np.diff(z)[:-1]
+        dz = np.diff(z)
+        alpha_z = dz[1:] / dz[:-1]
 
-        #plt.plot(dz, z[:-1], ".", label=ps)
-        #plt.plot(dp, pd[:-1], ".")
-       # plt.plot(dp, ".")
+        ax1a.plot(dz, z[:-1], symb, c='k', ms=ms, markerfacecolor=mf)
+        ax1a.set_xlim(0, np.nanmax(dz)+20)
+        ax1a.grid(c=(0.8, 0.8, 0.8))
+        ax1a.set_ylabel('height (m)')
+        ax1a.set_xlabel('$\Delta z$ (m)')
 
-        plt.plot(eta, pd, ".")
+        ax1b.plot(alpha_z, z[1:-1], symb, c="blue", ms=ms, markerfacecolor=mf)
+        xlabel = r"\textcolor{blue}{$\Delta z (i)$/$\Delta z (i-1)$}, \textcolor{red}{$\Delta \eta (i)$/$\Delta \eta (i-1)$}"
+        ax1b.set_xlabel(xlabel)
+        ax1b.plot(alpha, z[1:-1], symb, c="red", ms=ms, markerfacecolor=mf)
 
-        plt.ylabel("height (m)")
-        plt.xlabel("dz (m)")
-    plt.legend()
-    # plt.xlim(16, 22)
-    # plt.ylim(-5,300)
+    fig.savefig(figloc + '/wrf_stretched_grid_etaz.pdf')
+

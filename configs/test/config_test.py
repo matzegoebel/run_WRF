@@ -74,6 +74,8 @@ params["spec_hfx"] = None #None specified surface heat flux instead of radiation
 
 #other standard namelist parameters
 params["mp_physics"] = 0
+params["ra_sw_physics"] = 1
+
 params["bl_pbl_physics"] = 2
 
 #indices for output streams and their respective name and output interval (minutes, floats allowed)

@@ -925,7 +925,7 @@ def check_namelist_best_practice(namelist):
     elif (dx > 4000) and (dx < 10000) and (namelist["cu_physics"] not in [3, 5, 11, 14]):
         print("WARNING: The grid spacing lies in the gray zone for cumulus convection. Consider using a scale-aware cumulus parametrization (cu_physics={3, 5, 11, 14})")
 
-    if (dx > 500) and (namelist["shcu_physics"] == 0) and (namelist["bl_pbl_physics"] not in [4,5,6,10]):
+    if (dx >= 500) and (namelist["shcu_physics"] == 0) and (namelist["bl_pbl_physics"] not in [4,5,6,10]):
         print("WARNING: For dx > 500 m, a shallow cumulus scheme or PBL scheme with mass flux component (bl_pbl_physics=4,5,6 or 10) is recommended")
 
 
