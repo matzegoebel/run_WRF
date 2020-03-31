@@ -29,6 +29,8 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import rc
+import xarray as xr
+import scipy as sp
 # rc('text',usetex=True)
 # rc('text.latex', preamble=r'\usepackage{color}')
 # from matplotlib.backends.backend_pgf import FigureCanvasPgf
@@ -92,7 +94,7 @@ def pd_from_eta_hybrid(eta, eta_c=0.2, pt=100, ps=1013.25, p0=1013.25):
 
     return pd
 
-def height_from_eta(eta, eta_c=0.2, pt=100, ps=1013.25, p0=1013.25):
+def height_from_eta(eta, eta_c=0.2, pt=100, ps=1013.25, p0=1013.25, **kwargs):
     """
     Calculate height corresponding to WRF hybrid eta coordinate
     value using the US standard atmosphere
@@ -117,7 +119,7 @@ def height_from_eta(eta, eta_c=0.2, pt=100, ps=1013.25, p0=1013.25):
 
     """
     pd = pd_from_eta_hybrid(eta, eta_c, pt, ps, p0)*metunits.hPa
-    z = metcalc.pressure_to_height_std(pd)
+    z = pressure_to_height_std(pd, **kwargs)
 
     return z
 #%%
@@ -400,18 +402,50 @@ def tanh_method(nz, ztop, dz1, dz3=None, D1=0, alpha=1):
 
     #build spacings and levels
     dz = np.concatenate((np.repeat(dz1, n1), dz2, np.repeat(dz3, n3)))
-    z = np.insert(np.cumsum(dz),0,0)
+    z = np.insert(np.cumsum(dz),0,0).astype(float)
     np.testing.assert_allclose(ztop, z[-1])
 
     return z, dz
 
+
+def T_std(ztop, strat=True):
+    T0 = 15 + 273.15
+    zvals = np.arange(0, ztop + 1, 1)
+    T = T0 - 0.0065*zvals
+    T = xr.DataArray(T, coords={"z" : zvals}, dims=["z"])
+    if (ztop > 11000) and strat:
+        T.loc[11000:] = T.loc[11000]
+        T.loc[10000:12000] = np.nan
+        T = T.interpolate_na("z", method="quadratic")
+    return T
+
+def height_to_pressure_std(z, p0=1013.25, return_da=False, **kwargs):
+    if np.array(z == 0).all():
+        return p0
+    ztop = np.array(z).max()
+    T = T_std(ztop, **kwargs)
+    T_int = sp.integrate.cumtrapz(metconst.g.m/(1000*metconst.Rd.m*T), T.z)
+    T_int = np.insert(T_int,0,0)
+    p = T.copy()
+    p[:] = p0*np.exp(-T_int)
+    p = p.interp(z=z)
+    if not return_da:
+        p = p.values
+
+    return p
+
+def pressure_to_height_std(p, p0=1013.25, **kwargs):
+    pstd = height_to_pressure_std(np.linspace(0,20000,20000), p0=p0, return_da=True, **kwargs)
+    zstd = xr.DataArray(pstd.z.values, coords={"p":pstd.values}, dims=["p"])
+    z = zstd.interp(p=p)
+    return z.values
 # z, dz = tanh_method(100, 20, 200,12200, 1)
 # plt.plot( z[:-1], dz)
 
 # plt.plot(dz)
 
 #%%
-def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None, plot=True, table=True, savefig=False, imgtype="pdf", **kwargs):
+def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000, plot=True, table=True, savefig=False, imgtype="pdf", strat=False, **kwargs):
 #for method 0 (linearly increasing dz from dz0 at z=z0 to dzt at z=ztop)
    # dzt = 200
 #for method 1 (ARPS method)
@@ -475,10 +509,10 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None,
 
 
     if theta is None:
-       # ptop = isa.pressure(ztop)
-       # p = np.array(list(map(isa.pressure, z)))
-        ptop = metcalc.height_to_pressure_std(ztop*metunits.m).m*100
-        p = metcalc.height_to_pressure_std(z*metunits.m).m*100
+        # ptop = metcalc.height_to_pressure_std(ztop*metunits.m).m*100
+        # p = metcalc.height_to_pressure_std(z*metunits.m).m*100
+        ptop = height_to_pressure_std(ztop, p0=p0, strat=strat)*100
+        p = height_to_pressure_std(z, p0=p0, strat=strat)*100
     else:
         pth = pressure_from_theta(theta, p0=p0)
         p = pth.interp(level=z, kwargs=dict(fill_value="extrapolate")).values
@@ -574,8 +608,8 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=None,
 
 #%%
 if __name__ == '__main__':
-    p0 = 1013.25
-
+    p0 = 1000
+    strat = False
     # slope_t, intercept_t = 0.004, 296#0.004, 293
     # levels = np.arange(0, 12001, 20)
     # theta = xr.DataArray(dims=["level"], coords={"level" : levels})
@@ -588,24 +622,26 @@ if __name__ == '__main__':
     #eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, p0=p0)
    # eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=71, z1=20 , z2=2000, alpha=.5, theta=theta, p0=p0)
     #eta, dz = create_levels(ztop=15000, dz0=20, dzmax=250, method=3, nz=120, D1=200, alpha=1., p0=p0, savefig=True)
-    eta, dz = create_levels(ztop=15000, dz0=20, method=3, nz=70, D1=0, alpha=1., p0=p0, savefig=True)
+    eta, dz = create_levels(ztop=15000, dz0=20, method=3, nz=70, D1=0, alpha=1., p0=p0, savefig=True, strat=strat)
+
     # eta, dz = create_levels(ztop=16000, dz0=50, method=3, nz=35, z1=200, z2=10000, alpha=1, theta=theta, p0=p0)
     print(', '.join(['%.6f'%eta_tmp for eta_tmp in eta]))
 #%%
 
 #%%
+   # for eta_c in np.arange(0.1, 0.5, 0.1):
     fig, ax1a = plt.subplots(figsize=(5, 4))
     ax1b = ax1a.twiny()
 
     ms = 3.
     alpha = np.diff(eta)[1:] / np.diff(eta)[:-1]
-    pt = metcalc.height_to_pressure_std(15000*metunits.m).m
-    eta_c = .2
+    pt = height_to_pressure_std(15000, p0=p0)
+    eta_c = .3
     zss = [1000, 0]
     symb = "o"
     for zs, mf in zip(zss, ["w", None]):
-        ps = metcalc.height_to_pressure_std(zs*metunits.m).m
-        z = height_from_eta(eta, eta_c, pt, ps).m*1000
+        ps = height_to_pressure_std(zs, p0=p0)
+        z = height_from_eta(eta, eta_c, pt, ps, p0=p0, strat=strat)
         dz = np.diff(z)
         alpha_z = dz[1:] / dz[:-1]
 
@@ -619,6 +655,6 @@ if __name__ == '__main__':
         xlabel = r"\textcolor{blue}{$\Delta z (i)$/$\Delta z (i-1)$}, \textcolor{red}{$\Delta \eta (i)$/$\Delta \eta (i-1)$}"
         ax1b.set_xlabel(xlabel)
         ax1b.plot(alpha, z[1:-1], symb, c="red", ms=ms, markerfacecolor=mf)
-
+       # plt.title("$\eta_c=${}".format(eta_c))
     fig.savefig(figloc + '/wrf_stretched_grid_etaz.pdf')
 

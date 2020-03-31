@@ -55,12 +55,12 @@ params["min_gridpoints_y"] = 2 #minimum number of grid points in y direction (in
 force_domain_multiple = False #"x", "y", True (for both) or False
 
 #control vertical grid creation (see vertical_grid.py for details on the different methods)
-params["ztop"] = 5000 #top of domain (m)
+params["ztop"] = 12000 #top of domain (m)
 params["zdamp"] = int(params["ztop"]/3) #depth of damping layer (m)
 params["nz"] = 60 #number of vertical levels
 params["dz0"] = 20 #height of first model level (m)
 params["dzmax"] = None #if nz is None and for dz_method=0 only: specify maximum vertical grid spacing instead of nz; either float or "dx" to make it equal to dx
-params["dz_method"] = 0 #method for creating vertical grid as defined in vertical_grid.py
+params["dz_method"] = 3 #method for creating vertical grid as defined in vertical_grid.py
 
 params["dt_f"] = None  #time step (s), if None calculated as dt = 6 s/m *dx/1000; can be float
 #minimum time between radiation calls (min); if radt is not specified: radt=max(radt_min, 10*dt)
@@ -74,7 +74,6 @@ params["spec_hfx"] = None #None specified surface heat flux instead of radiation
 
 #other standard namelist parameters
 params["mp_physics"] = 0
-params["ra_sw_physics"] = 1
 
 params["bl_pbl_physics"] = 2
 
