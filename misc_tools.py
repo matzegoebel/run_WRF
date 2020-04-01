@@ -783,18 +783,18 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     #pbl scheme
     if r >= args["pbl_res"]:
         pbl_scheme = args["bl_pbl_physics"]
-        if check_p_diff_2("km_opt", 4):
-            args["km_opt"] = 4
-            print("WARNING: km_opt not set. Setting to 4 as PBL scheme is used.")
+        # if check_p_diff_2("km_opt", 4):
+        #     args["km_opt"] = 4
+        #     print("WARNING: km_opt not set. Setting to 4 as PBL scheme is used.")
 
     else:
         pbl_scheme = 0
         if check_p_diff_2("km_opt", 2):
             args["km_opt"] = 2
-            print("WARNING: km_opt not set. Setting to 2 as PBL scheme is used.")
+            print("WARNING: km_opt not set. Setting to 2 as no PBL scheme is used.")
         if check_p_diff_2("diff_opt", 2):
             args["diff_opt"] = 2
-            print("WARNING: diff_opt not set. Setting to 2 as PBL scheme is used.")
+            print("WARNING: diff_opt not set. Setting to 2 as no PBL scheme is used.")
 
 
 
