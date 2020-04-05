@@ -927,6 +927,8 @@ def check_namelist_best_practice(namelist):
 
     if (dx >= 500) and (namelist["shcu_physics"] == 0) and (namelist["bl_pbl_physics"] not in [4,5,6,10]):
         print("WARNING: For dx > 500 m, a shallow cumulus scheme or PBL scheme with mass flux component (bl_pbl_physics=4,5,6 or 10) is recommended")
+    elif (dx < 500) and (namelist["shcu_physics"] != 0):
+        print("WARNING: For dx < 500 m, usually no shallow convection scheme is needed")
 
 
 
@@ -948,6 +950,15 @@ def check_namelist_best_practice(namelist):
             flux_val = namelist[flux]
         if (namelist["isfflx"] in use_fluxes) and (flux_val == 0):
             print("WARNING: {}=0, although it is used as surface flux for isfflx={}".format(flux,namelist["isfflx"]))
+
+
+    #dynamics
+    damp_f = namelist["zdamp"]/namelist["ztop"]
+    if damp_f < 0.2:
+        print("WARNING: the damping depth zdamp={0:.0f} m seems rather small given a domain height of ztop={1:.0f} m".format(namelist["zdamp"],namelist["ztop"]))
+    elif damp_f > 0.4:
+        print("WARNING: the damping depth zdamp={0:.0f} m seems rather large given a domain height of ztop={1:.0f} m".format(namelist["zdamp"],namelist["ztop"]))
+
 
     print("\n")
     if raise_err:
