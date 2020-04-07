@@ -261,7 +261,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         n_rep = args["n_rep"]
         for rep in range(n_rep): #repetion loop
             IDr = IDi + "_" + str(rep)
-            IDs.append(IDr)
             run_dir_r = run_dir + "_" + str(rep)
 
             if init:
@@ -386,22 +385,24 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         else:
                             raise ValueError("Value '{}' for -e option not defined!".format(exist))
 
-                if skip:
-                    IDs = []
-                    rtr = []
-                    vmem = []
-                    nslots = []
-                    wrf_dir = []
-                    continue
 
-                rtri = None
-                if use_job_scheduler:
-                    rtri = args["rt_per_timestep"] * run_hours/args["dt_f"] *3600 #runtime in seconds
-                    rtr.append(rtri)
 
                 last_id = False
                 if (rep == n_rep-1) and (i == len(combs) - 1):
                     last_id = True
+                if skip:
+                    vmem = vmem[:-1]
+                    nslots = nslots[:-1]
+                    wrf_dir = wrf_dir[:-1]
+                    #if last ID: do run but without current config, else: skip run
+                    if not last_id:
+                        continue
+                else:
+                    IDs.append(IDr)
+                    rtri = None
+                    if use_job_scheduler:
+                        rtri = args["rt_per_timestep"] * run_hours/args["dt_f"] *3600 #runtime in seconds
+                        rtr.append(rtri)
 
                 if (not pool_jobs) or (sum(nslots) >= conf.pool_size) or last_id: #submit current pool of jobs
                     print("")
@@ -424,7 +425,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         print("Submit IDs: {}".format(IDs))
                         print("with total cores: {}".format(sum(nslots)))
 
-                        if pool_jobs and use_job_scheduler:
+                        if pool_jobs:
                             job_name = "pool_" + "_".join(IDs)
                             if use_job_scheduler:
                                 if job_scheduler == "sge":
