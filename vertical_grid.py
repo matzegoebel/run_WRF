@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 from matplotlib import rc
 import xarray as xr
 import scipy as sp
+import math
 # rc('text',usetex=True)
 # rc('text.latex', preamble=r'\usepackage{color}')
 # from matplotlib.backends.backend_pgf import FigureCanvasPgf
@@ -119,7 +120,7 @@ def height_from_eta(eta, eta_c=0.2, pt=100, ps=1013.25, p0=1013.25, **kwargs):
 
     """
     pd = pd_from_eta_hybrid(eta, eta_c, pt, ps, p0)*metunits.hPa
-    z = pressure_to_height_std(pd, **kwargs)
+    z = pressure_to_height_std(pd, p0=p0, **kwargs)
 
     return z
 #%%
@@ -340,22 +341,23 @@ def strheta_2(nlev, etaz1, deta0):
 # z2 = 10000
 # ztop = 16000
 
-def tanh_method(nz, ztop, dz1, dz3=None, D1=0, alpha=1):
+def tanh_method(ztop, dzmin, dzmax=None, nz=None, D1=0, alpha=1):
     """
-    Vertical grid with three layers. Spacing dz=dz1 in the first up to z1, then hyperbolic stretching
-    until z2 and then constant again up top ztop.
+    Vertical grid with three layers. Spacing dz=dzmin in the first up to D1, then hyperbolic stretching
+    up to D1+D2 and then constant again up to ztop. D2 is calculated automatically. If nz is None, nz is
+    calculated from dzmax, while setting D2=ztop.
 
 
     Parameters
     ----------
-    nz : int
-        number of levels.
     ztop : float
         domain top (m).
-    dz1 : float
+    dzmin : float
         spacing in the first layer (m).
-    dz3 : float or None
+    dzmax : float or None
         spacing in the third layer (m). If None, only two layers are used.
+    nz : int
+        number of levels or None. If None: 3rd layer is omitted.
     D1 : float
         depth of first layer (m).
 
@@ -371,23 +373,29 @@ def tanh_method(nz, ztop, dz1, dz3=None, D1=0, alpha=1):
 
     """
 
-    n1 = D1/dz1
+    n1 = D1/dzmin
     if n1 != int(n1):
         raise ValueError("Depth of layer 1 is not a multiple of its grid spacing!")
     n1 = int(n1)
-    if dz3 is None: #only two layer
+    if nz is None:
+        dzm = (dzmin + dzmax)/2
+        n2 = math.ceil((ztop-D1)/dzm)
+        nz = n1 + n2 + 1
+        n3 = 0
+    if dzmax is None: #only two layer
+       # if nz is None:
         n2 = nz - n1 - 1
         dzm = (ztop - D1)/n2
         n3 = 0
     else:
         #average spacing in intermediate layer
-        dzm = (dz1 + dz3)/2
+        dzm = (dzmin + dzmax)/2
 
         #determine n2 from constraints
-        n2 = round((ztop - D1 + (n1 - nz + 1)*dz3)/(dzm-dz3))
+        n2 = round((ztop - D1 + (n1 - nz + 1)*dzmax)/(dzm-dzmax))
         D2 = dzm*n2
         n3 = nz - 1 - n2 - n1
-        D3 = dz3*n3
+        D3 = dzmax*n3
         ztop = D1 + D2 + D3
         nz = n1 + n2 + n3 + 1
 
@@ -398,10 +406,10 @@ def tanh_method(nz, ztop, dz1, dz3=None, D1=0, alpha=1):
     #get spacing in layer 2 by stretching
     ind = np.arange(1, n2+1)
     a = (1 + n2)/2
-    dz2 = dzm + (dz1 - dzm)/np.tanh(2*alpha)*np.tanh(2*alpha*(ind-a)/(1-a))
+    dz2 = dzm + (dzmin - dzm)/np.tanh(2*alpha)*np.tanh(2*alpha*(ind-a)/(1-a))
 
     #build spacings and levels
-    dz = np.concatenate((np.repeat(dz1, n1), dz2, np.repeat(dz3, n3)))
+    dz = np.concatenate((np.repeat(dzmin, n1), dz2, np.repeat(dzmax, n3)))
     z = np.insert(np.cumsum(dz),0,0).astype(float)
     np.testing.assert_allclose(ztop, z[-1])
 
@@ -459,7 +467,7 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
 #        nz = 143
 #        n2 = 37
     z0 = 0
-    if (method > 0) and (nz is None):
+    if (method in [1,2]) and (nz is None):
         raise ValueError("For vertical grid method {}, nz must be defined!".format(nz))
     if method == 0: # linearly increasing dz from dz0 at z=z0 to dzt at z=ztop
         stop = False
@@ -502,7 +510,7 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
         etaz, detaz = strheta_1(nz, deta0=detaz0, detamax=detazmax, **kwargs)
         z = ztop + etaz * (z0 - ztop)
     elif method == 3:
-        z,_ = tanh_method(nz, ztop, dz0, dzmax, **kwargs)
+        z,_ = tanh_method(ztop, dz0, dzmax, nz, **kwargs)
 
     else:
         raise ValueError("Vertical grid method {} not implemented!".format(method))
@@ -610,6 +618,7 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
 if __name__ == '__main__':
     p0 = 1000
     strat = False
+    ztop = 15000
     # slope_t, intercept_t = 0.004, 296#0.004, 293
     # levels = np.arange(0, 12001, 20)
     # theta = xr.DataArray(dims=["level"], coords={"level" : levels})
@@ -619,10 +628,12 @@ if __name__ == '__main__':
     # p = pressure_from_theta(theta, p0=p0)
     # p.interp(level=z)
    # eta, dz = create_levels(nz=160, ztop=12000, method=0, dz0=20, etaz1=0.87, etaz2=0.4, n2=37, theta=theta,p0=p0, plot=True, table=True, savefig=False)
-    #eta, dz = create_levels(ztop=5000, method=0, dz0=25, dzmax=200, p0=p0)
-   # eta, dz = create_levels(ztop=12200, dz0=20, method=3, nz=71, z1=20 , z2=2000, alpha=.5, theta=theta, p0=p0)
-    #eta, dz = create_levels(ztop=15000, dz0=20, dzmax=250, method=3, nz=120, D1=200, alpha=1., p0=p0, savefig=True)
-    eta, dz = create_levels(ztop=15000, dz0=20, method=3, nz=70, D1=0, alpha=1., p0=p0, savefig=True, strat=strat)
+   # eta, dz = create_levels(ztop=ztop, method=0, dz0=20, dzmax=200, p0=p0, savefig=True, strat=strat)
+ #   eta, dz = create_levels(ztop=ztop, method=0, dz0=20, nz=120, p0=p0, savefig=True, strat=strat)
+   # eta, dz = create_levels(ztop=ztop, dz0=20, method=3, nz=71, z1=20 , z2=2000, alpha=.5, theta=theta, p0=p0)
+    #eta, dz = create_levels(ztop=ztop, dz0=20, dzmax=250, method=3, nz=120, D1=200, alpha=1., p0=p0, savefig=True)
+  #  eta, dz = create_levels(ztop=ztop, dz0=20, method=3, nz=70, D1=0, alpha=1., p0=p0, savefig=True, strat=strat)
+    eta, dz = create_levels(ztop=ztop, dz0=20, method=3, dzmax=100, D1=0, alpha=1., p0=p0, savefig=True, strat=strat)
 
     # eta, dz = create_levels(ztop=16000, dz0=50, method=3, nz=35, z1=200, z2=10000, alpha=1, theta=theta, p0=p0)
     print(', '.join(['%.6f'%eta_tmp for eta_tmp in eta]))
@@ -635,12 +646,12 @@ if __name__ == '__main__':
 
     ms = 3.
     alpha = np.diff(eta)[1:] / np.diff(eta)[:-1]
-    pt = height_to_pressure_std(15000, p0=p0)
+    pt = height_to_pressure_std(ztop, p0=p0, strat=strat)
     eta_c = .3
-    zss = [1000, 0]
+    zss = [400, 0]
     symb = "o"
     for zs, mf in zip(zss, ["w", None]):
-        ps = height_to_pressure_std(zs, p0=p0)
+        ps = height_to_pressure_std(zs, p0=p0, strat=strat)
         z = height_from_eta(eta, eta_c, pt, ps, p0=p0, strat=strat)
         dz = np.diff(z)
         alpha_z = dz[1:] / dz[:-1]
