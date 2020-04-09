@@ -395,7 +395,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     nslots = nslots[:-1]
                     wrf_dir = wrf_dir[:-1]
                     #if last ID: do run but without current config, else: skip run
-                    if not last_id:
+                    if (not last_id) or (len(nslots) == 0):
                         continue
                 else:
                     IDs.append(IDr)
