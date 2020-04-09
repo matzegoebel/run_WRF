@@ -206,7 +206,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         if conf.max_nslotsy is not None:
             ny = min(conf.max_nslotsy, ny)
         nslotsi = nx*ny
-        nslots.append(nslotsi)
 
         #add suffix for special folders
         slot_comm = ""
@@ -221,7 +220,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     slot_comm = "-N {}".format(nslotsi)
         else:
             wrf_dir_i = conf.wrf_dir_pre
-        wrf_dir.append(wrf_dir_i)
 
         #timestep
         if "dt_f" not in args:
@@ -247,6 +245,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             if conf.request_vmem:
                 vmemi = args["vmem"]
         vmem.append(vmemi)
+        nslots.append(nslotsi)
+        wrf_dir.append(wrf_dir_i)
 
 
         #not needed; just for completeness of dataframe:
