@@ -380,10 +380,13 @@ def tanh_method(ztop, dzmin, dzmax=None, nz=None, D1=0, alpha=1):
     if nz is None:
         dzm = (dzmin + dzmax)/2
         n2 = math.ceil((ztop-D1)/dzm)
+        #recalculate dzm and dzmax
+        dzm = (ztop - D1)/n2
+        dzmax = 2*dzm - dzmin
         nz = n1 + n2 + 1
         n3 = 0
-    if dzmax is None: #only two layer
-       # if nz is None:
+    elif dzmax is None: #only two layer
+           # if nz is None:
         n2 = nz - n1 - 1
         dzm = (ztop - D1)/n2
         n3 = 0
