@@ -23,6 +23,8 @@ jobs=(${jobs})
 njobs=${#jobs[@]}
 nslots=(${nslots})
 wrfv=(${wrfv})
+runlog=run_${timestamp}.log
+runerr=run_${timestamp}.err
 
 
 si=0
@@ -49,12 +51,12 @@ do
   #redirect logs to file
   if (( restart == 1 ))
   then
-    exec 1>> "run.log"
+    exec 1>> $runlog
   else
-    exec 1> "run.log"
+    exec 1> $runlog
   fi
 
-  exec 2> "run.err"
+  exec 2> $runerr
   echo
   echo
   echo "Running job: ${jobs[i]}"
@@ -89,7 +91,6 @@ do
   echo
   echo
 done
-currtime=$(date +%d-%m-%Y_%H:%M:%S)
 
 sleep 10
 top -u $USER -bn 1 >> ../pidlog
@@ -115,8 +116,8 @@ do
   for (( i=0; i<$njobs; i++ ))
   do
     cd ${run_path}/WRF_${jobs[i]}
-    exec 1>> "run.log"
-    exec 2>> "run.err"
+    exec 1>> $runlog
+    exec 2>> $runerr
     #check if process is finished and append job to finished array if it is not yet in it
     if [[ -z $(ps -o pid= -p ${pid[i]}) ]] && [[ ! " ${finished[@]} " =~ " ${i} " ]]
     then
@@ -146,11 +147,11 @@ done
 for (( i=0; i<$njobs; i++ ))
 do
   cd ${run_path}/WRF_${jobs[i]}
-  exec 1>> "run.log"
-  exec 2>> "run.err"
+  exec 1>> $runlog
+  exec 2>> $runerr
   if (( ${nslots[i]} > 1 ))
   then
-    cat rsl.error.0000 >> run.log
+    cat rsl.error.0000 >> $runlog
   fi
 
   if [[ ! " ${finished[@]} " =~ " ${i} " ]]
@@ -166,14 +167,14 @@ do
     #save resource usage of job
     if [[ $job_scheduler == "sge" ]]
     then
-      qstat -j $JOB_ID > resources_${currtime}.info
+      qstat -j $JOB_ID > resources_${timestamp}.info
     elif [[ $job_scheduler == "slurm" ]]
     then
-      sacct -j $SLURM_JOB_ID -l -p > resources_${currtime}.info
+      sacct -j $SLURM_JOB_ID -l -p > resources_${timestamp}.info
     fi
     #prepend log to run log
-    echo -e "$(cat ${run_path}/logs/$JOB_NAME.out)\n$(cat run.log)" > run.log
-    echo -e "$(cat ${run_path}/logs/$JOB_NAME.err)\n$(cat run.err)" > run.err
+    echo -e "$(cat ${run_path}/logs/$JOB_NAME.out)\n$(cat $runlog)" > $runlog
+    echo -e "$(cat ${run_path}/logs/$JOB_NAME.err)\n$(cat $runerr)" > $runerr
   fi
 
   if (( restart == 1 ))

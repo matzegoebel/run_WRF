@@ -327,16 +327,20 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
 
     columns.extend(["path", "nx", "ny", "ide", "jde", "timing", "timing_sd"])
     index = None
+    runlogs = {}
+    runlogs_list = []
+    for run, ID in zip(runs, IDs):
+        runlogs[ID] = glob.glob(run  + "/run*.log")
+        runlogs_list.extend(runlogs[ID])
     if all_times:
         #estimate number of lines in all files
-        run_logs= [r  + "/run.log" for r in runs if os.path.isfile(r + "/run.log")]
-        num_lines = [sum(1 for line in open(rl)) for rl in run_logs]
+        num_lines = [sum(1 for line in open(rl)) for rl in runlogs_list]
         index = np.arange(sum(num_lines))
         columns.append("time")
     timing = pd.DataFrame(columns=columns, index=index)
     counter = 0
 
-    for j,(r, ID) in enumerate(zip(runs, IDs)):
+    for j,(runpath, ID) in enumerate(zip(runs, IDs)):
         IDl = [i for i in ID.split("_") if i not in remove]
         if len(IDl) > nlevels:
             print("{} does not have not the correct id length".format(ID))
@@ -349,23 +353,21 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
                 IDl[i] = a
             except:
                 pass
-        try:
-            _, new_counter = get_runtime(r, timing=timing, counter=counter, all_times=all_times)
+        for runlog in runlogs[ID]:
+            _, new_counter = get_runtime(runlog, timing=timing, counter=counter, all_times=all_times)
             timing.iloc[counter:new_counter, :len(IDl)] = IDl
-            timing.loc[counter:new_counter-1, "path"] = r
+            timing.loc[counter:new_counter-1, "path"] = runpath
             counter = new_counter
-            if verbose:
-                print_progress(counter=j+1, length=len(runs))
-        except FileNotFoundError:
-            if verbose:
-                print("No log file found")
+        if verbose:
+            print_progress(counter=j+1, length=len(runs))
+
 
 
     timing = timing.dropna(axis=0,how="all")
     timing = timing.dropna(axis=1,how="all")
     return timing
 
-def get_runtime(run_dir, timing=None, counter=None, all_times=False):
+def get_runtime(runlog, timing=None, counter=None, all_times=False):
     """
     Get runtime, MPI slot and domain size information from log file in run_dir.
 
@@ -395,7 +397,6 @@ def get_runtime(run_dir, timing=None, counter=None, all_times=False):
         Current counter for writing.
 
     """
-    runlog = run_dir + "/run.log"
     if os.path.isfile(runlog):
         with open(runlog) as f:
             log = f.readlines()
@@ -990,7 +991,13 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
         Start time of restart run.
     """
     #check if already finished
-    with open(wdir + "/run.log") as f:
+    runlogs = glob.glob(wdir + "/run*.log")
+    if len(runlogs) > 1:
+        timestamp = sorted([r.split("/")[-1].split("_")[1].split(".")[0] for r in runlogs])[-1]
+        runlog = wdir + "/run_{}.log".format(timestamp)
+    else:
+        runlog = runlogs[0]
+    with open(runlog) as f:
         runlog = f.readlines()
 
     if "d01 {} wrf: SUCCESS COMPLETE WRF\n".format(end_time) in runlog:

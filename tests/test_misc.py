@@ -19,14 +19,14 @@ from collections import Counter
 runs_dir = "./test_data/runs/"
 def test_get_runtime():
     print(os.getcwd())
-    timing, counter = misc_tools.get_runtime(runs_dir + "WRF_pytest_eta_0", all_times=True)
+    timing, counter = misc_tools.get_runtime(runs_dir + "WRF_pytest_eta_0/run_2018-04-10T06:13:14.log", all_times=True)
     assert counter == 86400
     assert timing.notna().all().all()
-    timing_m, _ = misc_tools.get_runtime(runs_dir + "WRF_pytest_eta_0", all_times=False, counter=None, timing=None)
+    timing_m, _ = misc_tools.get_runtime(runs_dir + "WRF_pytest_eta_0/run_2018-04-10T06:13:14.log", all_times=False, counter=None, timing=None)
     np.testing.assert_allclose( timing_m["timing"].values.mean(), timing["timing"].mean())
     assert (timing_m.values[0,:-2] == np.array([1,1,6,6])).all()
     with pytest.raises(FileNotFoundError):
-        timing, counter = misc_tools.get_runtime(runs_dir, all_times=True)
+        timing, counter = misc_tools.get_runtime(runs_dir + "/run.log", all_times=True)
 
     dirs = runs_dir
     timing_m = misc_tools.get_runtime_all(id_filter="", dirs=dirs, all_times=False, levels=None, remove=None, verbose=True)

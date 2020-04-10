@@ -160,6 +160,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         end_t = end_t.split(":")
 
         run_hours = (end_time_dt - start_time_dt).total_seconds()/3600
+        if run_hours <= 0:
+            raise ValueError("Selected end time {} smaller or equal start time {}!".format(args["end_time"], args["start_time"]))
 
         for di,n in zip(start_d + start_t, ["year","month","day","hour","minute","second"] ):
             args["start_" + n] = di
@@ -445,8 +447,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         wrf_dir = " ".join(wrf_dir)
                         jobs = " ".join(IDs)
                         nslots_str = " ".join([str(ns) for ns in nslots])
+                        timestamp = datetime.datetime.now().isoformat()[:19]
                         comm_args =dict(JOB_NAME=job_name, wrfv=wrf_dir, nslots=nslots_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
-                                        batch=int(use_job_scheduler), cluster=int(conf.cluster), restart=int(restart), outpath=outpath, module_load=conf.module_load)
+                                        batch=int(use_job_scheduler), cluster=int(conf.cluster), restart=int(restart), outpath=outpath,
+                                        module_load=conf.module_load, timestamp=timestamp)
                         for p, v in comm_args.items():
                             os.environ[p] = str(v)
                         if use_job_scheduler:
@@ -502,8 +506,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                 for ID in IDs:
                                     print(ID)
                                     run_dir_i = "{}/WRF_{}/".format(conf.run_path, ID)
-                                    print(os.popen("tail -n {} {}".format(log_lines, run_dir_i + "run.log")).read())
-                                    print(fopen(run_dir_i + "run.err").read_text())
+                                    print(os.popen("tail -n {} {}/run_{}.log".format(log_lines, run_dir_i, timestamp)).read())
+                                    print(fopen(run_dir_i + "run_{}.err".format(timestamp)).read_text())
                             if err != 0:
                                 raise RuntimeError("WRF run failed!")
 

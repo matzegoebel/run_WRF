@@ -20,6 +20,7 @@ from netCDF4 import Dataset
 import misc_tools
 import get_namelist
 import wrf
+import glob
 import pandas as pd
 
 success = {True : 'wrf: SUCCESS COMPLETE IDEAL INIT', False : 'd01 2018-06-20_08:00:00 wrf: SUCCESS COMPLETE WRF'}
@@ -130,13 +131,14 @@ def test_mpi_and_batch():
     assert count[m] == combs["n_rep"].sum()
 
     rundirs = []
-    for run in os.listdir(conf.run_path):
-        rundir = "{}/{}/".format(conf.run_path, run)
-        if os.path.isdir(rundir):
-            rundirs.append(rundir)
-            shutil.copy("tests/test_data/resources.info", rundir)
-            shutil.copy("tests/test_data/runs/WRF_pytest_eta_0/run.log", rundir)
-
+    for rundir in combs["run_dir"]:
+        rundir += "_0"
+        rundirs.append(rundir)
+        runlogs = glob.glob(rundir + "/run*.*")
+        for runlog in runlogs:
+            os.remove(runlog)
+        shutil.copy("tests/test_data/resources.info", rundir)
+        shutil.copy("tests/test_data/runs/WRF_pytest_eta_0/run_2018-04-10T06:13:14.log", rundir)
     #test SGE
     _, output = capture_submit(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_sge")
     print(output)
@@ -200,7 +202,8 @@ def test_scheduler_full():
 
         rundirs = combs["run_dir"].values + "_0"
         for rundir in rundirs:
-            runlog = misc_tools.read_file(rundir + "/run.log")
+            runlog = glob.glob(rundir + "run_*.log")[0]
+            runlog = misc_tools.read_file(runlog)
             m = "d01 2018-06-20_07:00:00 wrf: SUCCESS COMPLETE WRF"
             assert m in runlog
 
