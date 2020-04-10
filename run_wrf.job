@@ -47,6 +47,11 @@ trap 'rc=$?' ERR
 for (( i=0; i<$njobs; i++ ))
 do
   cd ${run_path}/WRF_${jobs[i]}
+  #include information about number of processors in namelist.input
+  if (( ${nx[i]}*${ny[i]} > 1 ))
+  then
+    source ${code_dir}/search_replace.sh namelist.input namelist.input 0 nproc_x ${nx[i]} nproc_y ${ny[i]}
+  fi
 
   #redirect logs to file
   if (( restart == 1 ))
@@ -123,21 +128,25 @@ do
     then
       sleep 1
        # echo  "Elapsed time (s): $(($(date +%s) - start_time))"
-      #~ children=$(pgrep -P ${pid[i]} -d " ")
-      #~ children_l=($children)
-      #~ if [[ ${#children_l[@]} == 1 ]]
-      #~ then
-        #~ children="$children $(pgrep -P $children -d " ")"
-      #~ fi
-      #~ all_pids_arr="${pid[i]} $children"
-      #~ all_pids_arr=(${all_pids_arr})
-      #~ all_pids=$(IFS=, ; echo "${all_pids_arr[*]}")
-      #~ echo "${jobs[i]} $all_pids" >> ../pidlog
-      #~ top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $5) };' | paste -sd+ | bc >> vmemusage_VIRT_$currtime
-      #~ top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $6) };' | paste -sd+ | bc >> vmemusage_RES_$currtime
-
       finished+=($i)
     fi
+
+    #write current memory usage of all MPI processes to file
+    children=$(pgrep -P ${pid[i]} -d " ")
+    children_l=($children)
+    if [[ ${#children_l[@]} == 1 ]]
+    then
+      children="$children $(pgrep -P $children -d " ")"
+    fi
+    all_pids_arr="${pid[i]} $children"
+    all_pids_arr=(${all_pids_arr})
+    all_pids=$(IFS=, ; echo "${all_pids_arr[*]}")
+    echo "${jobs[i]} $all_pids" >> ../pidlog
+    sum=$(top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $5) };' | paste -sd+ | bc)
+    echo "${sum}/$nsi" | bc -l  >> vmemusage_VIRT_$timestamp
+    sum=$(top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $6) };' | paste -sd+ | bc)
+    echo "${sum}/$nsi" | bc -l  >> vmemusage_RES_$timestamp
+
   done
   sleep 1
 done

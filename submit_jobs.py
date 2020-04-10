@@ -117,16 +117,16 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         if (conf.mail_address is None) or (conf.mail_address==""):
             raise ValueError("For jobs using {}, provide valid mail address in config file".format(job_scheduler))
 
-    if test_run and (job_scheduler == "sge"):
-        #do test run on one node by using openmpi-xperhost to ensure correct vmem logging
-        conf.reduce_pool = True
+    # if test_run and (job_scheduler == "sge"):
+    #     #do test run on one node by using openmpi-xperhost to ensure correct vmem logging
+    #     conf.reduce_pool = True
 
     IDs = []
     rtr = []
     wrf_dir = []
     vmem = []
     nslots = []
-
+    nxny = []
 
     if init:
         print("Initialize WRF simulations")
@@ -206,13 +206,26 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         else:
             nx = misc_tools.find_nproc(args["e_we"]-1, min_n_per_proc=conf.min_n_per_proc, even_split=conf.even_split )
             ny = misc_tools.find_nproc(args["e_sn"]-1, min_n_per_proc=conf.min_n_per_proc, even_split=conf.even_split )
-        if (nx == 1) and (ny == 1):
-            nx = -1
-            ny = -1
+
+        # max_nslotsx = None
+        # max_nslotsy = None
+        # if test_run and ("max_nslotsx_test" in dir(conf)):
+        #     max_nslotsx = conf.max_nslotsx_test
+        # elif conf.max_nslotsx is not None:
+        #     max_nslotsx = conf.max_nslotsx
+        # if test_run and ("max_nslotsy_test" in dir(conf)):
+        #     max_nslotsy = conf.max_nslotsy_test
+        # elif conf.max_nslotsy is not None:
+        #     max_nslotsy = conf.max_nslotsy
+
         if conf.max_nslotsx is not None:
             nx = min(conf.max_nslotsx, nx)
         if conf.max_nslotsy is not None:
             ny = min(conf.max_nslotsy, ny)
+
+        if (nx == 1) and (ny == 1):
+            nx = -1
+            ny = -1
         nslotsi = nx*ny
 
         #add suffix for special folders
@@ -254,6 +267,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 vmemi = args["vmem"]
         vmem.append(vmemi)
         nslots.append(nslotsi)
+        nxny.append([nx,ny])
         wrf_dir.append(wrf_dir_i)
 
 
@@ -401,6 +415,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 if skip:
                     vmem = vmem[:-1]
                     nslots = nslots[:-1]
+                    nxny = nxny[:-1]
                     wrf_dir = wrf_dir[:-1]
                     #if last ID: do run but without current config, else: skip run
                     if (not last_id) or (len(nslots) == 0):
@@ -419,6 +434,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     if pool_jobs and (sum(nslots) > conf.pool_size):
                         if len(nslots) > 1:
                             nslots = nslots[:-1]
+                            nxny = nxny[:-1]
                             wrf_dir = wrf_dir[:-1]
                             vmem = vmem[:-1]
                             rtr = rtr[:-1]
@@ -433,9 +449,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         print("Submit IDs: {}".format(IDs))
                         print("with total cores: {}".format(sum(nslots)))
 
-                        if pool_jobs or test_run:
-                            if pool_jobs:
-                                job_name = "pool_" + "_".join(IDs)
+                        if pool_jobs:
+                            job_name = "pool_" + "_".join(IDs)
                             if use_job_scheduler:
                                 if job_scheduler == "sge":
                                     nperhost = conf.pool_size
@@ -448,14 +463,15 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                 elif job_scheduler == "slurm":
                                     nodes = math.ceil(sum(nslots)/conf.pool_size)
                                     slot_comm = "--ntasks-per-node={} -N {}".format(conf.pool_size, nodes)
-
                         else:
                             job_name = IDr
                         wrf_dir = " ".join(wrf_dir)
                         jobs = " ".join(IDs)
                         nslots_str = " ".join([str(ns) for ns in nslots])
+                        nx_str = " ".join([str(ns[0]) for ns in nxny])
+                        ny_str = " ".join([str(ns[1]) for ns in nxny])
                         timestamp = datetime.datetime.now().isoformat()[:19]
-                        comm_args =dict(JOB_NAME=job_name, wrfv=wrf_dir, nslots=nslots_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
+                        comm_args =dict(JOB_NAME=job_name, wrfv=wrf_dir, nslots=nslots_str, nx=nx_str, ny=ny_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
                                         batch=int(use_job_scheduler), cluster=int(conf.cluster), restart=int(restart), outpath=outpath,
                                         module_load=conf.module_load, timestamp=timestamp)
                         for p, v in comm_args.items():

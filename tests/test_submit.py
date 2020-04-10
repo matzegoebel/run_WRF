@@ -205,8 +205,9 @@ def test_scheduler_full():
                     finished = False
 
         rundirs = combs["run_dir"].values + "_0"
+        print(rundirs)
         for rundir in rundirs:
-            runlog = glob.glob(rundir + "run_*.log")[0]
+            runlog = glob.glob(rundir + "/run_*.log")[0]
             runlog = misc_tools.read_file(runlog)
             m = "d01 2018-06-20_07:30:00 wrf: SUCCESS COMPLETE WRF"
             assert m in runlog

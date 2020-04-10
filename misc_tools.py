@@ -459,7 +459,7 @@ def get_runtime(runlog, timing=None, counter=None, all_times=False):
             counter += 1
     return timing, counter
 
-def get_identical_runs(run_dir, search_paths):
+def get_identical_runs(run_dir, search_paths, ignore_nxy=False):
     """
     Look for simulations in search_paths with identical namelist file as the one in
     run_dir (except for irrelevant parameters defined in ignore_params in the code).
@@ -470,6 +470,8 @@ def get_identical_runs(run_dir, search_paths):
         Path to the reference directory.
     search_paths : str of list of str
         Paths, in which to search for identical simulations.
+    ignore_nxy : bool
+        Ignore number of processes in x and y-direction (for vmem retrieval only)
 
     Returns
     -------
@@ -480,6 +482,8 @@ def get_identical_runs(run_dir, search_paths):
     search_paths = make_list(search_paths)
     ignore_params = ["start_year", "start_month","start_day", "start_hour",
                      "start_minute","run_hours", "_outname"]
+    if ignore_nxy:
+        ignore_params.extend(["nproc_x", "nproc_y"])
     identical_runs = []
     for search_path in search_paths:
         search_path += "/"
@@ -531,7 +535,7 @@ def get_vmem(runs):
         return
     vmem = []
     for i, r in enumerate(runs):
-       #rfiles = glob.glob(r + "/vmemusage*")
+        #rfiles = glob.glob(r + "/vmemusage_VIRT*")
         rfiles = glob.glob(r + "/resources*")
         for resource_file in rfiles:
             # vmem_r = np.loadtxt(resource_file)
@@ -642,7 +646,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
             print("Get vmem from previous runs")
             if identical_runs is None:
                 run_dir_0 = run_dir + "_0" #use rep 0 as reference
-                identical_runs = get_identical_runs(run_dir_0, conf.resource_search_paths)
+                identical_runs = get_identical_runs(run_dir_0, conf.resource_search_paths, ignore_nxy=False)
 
             vmemi = get_vmem(identical_runs)
             if vmemi is None:
