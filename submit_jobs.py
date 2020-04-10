@@ -84,6 +84,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     param_combs, combs = conf.param_combs, conf.combs
     combs_all = deepcopy(combs)
 
+    if test_run:
+        print("Do short test runs on cluster to find out required runtime and virtual memory\n\n")
 
 
     if outdir is None:
@@ -114,6 +116,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             mail = ",".join(mail_slurm)
         if (conf.mail_address is None) or (conf.mail_address==""):
             raise ValueError("For jobs using {}, provide valid mail address in config file".format(job_scheduler))
+
+    if test_run and (job_scheduler == "sge"):
+        #do test run on one node by using openmpi-xperhost to ensure correct vmem logging
+        conf.reduce_pool = True
 
     IDs = []
     rtr = []
@@ -427,8 +433,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         print("Submit IDs: {}".format(IDs))
                         print("with total cores: {}".format(sum(nslots)))
 
-                        if pool_jobs:
-                            job_name = "pool_" + "_".join(IDs)
+                        if pool_jobs or test_run:
+                            if pool_jobs:
+                                job_name = "pool_" + "_".join(IDs)
                             if use_job_scheduler:
                                 if job_scheduler == "sge":
                                     nperhost = conf.pool_size
