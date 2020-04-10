@@ -17,6 +17,7 @@ import pandas as pd
 from collections import Counter
 
 runs_dir = "./test_data/runs/"
+#%%
 def test_get_runtime():
     print(os.getcwd())
     timing, counter = misc_tools.get_runtime(runs_dir + "WRF_pytest_eta_0/run_2018-04-10T06:13:14.log", all_times=True)
