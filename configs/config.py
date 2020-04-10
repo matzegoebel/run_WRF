@@ -108,7 +108,7 @@ vmem = None #virtual memory per slot (MB) to request for running WRF (wrf.exe)
 vmem_per_grid_point = None #vmem (MB) per horizontal grid point per job (not per slot!)
 vmem_min = None #minimum virtual memory (MB) per slot for running WRF
 
-vmem_buffer = 3. #buffer factor for virtual memory (not used for test runs or if vmem is given)
+vmem_buffer = 1.5 #buffer factor for virtual memory (not used for test runs or if vmem is given)
 vmem_test = 2000  #virtual memory per slot (MB) for test runs
 
 
