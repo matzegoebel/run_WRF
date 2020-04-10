@@ -876,7 +876,7 @@ def check_namelist_best_practice(namelist):
     #MP_physics
     graupel = namelist["mp_physics"] not in [1,3,4,14]
     if (not graupel) and (dx <= 4000):
-        print("WARNING: Microphysics scheme with graupel necessary at cloud-resolving resolution. Avoid the following settings for mp_physics: 1,3,4 or 14")
+        print("WARNING: Microphysics scheme with graupel necessary at convection-permitting resolution. Avoid the following settings for mp_physics: 1,3,4 or 14")
     elif graupel and (dx >= 10000):
         print("HINT: Microphysics scheme with graupel not necessary for grid spacings above 10 km. You can instead use one of the following settings for mp_physics: 1,3,4 or 14")
 

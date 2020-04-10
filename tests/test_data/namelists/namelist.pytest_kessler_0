@@ -6,28 +6,28 @@
  start_year = 2018
  start_month = 06
  start_day = 20
- start_hour = 06
+ start_hour = 07
  start_minute                        = 00,   30,   00,
  start_second                        = 00,   00,   00,
  end_year = 2018
  end_month = 06
  end_day = 20
- end_hour = 08
- end_minute                          = 00,   30,   00,
+ end_hour = 07
+ end_minute                          = 30,   30,   00,
  end_second                          = 00,   00,   00,
- history_interval_m = 10
+ history_interval_m = 5
  history_interval_s                  = 00,   00,   1,
  history_outname = "/home/matze/phd/results/wrf/test/pytest/fastout_pytest_kessler_0"
  frames_per_outfile                  = 1000, 1000, 1000,
  restart                             = .false.,
- restart_interval = 120
+ restart_interval = 30
  io_form_history                     = 2
  io_form_restart                     = 2
  io_form_input                       = 2
  io_form_boundary                    = 2
  iofields_filename = "IO_test.txt"
  auxhist24_outname = "/home/matze/phd/results/wrf/test/pytest/wrfout_pytest_kessler_0"
- auxhist24_interval_m = 30
+ auxhist24_interval_m = 10
  auxhist24_interval_s                 = 0,
  frames_per_auxhist24                 = 100000,
  io_form_auxhist24                    = 2
@@ -45,10 +45,10 @@
  s_sn                                = 1,     1,     1,
  e_sn = 3
  s_vert                              = 1,     1,     1,
- e_vert = 60
+ e_vert = 14
  dx = 500
  dy = 500
- ztop = 12000
+ ztop = 2000
  grid_id                             = 1,     2,     3,
  parent_id                           = 0,     1,     2,
  i_parent_start                      = 0,     10,    15,
@@ -59,7 +59,7 @@
  smooth_option                       = 0
  nproc_x                             = -1,
  nproc_y                             = -1,
- eta_levels = 1.000000,0.997074,0.994010,0.990786,0.987383,0.983774,0.979931,0.975825,0.971420,0.966676,0.961553,0.956003,0.949975,0.943414,0.936260,0.928450,0.919918,0.910594,0.900409,0.889293,0.877177,0.863996,0.849693,0.834218,0.817532,0.799611,0.780446,0.760047,0.738442,0.715680,0.691831,0.666979,0.641230,0.614702,0.587522,0.559827,0.531757,0.503452,0.475049,0.446679,0.418466,0.390523,0.362952,0.335845,0.309281,0.283327,0.258040,0.233464,0.209636,0.186583,0.164324,0.142871,0.122229,0.102399,0.083377,0.065155,0.047721,0.031062,0.015161,0.000000
+ eta_levels = 1.000000,0.989004,0.975525,0.957446,0.931230,0.891716,0.833066,0.751486,0.648019,0.528198,0.398877,0.265608,0.131975,0.000000
  /
 
  &physics
@@ -83,9 +83,9 @@
  hybrid_opt                          = 0,
  rk_ord                              = 3,
  diff_opt                            = 2,      2,      2,
- km_opt = 4
+ km_opt = 2
  damp_opt                            = 0,
- zdamp = 4000
+ zdamp = 666
  dampcoef                            = 0.1,    0.2,    0.2
  khdif                               = 1.,      1.,    .05,
  kvdif                               = 1.,      1.,    .05,

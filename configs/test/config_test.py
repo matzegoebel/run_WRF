@@ -38,8 +38,8 @@ param_names = {"mp_physics" : {1: "kessler", 2: "lin"},
 #any namelist parameters and some additional ones can be used
 
 
-params["start_time"] = "2018-06-20_06:00:00" #format %Y-%m-%d_%H:%M:%S
-params["end_time"] = "2018-06-20_08:00:00" #format %Y-%m-%d_%H:%M:%S
+params["start_time"] = "2018-06-20_07:00:00" #format %Y-%m-%d_%H:%M:%S
+params["end_time"] = "2018-06-20_07:30:00" #format %Y-%m-%d_%H:%M:%S
 
 params["n_rep"] = 1 #number of repetitions for each configuration
 
@@ -55,11 +55,11 @@ params["min_gridpoints_y"] = 2 #minimum number of grid points in y direction (in
 force_domain_multiple = False #"x", "y", True (for both) or False
 
 #control vertical grid creation (see vertical_grid.py for details on the different methods)
-params["ztop"] = 12000 #top of domain (m)
+params["ztop"] = 2000 #top of domain (m)
 params["zdamp"] = int(params["ztop"]/3) #depth of damping layer (m)
-params["nz"] = 60 #number of vertical levels
+params["nz"] = None #number of vertical levels
 params["dz0"] = 20 #height of first model level (m)
-params["dzmax"] = None #if nz is None and for dz_method=0 only: specify maximum vertical grid spacing instead of nz; either float or "dx" to make it equal to dx
+params["dzmax"] = 300 #if nz is None and for dz_method=0 only: specify maximum vertical grid spacing instead of nz; either float or "dx" to make it equal to dx
 params["dz_method"] = 3 #method for creating vertical grid as defined in vertical_grid.py
 
 params["dt_f"] = None  #time step (s), if None calculated as dt = 6 s/m *dx/1000; can be float
@@ -79,13 +79,13 @@ params["bl_pbl_physics"] = 2
 
 #indices for output streams and their respective name and output interval (minutes, floats allowed)
 # 0 is the standard output stream
-params["output_streams"] = {24: ["wrfout", 30.], 0: ["fastout", 10.] }
+params["output_streams"] = {24: ["wrfout", 10.], 0: ["fastout", 5.] }
 
 # filename where output variables for standard and auxiliary streams are modified:
 # if None: use specified value in namelist.input: if "" no file is used
 params["iofields_filename"] = "IO_test.txt"
 
-params["restart_interval"] = 120 #restart interval (min)
+params["restart_interval"] = 30 #restart interval (min)
 
 split_output_res = 0 #dx (m) below which to split output in one timestep per file
 
@@ -128,7 +128,7 @@ runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}
 rt_test = 5 #runtime (min) for test runs
 
 
-send_rt_signal = 20 #seconds before requested runtime is exhausted and signal is sent to job
+send_rt_signal = 10 #seconds before requested runtime is exhausted and signal is sent to job
 send_rt_signal_restart = 120 #send rt signal earlier for concatenation of output files in restart runs
 
 #paths to search for log files to determine runtime and/or vmem if not specified

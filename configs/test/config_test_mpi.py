@@ -22,8 +22,6 @@ from copy import deepcopy
 param_grid = odict(mp_physics=[1, 2])
 params = deepcopy(params)
 
-params["end_time"] = "2018-06-20_07:00:00" #format %Y-%m-%d_%H:%M:%S
-
 use_min_gridpoints = True #"x", "y", True (for both) or False
 params["min_gridpoints_x"] = 33 #minimum number of grid points in x direction
 params["min_gridpoints_y"] = 11 #minimum number of grid points in y direction
