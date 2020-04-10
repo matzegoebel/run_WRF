@@ -657,6 +657,10 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
                     print("Could not retrieve vmem from previous runs. Skipping...")
             else:
                 vmemi = max(vmemi)*conf.vmem_buffer
+                if conf.job_scheduler.lower() == "sge":
+                    #additional buffer factor of 4 stems from the fact that SGE outputs only a fraction of the actually
+                    #used memory (difference between VIRT and RES in the linux command top)
+                    vmemi *= 4
 
         if vmemi is not None:
             print("Use vmem per slot: {0:.1f}M".format(vmemi/nslots))
