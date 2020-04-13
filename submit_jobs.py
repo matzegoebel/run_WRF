@@ -366,6 +366,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         print("wrf: SUCCESS COMPLETE IDEAL INIT")
                     else:
                         initerr = fopen(run_dir_r + "/init.err").read_text()
+                        print("\n")
                         print(initerr)
                         raise RuntimeError("Initialization failed!")
 

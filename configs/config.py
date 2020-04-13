@@ -27,6 +27,7 @@ run_path = os.environ["wrf_runs"] #path where run directories of simulations wil
 build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
+#if None: only 1 configuration is run
 param_grid = odict(mp_physics=[1,2],
                    res={"dx" : [200,4000], "dz0" : [10,50], "nz" : [100,60]})
 

@@ -56,7 +56,8 @@ then
   then
     cp ${input_sounding} ${input_sounding_org}
   else
-    echo "Input sounding ${input_sounding} not available! Exit..."
+    echo "Input sounding ${input_sounding} not available! Exit..." >&2
+    
     exit 1
   fi
 else

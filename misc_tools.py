@@ -707,7 +707,7 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     if "dy" not in args:
         args["dy"] = r
 
-    if "isotropic_res" in args:
+    if ("isotropic_res" in args) and ("mix_isotropic" not in args):
         if r <= args["isotropic_res"]:
             args["mix_isotropic"] = 1
         else:
