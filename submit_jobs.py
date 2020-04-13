@@ -540,6 +540,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             rtr = [rtri]
                             vmem = [vmemi]
                             nslots = [nslotsi]
+                            nxny = [[nx,ny]]
                             wrf_dir = [wrf_dir_i]
 
                         #run residual jobs that did not fit in the last job pool
@@ -551,6 +552,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             rtr = []
                             vmem = []
                             nslots = []
+                            nxny = []
                             wrf_dir = []
 
     return pd.DataFrame(combs_all)
