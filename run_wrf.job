@@ -22,6 +22,8 @@ echo "jobs: $jobs"
 jobs=(${jobs})
 njobs=${#jobs[@]}
 nslots=(${nslots})
+nx=(${nx})
+ny=(${ny})
 wrfv=(${wrfv})
 runlog=run_${timestamp}.log
 runerr=run_${timestamp}.err
@@ -48,7 +50,7 @@ for (( i=0; i<$njobs; i++ ))
 do
   cd ${run_path}/WRF_${jobs[i]}
   #include information about number of processors in namelist.input
-  if (( ${nx[i]}*${ny[i]} > 1 ))
+  if (( ${nslots[i]} > 1 ))
   then
     source ${code_dir}/search_replace.sh namelist.input namelist.input 0 nproc_x ${nx[i]} nproc_y ${ny[i]}
   fi
