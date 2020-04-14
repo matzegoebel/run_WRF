@@ -330,7 +330,7 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
     runlogs = {}
     runlogs_list = []
     for run, ID in zip(runs, IDs):
-        runlogs[ID] = glob.glob(run  + "/run*.log")
+        runlogs[ID] = glob.glob(run  + "/run*.log") +  glob.glob(run  + "/rsl.error.0000")
         runlogs_list.extend(runlogs[ID])
     if all_times:
         #estimate number of lines in all files
@@ -657,10 +657,6 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
                     print("Could not retrieve vmem from previous runs. Skipping...")
             else:
                 vmemi = max(vmemi)*conf.vmem_buffer
-                if conf.job_scheduler.lower() == "sge":
-                    #additional buffer factor of 4 stems from the fact that SGE outputs only a fraction of the actually
-                    #used memory (difference between VIRT and RES in the linux command top)
-                    vmemi *= 4
 
         if vmemi is not None:
             print("Use vmem per slot: {0:.1f}M".format(vmemi/nslots))
