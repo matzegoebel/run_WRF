@@ -995,7 +995,7 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
         Start time of restart run.
     """
     #check if already finished
-    runlogs = glob.glob(wdir + "/run*.log")
+    runlogs = glob.glob(wdir + "/run_*.log")
     if len(runlogs) > 1:
         timestamp = sorted([r.split("/")[-1].split("_")[1].split(".")[0] for r in runlogs])[-1]
         runlog = wdir + "/run_{}.log".format(timestamp)

@@ -55,30 +55,23 @@ do
     source ${code_dir}/search_replace.sh namelist.input namelist.input 0 nproc_x ${nx[i]} nproc_y ${ny[i]}
   fi
 
-  #redirect logs to file
-  if (( restart == 1 ))
-  then
-    exec 1>> $runlog
-  else
-    exec 1> $runlog
-  fi
-
-  exec 2> $runerr
+  exec 1> run.log
+  exec 2> run.err
   echo
   echo
-  echo "Running job: ${jobs[i]}"
+  echo "Running job: ${jobs[i]}"   >> $runlog
   nsi=${nslots[i]}
   wrf_dir_i=${wrfv[i]}
-  echo "slots: $nsi "
+  echo "slots: $nsi "    >> $runlog
 
   if (( nsi > 1 ))
   then
-    echo "parallel"
+    echo "parallel"  >> $runlog
     if $pool
     then
-      echo "si $si"
+      echo "si $si"  >> $runlog
       hostsi=${hosts[@]:$si:$nsi}
-      echo "on hosts: $hostsi"
+      echo "on hosts: $hostsi" >> $runlog
 
       H=$(python ${code_dir}/pool/get_hosts_set.py "$hostsi")
       python ${code_dir}/pool/rankfile.py  "${hosts[*]}" "$si" "$nsi" > rankfile.$JOB_ID
@@ -89,10 +82,10 @@ do
       sleep 20
     else
       mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!
-      echo "mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!"
+      echo "mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!"  >> $runlog
     fi
   else
-    echo "serial run"
+    echo "serial run"  > $runlog
     ./wrf.exe & pid[i]=$!
   fi
   echo
@@ -115,10 +108,8 @@ fi
 #wait until processes are finished or hard time limit almost reached
 while [[ ${#finished[@]} -lt $njobs ]] && [[ ${elapsed_t} -le ${rtlimit} ]]
 do
-  if ${enforce_rtlimit}
-  then
-    elapsed_t=$(($(date +%s) - start_time))
-  fi
+
+  elapsed_t=$(($(date +%s) - start_time))
   
   for (( i=0; i<$njobs; i++ ))
   do
@@ -129,42 +120,52 @@ do
     if [[ -z $(ps -o pid= -p ${pid[i]}) ]] && [[ ! " ${finished[@]} " =~ " ${i} " ]]
     then
       sleep 1
-       # echo  "Elapsed time (s): $(($(date +%s) - start_time))"
+      echo  "Job WRF_${jobs[i]} finished. Elapsed time (s): ${elapsed_t}"
       finished+=($i)
+    else
+      #write current memory usage of all MPI processes to file
+      children=$(pgrep -P ${pid[i]} -d " ")
+      children_l=($children)
+      if [[ ${#children_l[@]} == 1 ]]
+      then
+        children="$children $(pgrep -P $children -d " ")"
+      fi
+      all_pids_arr="${pid[i]} $children"
+      all_pids_arr=(${all_pids_arr})
+      all_pids=$(IFS=, ; echo "${all_pids_arr[*]}")
+      echo "${jobs[i]} $all_pids" >> ../pidlog
+      sum=$(top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $5) };' | paste -sd+ | bc)
+      echo "${sum}/$nsi" | bc -l  >> vmemusage_VIRT_$timestamp
+      sum=$(top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $6) };' | paste -sd+ | bc)
+      echo "${sum}/$nsi" | bc -l  >> vmemusage_RES_$timestamp
     fi
-
-    #write current memory usage of all MPI processes to file
-    children=$(pgrep -P ${pid[i]} -d " ")
-    children_l=($children)
-    if [[ ${#children_l[@]} == 1 ]]
-    then
-      children="$children $(pgrep -P $children -d " ")"
-    fi
-    all_pids_arr="${pid[i]} $children"
-    all_pids_arr=(${all_pids_arr})
-    all_pids=$(IFS=, ; echo "${all_pids_arr[*]}")
-    echo "${jobs[i]} $all_pids" >> ../pidlog
-    sum=$(top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $5) };' | paste -sd+ | bc)
-    echo "${sum}/$nsi" | bc -l  >> vmemusage_VIRT_$timestamp
-    sum=$(top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $6) };' | paste -sd+ | bc)
-    echo "${sum}/$nsi" | bc -l  >> vmemusage_RES_$timestamp
-
   done
+  if [[ ${enforce_rtlimit}==false ]]
+  then
+    elapsed_t=0
+  fi
   sleep 1
 done
     
-
 #clean up
 for (( i=0; i<$njobs; i++ ))
 do
   cd ${run_path}/WRF_${jobs[i]}
   exec 1>> $runlog
   exec 2>> $runerr
+
+  echo
+  echo
+  cat run.log
+  cat run.err
+
   if (( ${nslots[i]} > 1 ))
   then
-    cat rsl.error.0000 >> $runlog
+    cat rsl.error.0000
   fi
 
+  echo
+  
   if [[ ! " ${finished[@]} " =~ " ${i} " ]]
   then
     echo "The job is about to terminate soon! Killing wrf.exe processes..."
@@ -184,8 +185,8 @@ do
       sacct -j $SLURM_JOB_ID -l -p > resources_${timestamp}.info
     fi
     #prepend log to run log
-    echo -e "$(cat ${run_path}/logs/$JOB_NAME.out)\n$(cat $runlog)" > $runlog
-    echo -e "$(cat ${run_path}/logs/$JOB_NAME.err)\n$(cat $runerr)" > $runerr
+    echo -e "$(cat ${run_path}/logs/$JOB_NAME.out)\n$(cat $runlog)"
+    echo -e "$(cat ${run_path}/logs/$JOB_NAME.err)\n$(cat $runerr)" >> $runerr
   fi
 
   if (( restart == 1 ))

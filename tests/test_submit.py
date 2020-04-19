@@ -44,7 +44,7 @@ def test_basic():
 
     #run wrf
     submit_jobs(init=True, exist="o", config_file="test.config_test")
-    combs = submit_jobs(init=False, wait=True, exist="o", config_file="test.config_test")
+    combs = submit_jobs(init=False, verbose=True, wait=True, exist="o", config_file="test.config_test")
 
     #test namelist
     rpath = combs["run_dir"][0] + "_0"
@@ -138,7 +138,7 @@ def test_mpi_and_batch():
     for rundir in combs["run_dir"]:
         rundir += "_0"
         rundirs.append(rundir)
-        runlogs = glob.glob(rundir + "/run*.*")
+        runlogs = glob.glob(rundir + "/run*.*") + glob.glob(rundir + "/rsl.error.0000")
         for runlog in runlogs:
             os.remove(runlog)
         shutil.copy("tests/test_data/resources.info", rundir)
@@ -148,11 +148,11 @@ def test_mpi_and_batch():
     print(output)
     count = Counter(output)
     batch_comm = "qsub -cwd -q std.q -o {0}/logs/pytest_lin_0.out -e {0}/logs/pytest_lin_0.err -l h_rt=000:00:15 "\
-                 " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N pytest_lin_0 -V  -l h_vmem=171M "\
+                 " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N pytest_lin_0 -V  -l h_vmem=85M "\
                  " run_wrf.job".format(conf.run_path)
     assert batch_comm == output[-1]
 
-    messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 171.2M']
+    messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 85.6M']
     for m in messages:
         assert count[m] == combs["n_rep"].sum()
 
