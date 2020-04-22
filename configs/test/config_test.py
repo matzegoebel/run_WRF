@@ -69,8 +69,8 @@ params["radt_min"] = 1
 params["input_sounding"] = "meanwind" #name of input sounding to use (final name is then created: input_sounding_$name)
 
 params["isotropic_res"] = 100 #dx (m) from and below which mixing is isotropic
-params["pbl_res"] = 500 #dx (m) from and above which to use PBL scheme; this also changes km_opt
-params["spec_hfx"] = None #None specified surface heat flux instead of radiation
+params["pbl_res"] = 500 #dx (m) from and above which to use PBL scheme
+params["spec_hfx"] = None #None specified surface heat flux instead of radiation (K m s-1)
 
 #other standard namelist parameters
 params["mp_physics"] = 0
