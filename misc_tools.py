@@ -253,24 +253,21 @@ def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
     ID_str = ""
     ID = None
     if param_grid is not None:
-        ID = deepcopy(param_comb)
+        ID = {}
         for p, v in param_grid.items():
-            if type(v) == dict:
-                if param_names is None:
-                    raise ValueError("param_names cannot be None if composite parameters are used!")
-                for pc in v.keys():
-                    del ID[pc]
             if (param_names is not None) and (p in param_names):
                 namep = param_names[p]
                 if type(v) == dict:
-                    ID[p] = namep[ID[p + "_idx"]]
-                    del ID[p + "_idx"]
+                    ID[p] = namep[param_comb[p + "_idx"]]
                 else:
                     if type(namep) == dict:
-                        ID[p] = namep[ID[p]]
+                        ID[p] = namep[param_comb[p]]
                     else:
-                        ID[p] = namep[param_grid[p].index(ID[p])]
-
+                        ID[p] = namep[param_grid[p].index(param_comb[p])]
+            elif type(v) == dict:
+                raise ValueError("param_names need to be defined for composite parameters!")
+            else:
+                ID[p] = param_comb[p]
         ID_str = "_".join([str(v) for v in ID.values()])
 
     if runID is not None:
