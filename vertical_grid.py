@@ -32,20 +32,20 @@ from matplotlib import rc
 import xarray as xr
 import scipy as sp
 import math
-# rc('text',usetex=True)
-# rc('text.latex', preamble=r'\usepackage{color}')
-# from matplotlib.backends.backend_pgf import FigureCanvasPgf
-# matplotlib.backend_bases.register_backend('pdf', FigureCanvasPgf)
+rc('text',usetex=True)
+rc('text.latex', preamble=r'\usepackage{color}')
+from matplotlib.backends.backend_pgf import FigureCanvasPgf
+matplotlib.backend_bases.register_backend('pdf', FigureCanvasPgf)
 
-# pgf_with_latex = {
-#     "pgf.texsystem": "pdflatex",     # Use xetex for processing
-#     "text.usetex": True,            # use LaTeX to write all text
-#     "pgf.rcfonts": False,           # Ignore Matplotlibrc
-#     "pgf.preamble": [
-#         r'\usepackage{xcolor}'     # xcolor for colours
-#     ]
-# }
-# matplotlib.rcParams.update(pgf_with_latex)
+pgf_with_latex = {
+    "pgf.texsystem": "pdflatex",     # Use xetex for processing
+    "text.usetex": True,            # use LaTeX to write all text
+    "pgf.rcfonts": False,           # Ignore Matplotlibrc
+    "pgf.preamble": [
+        r'\usepackage{xcolor}'     # xcolor for colours
+    ]
+}
+matplotlib.rcParams.update(pgf_with_latex)
 
 figloc = "~/"
 figloc = os.path.expanduser(figloc)
@@ -636,7 +636,7 @@ if __name__ == '__main__':
    # eta, dz = create_levels(ztop=ztop, dz0=20, method=3, nz=71, z1=20 , z2=2000, alpha=.5, theta=theta, p0=p0)
     #eta, dz = create_levels(ztop=ztop, dz0=20, dzmax=250, method=3, nz=120, D1=200, alpha=1., p0=p0, savefig=True)
   #  eta, dz = create_levels(ztop=ztop, dz0=20, method=3, nz=70, D1=0, alpha=1., p0=p0, savefig=True, strat=strat)
-    eta, dz = create_levels(ztop=ztop, dz0=20, method=3, dzmax=100, D1=0, alpha=1., p0=p0, savefig=True, strat=strat)
+    eta, dz = create_levels(ztop=ztop, dz0=20, method=3, dzmax=400, D1=0, alpha=1., p0=p0, savefig=True, strat=strat)
 
     # eta, dz = create_levels(ztop=16000, dz0=50, method=3, nz=35, z1=200, z2=10000, alpha=1, theta=theta, p0=p0)
     print(', '.join(['%.6f'%eta_tmp for eta_tmp in eta]))
@@ -644,31 +644,44 @@ if __name__ == '__main__':
 
 #%%
    # for eta_c in np.arange(0.1, 0.5, 0.1):
-    fig, ax1a = plt.subplots(figsize=(5, 4))
-    ax1b = ax1a.twiny()
+    fig, ax = plt.subplots(figsize=(5, 4))
+    ax2 = ax.twiny()
+    # axp = ax.twinx()
 
     ms = 3.
     alpha = np.diff(eta)[1:] / np.diff(eta)[:-1]
     pt = height_to_pressure_std(ztop, p0=p0, strat=strat)
-    eta_c = .3
-    zss = [400, 0]
+    eta_c = .2
+    zss = [1000, 0]
     symb = "o"
     for zs, mf in zip(zss, ["w", None]):
         ps = height_to_pressure_std(zs, p0=p0, strat=strat)
         z = height_from_eta(eta, eta_c, pt, ps, p0=p0, strat=strat)
+        zc = height_from_eta(eta_c, eta_c, pt, ps, p0=p0, strat=strat)
         dz = np.diff(z)
         alpha_z = dz[1:] / dz[:-1]
 
-        ax1a.plot(dz, z[:-1], symb, c='k', ms=ms, markerfacecolor=mf)
-        ax1a.set_xlim(0, np.nanmax(dz)+20)
-        ax1a.grid(c=(0.8, 0.8, 0.8))
-        ax1a.set_ylabel('height (m)')
-        ax1a.set_xlabel('$\Delta z$ (m)')
+        ax.plot(dz, z[:-1], symb, c='k', ms=ms, markerfacecolor=mf)
+        ax.set_xlim(0, np.nanmax(dz)+20)
+        ax.grid(c=(0.8, 0.8, 0.8))
+        ax.set_ylabel('height (m)')
+        ax.set_xlabel('$\Delta z$ (m)')
 
-        ax1b.plot(alpha_z, z[1:-1], symb, c="blue", ms=ms, markerfacecolor=mf)
+        ax2.plot(alpha_z, z[1:-1], symb, c="blue", ms=ms, markerfacecolor=mf)
         xlabel = r"\textcolor{blue}{$\Delta z (i)$/$\Delta z (i-1)$}, \textcolor{red}{$\Delta \eta (i)$/$\Delta \eta (i-1)$}"
-        ax1b.set_xlabel(xlabel)
-        ax1b.plot(alpha, z[1:-1], symb, c="red", ms=ms, markerfacecolor=mf)
+        ax2.set_xlabel(xlabel)
+        ax2.plot(alpha, z[1:-1], symb, c="red", ms=ms, markerfacecolor=mf)
+
+       # p = height_to_pressure_std(z, p0=p0, strat=strat)
+
+        # axp.plot(dz, p[:-1])
+        # axp.set_yscale("log")
+        # zlim = ax.get_ylim()
+        # axp.set_ylim(1110, height_to_pressure_std(zlim[1], p0=p0, strat=strat))
+        # axp.set_xlim(0, np.nanmax(dz)+20)
+        # axp.set_ylabel("pressure (hPa)")
        # plt.title("$\eta_c=${}".format(eta_c))
-    fig.savefig(figloc + '/wrf_stretched_grid_etaz.pdf')
+    ax.hlines(zc, *ax.get_xlim(), colors="gray", linewidth=0.6)
+
+    fig.savefig(figloc + '/wrf_stretched_grid_etaz.pdf', bbox_inches="tight")
 

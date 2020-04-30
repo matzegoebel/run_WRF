@@ -873,6 +873,9 @@ def check_namelist_best_practice(namelist):
         if dz_max > 1000:
             print("ERROR: There are levels with dz > 1000 m (dz_max={0:.1f} m). Use more vertical levels or a lower model top!".format(dz_max))
             raise_err = True
+        if (np.nanmin(namelist["dz"]) < 0.5 * dx) and (namelist["mix_isotropic"] == 1):
+            print("WARNING: At some levels the vertical grid spacing is less than half the horizontal grid spacing."
+                  " Consider using anisotropic mixing (mix_isotropic=0).")
 
     #MP_physics
     graupel = namelist["mp_physics"] not in [1,3,4,14]
@@ -908,8 +911,6 @@ def check_namelist_best_practice(namelist):
             raise_err = True
         if namelist["sf_sfclay_physics"] not in [0,1,2]:
             print("WARNING: Surface layer scheme {} not recommended for LES. Rather use setting 1 or 2.".format(namelist["sf_sfclay_physics"]))
-        if namelist["mix_isotropic"] != 1:
-            print("WARNING: Isotropic mixing (mix_isotropic=1) recommended for LES")
 
 
     if (namelist["km_opt"] in [2,3]) and (namelist["diff_opt"] != 2):
