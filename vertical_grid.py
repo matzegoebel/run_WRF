@@ -32,20 +32,20 @@ from matplotlib import rc
 import xarray as xr
 import scipy as sp
 import math
-rc('text',usetex=True)
-rc('text.latex', preamble=r'\usepackage{color}')
-from matplotlib.backends.backend_pgf import FigureCanvasPgf
-matplotlib.backend_bases.register_backend('pdf', FigureCanvasPgf)
+# rc('text',usetex=True)
+# rc('text.latex', preamble=r'\usepackage{color}')
+# from matplotlib.backends.backend_pgf import FigureCanvasPgf
+# matplotlib.backend_bases.register_backend('pdf', FigureCanvasPgf)
 
-pgf_with_latex = {
-    "pgf.texsystem": "pdflatex",     # Use xetex for processing
-    "text.usetex": True,            # use LaTeX to write all text
-    "pgf.rcfonts": False,           # Ignore Matplotlibrc
-    "pgf.preamble": [
-        r'\usepackage{xcolor}'     # xcolor for colours
-    ]
-}
-matplotlib.rcParams.update(pgf_with_latex)
+# pgf_with_latex = {
+#     "pgf.texsystem": "pdflatex",     # Use xetex for processing
+#     "text.usetex": True,            # use LaTeX to write all text
+#     "pgf.rcfonts": False,           # Ignore Matplotlibrc
+#     "pgf.preamble": [
+#         r'\usepackage{xcolor}'     # xcolor for colours
+#     ]
+# }
+# matplotlib.rcParams.update(pgf_with_latex)
 
 figloc = "~/"
 figloc = os.path.expanduser(figloc)

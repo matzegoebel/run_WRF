@@ -532,8 +532,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                     run_dir_i = "{}/WRF_{}/".format(conf.run_path, ID)
                                     print(os.popen("tail -n {} {}/run_{}.log".format(log_lines, run_dir_i, timestamp)).read())
                                     print(fopen(run_dir_i + "run_{}.err".format(timestamp)).read_text())
-                            if err != 0:
-                                raise RuntimeError("WRF run failed!")
+                            # if err != 0:
+                            #     raise RuntimeError("WRF run failed!")
 
                         if resched_i:
                             IDs = [IDr]
