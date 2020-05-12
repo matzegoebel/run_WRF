@@ -689,11 +689,15 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     """Sets some namelist parameters based on the config files settings."""
     print("Setting namelist parameters\n")
     wrf_build = "{}/{}".format(conf.build_path, wrf_dir)
-    namelist = get_namelist.namelist_to_dict("{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case), build_path=wrf_build, registries=conf.registries)
+    namelist = get_namelist.namelist_to_dict("{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case))
+    namelist_all = get_namelist.namelist_to_dict("{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case), build_path=wrf_build, registries=conf.registries)
+
+    namelist_upd_all = deepcopy(namelist_all)
+    namelist_upd_all.update(args)
     namelist_upd = deepcopy(namelist)
     namelist_upd.update(args)
 
-    check_p_diff = lambda p,val=0: (p in namelist_upd) and (namelist_upd[p] != val)
+    check_p_diff = lambda p,val=0: (p in namelist_upd_all) and (namelist_upd_all[p] != val)
     check_p_diff_2 = lambda p,val=0: (p not in args) and check_p_diff(p, val)
 
     r = args["dx"]
@@ -711,7 +715,7 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     args["time_step"] = dt_int
     args["time_step_fract_num"] = round((args["dt_f"] - dt_int)*10)
     args["time_step_fract_den"] = 10
-    if "radt" not in args:
+    if "radt" not in namelist_upd:
         args["radt"] = max(args["radt_min"], 10*dt_int/60) #rule of thumb
 
     #vert. domain
@@ -758,20 +762,21 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
 
     #specified heat fluxes or land surface model
     if "spec_hfx" in args:
-        print("Specified heatflux used")
+        print("Specified heatflux used:")
         phys = ["ra_sw_physics", "ra_lw_physics", "sf_surface_physics"]
         for p in phys:
             if check_p_diff(p):
-                print("WARNING: Setting {}=0 as surface heat flux is specified".format(p))
+                print("Setting {}=0".format(p))
                 args[p] = 0
         args["tke_heat_flux"] = args["spec_hfx"]
         if "isfflx" in args:
             if args["isfflx"] == 1:
-                print("WARNING: Isfflx={} not compatible with specified heat flux. Setting isfflx=2".format(args["isfflx"]))
+                print("Isfflx={} not compatible with specified heat flux. Setting isfflx=2".format(args["isfflx"]))
                 args["isfflx"] = 2
         elif check_p_diff("isfflx", 2):
             args["isfflx"] = 2
-            print("Setting isfflx=2 .")
+            print("Setting isfflx=2.")
+        print("\n")
     else:
         for p in ["tke_heat_flux", "tke_drag_coefficient"]:
             if check_p_diff(p):
@@ -785,18 +790,13 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     #pbl scheme
     if r >= args["pbl_res"]:
         pbl_scheme = args["bl_pbl_physics"]
-        # if check_p_diff_2("km_opt", 4):
-        #     args["km_opt"] = 4
-        #     print("WARNING: km_opt not set. Setting to 4 as PBL scheme is used.")
 
     else:
         pbl_scheme = 0
         if check_p_diff_2("km_opt", 2):
-            args["km_opt"] = 2
-            print("WARNING: km_opt not set. Setting to 2 as no PBL scheme is used.")
+            print("WARNING: km_opt not set.")
         if check_p_diff_2("diff_opt", 2):
-            args["diff_opt"] = 2
-            print("WARNING: diff_opt not set. Setting to 2 as no PBL scheme is used.")
+            print("WARNING: diff_opt not set.")
 
 
 
@@ -814,6 +814,9 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
         print("Setting sf_sfclay_physics={} for compatibility with PBL scheme.".format(sfclay_scheme))
         args[p] = sfclay_scheme
 
+    if namelist_upd_all["sf_sfclay_physics"] in [-1,0]:
+        print("WARNING: no surface layer scheme selected")
+
     if "iofields_filename" in args:
         if args["iofields_filename"] == "":
             args["iofields_filename"] = "NONE_SPECIFIED"
@@ -828,16 +831,16 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     del_args = [*conf.del_args, *[p + "_idx" for p in composite_keys]]
     args_clean = deepcopy(args)
     for del_arg in del_args:
-        if del_arg in namelist:
+        if del_arg in namelist_all:
             raise RuntimeError("Parameter {} used in submit_jobs.py already defined in namelist.input! Rename this parameter!".format(del_arg))
         if del_arg in args_clean:
             del args_clean[del_arg]
-    namelist.update(args_clean)
+    namelist_all.update(args_clean)
 
     if "dz" in locals():
-        namelist["dz"] = dz
+        namelist_all["dz"] = dz
     if namelist_check:
-        check_namelist_best_practice(namelist)
+        check_namelist_best_practice(namelist_all)
     args_df = pd.DataFrame(args_clean, index=[0])
 
     #use integer datatype for integer parameters
@@ -887,12 +890,10 @@ def check_namelist_best_practice(namelist):
 
     #pbl scheme, LES and turbulence
     if (namelist["bl_pbl_physics"] == 0) and (dx >= 500):
-        print("ERROR: PBL scheme necessary for dx > 500 m!")
-        raise_err = True
+        print("WARNING: PBL scheme recommended for dx > 500 m")
     elif namelist["bl_pbl_physics"] != 0:
         if dx <= 100:
-            print("ERROR: No PBL scheme necessary for dx < 100 m, use LES!")
-            raise_err = True
+            print("WARNING: No PBL scheme necessary for dx < 100 m, use LES!")
         else:
             if ("dz" in namelist) and (namelist["dz"][0] > 100):
                 print("WARNING: First vertical level should be within surface layer (max. 100 m). Current lowest level at {0:.2f} m".format(namelist["dz"][0]))
@@ -903,8 +904,8 @@ def check_namelist_best_practice(namelist):
 
 
     if (namelist["bl_pbl_physics"] == 0) and (dx <= 500): #LES
-        if namelist["km_opt"] not in [2,3]:
-            print("ERROR: Need 3D SGS turbulence scheme for LES. Choose km_opt 2 or 3")
+        if namelist["km_opt"]==4:
+            print("ERROR: For LES, eddy diffusivity based on horizontal deformation (km_opt=4) is not appropriate.")
             raise_err = True
         if namelist["diff_opt"] != 2:
             print("ERROR: LES requires horizontal diffusion in physical space (diff_opt=2).")
@@ -916,9 +917,14 @@ def check_namelist_best_practice(namelist):
     if (namelist["km_opt"] in [2,3]) and (namelist["diff_opt"] != 2):
         print("ERROR: Horizontal diffusion in physical space (diff_opt=2) needed for 3D SGS turbulence scheme (km_opt=2 or 3).")
         raise_err = True
+    elif namelist["km_opt"] == 1:
+        if namelist["khdif"] == 0:
+            print("WARNING: using constant eddy diffusivity (km_opt=1), but horizontal eddy diffusivity khdif=0")
+        if namelist["kvdif"] == 0:
+            print("WARNING: using constant eddy diffusivity (km_opt=1), but vertical eddy diffusivity kvdif=0")
 
-    if (namelist["km_opt"] != 4) and (dx > 2000):
-        print("WARNING: For dx > 2000, SGS turbulent mixing should be based on 2D deformation (km_opt=4).")
+    if (namelist["km_opt"] != 4) and (namelist["bl_pbl_physics"] != 0):
+        print("WARNING: If boundary layer scheme is used, SGS turbulent mixing should be based on 2D deformation (km_opt=4).")
 
     #Cumulus
     if (dx >= 10000) and (namelist["cu_physics"] == 0):

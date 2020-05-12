@@ -5,6 +5,8 @@ Created on Fri Nov 29 20:17:50 2019
 
 @author: c7071088
 """
+from collections import Counter
+
 
 
 def namelist_to_dict(path, verbose=False, first_domain_only=True, registries=None, build_path=None):
@@ -48,8 +50,14 @@ def get_namelist_param_val(line, verbose=False, first_domain_only=True):
     else:
         if "!" in line:
             line = line[:line.index("!")]
-
-        param, val = line.split("=")
+        c = Counter(line)
+        if ("=" in c) and (c["="] > 1):
+            raise ValueError("Duplicate entry in namelist file:\n {}".format(line))
+        try:
+            param, val = line.split("=")
+        except ValueError as e:
+            e.args = ("Error in line: {}\n".format(line)+ e.args[0], )
+            raise(e)
         if (param != "eta_levels") and first_domain_only:
             #use only first domain value
             val = val.split(",")[0]
