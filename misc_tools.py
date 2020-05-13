@@ -704,12 +704,6 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     if "dy" not in args:
         args["dy"] = r
 
-    if ("isotropic_res" in args) and ("mix_isotropic" not in args):
-        if r <= args["isotropic_res"]:
-            args["mix_isotropic"] = 1
-        else:
-            args["mix_isotropic"] = 0
-
     #timestep
     dt_int = math.floor(args["dt_f"])
     args["time_step"] = dt_int
@@ -752,7 +746,7 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     #output streams
     for stream, (_, out_int) in args["output_streams"].items():
         out_int_m = math.floor(out_int)
-        out_int_s = round((out_int - out_int_m)*60)
+        out_int_s = max(1,round((out_int - out_int_m)*60))
         if stream > 0:
             stream_full = "auxhist{}".format(stream)
         else:

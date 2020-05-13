@@ -70,7 +70,6 @@ params["radt_min"] = 1
 
 params["input_sounding"] = "shalconv" #name of input sounding to use (final name is then created: input_sounding_$name)
 
-params["isotropic_res"] = 100 #dx (m) from and below which mixing is isotropic
 params["pbl_res"] = 500 #dx (m) from and above which to use PBL scheme
 params["spec_hfx"] = None #None specified surface heat flux instead of radiation (K m s-1)
 
@@ -94,7 +93,7 @@ registries = ["Registry.EM_COMMON", "registry.hyb_coord", "registry.les", "regis
 
 # non-namelist parameters that will not be included in namelist file
 del_args =   ["output_streams", "start_time", "end_time", "dz0", "dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
-              "n_rep", "isotropic_res", "pbl_res", "dt_f", "radt_min"]
+              "n_rep", "pbl_res", "dt_f", "radt_min"]
 #%%
 '''Settings for resource requirements of batch jobs'''
 
