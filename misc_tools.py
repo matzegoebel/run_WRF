@@ -746,7 +746,9 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     #output streams
     for stream, (_, out_int) in args["output_streams"].items():
         out_int_m = math.floor(out_int)
-        out_int_s = max(1,round((out_int - out_int_m)*60))
+        out_int_s = round((out_int - out_int_m)*60)
+        if (out_int_m == 0) and (out_int_s == 0):
+            raise ValueError("Found output interval of {0:.2f} s for output stream {1}. Output intervals below 1 s are not allowed!".format(out_int*60, stream))
         if stream > 0:
             stream_full = "auxhist{}".format(stream)
         else:
