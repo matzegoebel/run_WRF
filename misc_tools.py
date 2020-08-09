@@ -709,7 +709,7 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     args["time_step"] = dt_int
     args["time_step_fract_num"] = round((args["dt_f"] - dt_int)*10)
     args["time_step_fract_den"] = 10
-    if "radt" not in namelist_upd:
+    if "radt" not in args:
         args["radt"] = max(args["radt_min"], 10*dt_int/60) #rule of thumb
 
     #vert. domain
