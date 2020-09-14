@@ -831,6 +831,13 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
             raise RuntimeError("Parameter {} used in submit_jobs.py already defined in namelist.input! Rename this parameter!".format(del_arg))
         if del_arg in args_clean:
             del args_clean[del_arg]
+    for key, val in args_clean.items():
+        if type(val) == bool:
+            if val:
+                args_clean[key] = ".true."
+            else:
+                args_clean[key] = ".false."
+
     namelist_all.update(args_clean)
 
     if "dz" in locals():
@@ -1034,7 +1041,7 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
         print("Run already complete")
         return
 
-    rst_opt = "restart .true"
+    rst_opt = "restart .true."
     for se in ["start", "end"]:
         for unit, t in zip(["year", "month", "day", "hour", "minute", "second"], times[se]):
             rst_opt += " {}_{} {}".format(se, unit, t)
