@@ -230,17 +230,16 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
         #add suffix for special folders
         slot_comm = ""
+        wrf_dir_i = conf.wrf_dir_pre
         if debug:
-            wrf_dir_i = conf.wrf_dir_pre + "_debug"
-        elif (nslotsi > 1) or (job_scheduler == "slurm"):
-            wrf_dir_i = conf.wrf_dir_pre + "_mpi"
+            wrf_dir_i += "_debug"
+        if (nslotsi > 1) or (job_scheduler == "slurm"):
+            wrf_dir_i += "_mpi"
             if use_job_scheduler and (not pool_jobs):
                 if job_scheduler == "sge":
                     slot_comm = "-pe openmpi-fillup {}".format(nslotsi)
                 elif job_scheduler == "slurm":
                     slot_comm = "-N {}".format(nslotsi)
-        else:
-            wrf_dir_i = conf.wrf_dir_pre
 
         #timestep
         if "dt_f" not in args:
