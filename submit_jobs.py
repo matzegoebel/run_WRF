@@ -588,7 +588,7 @@ if __name__ == "__main__":
                     "pool_jobs":      ("-p", "--pool", "store_true"),
                     "mail":           ("-m", "--mail", "store"),
                     "wait":           ("-w", "--wait", "store_true"),
-                    "no_namelist_check": ("-n", "--no_namelist_check", "store_false"),
+                    "no_namelist_check": ("-n", "--no_namelist_check", "store_true"),
                     "test_run":        ("-T", "--test_run", "store_true"),
                     "verbose":        ("-v", "--verbose", "store_true")
                     }
