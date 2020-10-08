@@ -11,23 +11,25 @@ Test settings for automated tests.
 """
 import os
 from collections import OrderedDict as odict
-import misc_tools
+from run_wrf import misc_tools
 
 #%%
 '''Simulations settings'''
 params = {} #parameter dict for params not used in param_grid
 
-wrf_dir_pre = "WRF_test" #prefix for WRF build directory (_debug or _mpi are appended automatically)
+wrf_dir_pre = "WRF" #prefix for WRF build directory (_debug or _mpi are appended automatically)
 ideal_case = "em_les" #idealized WRF case
-runID = "pytest" #name for this simulation series
+runID = "test" #name for this simulation series
 
 outpath = os.environ["wrf_res"] #WRF output path root
-outdir = "test/" + runID #subdirectory for WRF output if not set in command line
-run_path = os.environ["wrf_runs"] + "/" + runID #path where run directories of simulations will be created
-build_path = os.environ["wrf_builds"] + "tests" #path where different versions of the compiled WRF model code reside
+outdir = "test/" #subdirectory for WRF output if not set in command line
+run_path = os.environ["wrf_runs"] #path where run directories of simulations will be created
+build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
-param_grid = odict(mp_physics=[1,2])
+#if None: only 1 configuration is run
+param_grid = odict(mp_physics=[1,2],
+                   res={"dx" : [200,4000], "dz0" : [10,50], "nz" : [100,60]})
 
 # names of parameter values for output filenames; either dictionaries or lists (not for composite parameters)
 param_names = {"mp_physics" : {1: "kessler", 2: "lin"},
@@ -38,53 +40,52 @@ param_names = {"mp_physics" : {1: "kessler", 2: "lin"},
 #any namelist parameters and some additional ones can be used
 
 
-params["start_time"] = "2018-06-20_07:00:00" #format %Y-%m-%d_%H:%M:%S
-params["end_time"] = "2018-06-20_07:30:00" #format %Y-%m-%d_%H:%M:%S
+params["start_time"] = "2018-06-20_00:00:00" #format %Y-%m-%d_%H:%M:%S
+params["end_time"] = "2018-06-20_02:00:00" #format %Y-%m-%d_%H:%M:%S
 
 params["n_rep"] = 1 #number of repetitions for each configuration
 
 #horizontal grid
 params["dx"] = 500 #horizontal grid spacing (m)
-params["lx"] = 1000 #minimum horizontal extent in east west (m)
+params["lx"] = 1000 #horizontal extent in east west (m)
 params["ly"] = 1000 #minimum horizontal extent in north south (m)
 #use minimum number of grid points set below:
 use_min_gridpoints = False #"x", "y", True (for both) or False
-params["min_gridpoints_x"] = 2 #minimum number of grid points in x direction (including boundary)
-params["min_gridpoints_y"] = 2 #minimum number of grid points in y direction (including boundary)
+params["min_gridpoints_x"] = 10 #minimum number of grid points in x direction
+params["min_gridpoints_y"] = 10 #minimum number of grid points in y direction
 #if use_min_gridpoints: force x and y extents to be multiples of lx and ly, respectively
 force_domain_multiple = False #"x", "y", True (for both) or False
 
-#control vertical grid creation (see vertical_grid.py for details on the different methods)
-params["ztop"] = 2000 #top of domain (m)
+#vertical grid
+params["ztop"] = 5000 #top of domain (m)
 params["zdamp"] = int(params["ztop"]/3) #depth of damping layer (m)
-params["nz"] = None #number of vertical levels
+params["nz"] = 60 #number of vertical levels
 params["dz0"] = 20 #height of first model level (m)
-params["dzmax"] = 300 #if nz is None and for dz_method=0 only: specify maximum vertical grid spacing instead of nz; either float or "dx" to make it equal to dx
-params["dz_method"] = 3 #method for creating vertical grid as defined in vertical_grid.py
+params["dzmax"] = None #if nz is None and for dz_method=0 only: specify maximum vertical grid spacing instead of nz; either float or "dx" to make it equal to dx
+params["dz_method"] = 0 #method for creating vertical grid as defined in vertical_grid.py
 
 params["dt_f"] = None  #time step (s), if None calculated as dt = 6 s/m *dx/1000; can be float
 #minimum time between radiation calls (min); if radt is not specified: radt=max(radt_min, 10*dt)
 params["radt_min"] = 1
 
-params["input_sounding"] = "meanwind" #name of input sounding to use (final name is then created: input_sounding_$name)
+params["input_sounding"] = "shalconv" #name of input sounding to use (final name is then created: input_sounding_$name)
 
 params["pbl_res"] = 500 #dx (m) from and above which to use PBL scheme
 params["spec_hfx"] = None #None specified surface heat flux instead of radiation (K m s-1)
 
 #other standard namelist parameters
-params["mp_physics"] = 0
-
+params["mp_physics"] = 2
 params["bl_pbl_physics"] = 2
 
 #indices for output streams and their respective name and output interval (minutes, floats allowed)
 # 0 is the standard output stream
-params["output_streams"] = {24: ["wrfout", 10.], 0: ["fastout", 5.] }
+params["output_streams"] = {0: ["wrfout", 30] }
 
 # filename where output variables for standard and auxiliary streams are modified:
 # if None: use specified value in namelist.input: if "" no file is used
-params["iofields_filename"] = "IO_test.txt"
+params["iofields_filename"] = None
 
-params["restart_interval"] = 30 #restart interval (min)
+params["restart_interval"] = 240 #restart interval (min)
 
 split_output_res = 0 #dx (m) below which to split output in one timestep per file
 
@@ -108,7 +109,7 @@ vmem_per_grid_point = None #vmem (MB) per horizontal grid point per job (not per
 vmem_min = None #minimum virtual memory (MB) per slot for running WRF
 
 vmem_buffer = 1.5 #buffer factor for virtual memory (not used for test runs or if vmem is given)
-vmem_test = 1000  #virtual memory per slot (MB) for test runs
+vmem_test = 2000  #virtual memory per slot (MB) for test runs
 
 
 #stack size (MB) for ideal.exe (SGE only)
@@ -127,7 +128,7 @@ runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}
 rt_test = 5 #runtime (min) for test runs
 
 
-send_rt_signal = 10 #seconds before requested runtime is exhausted and signal is sent to job
+send_rt_signal = 20 #seconds before requested runtime is exhausted and signal is sent to job
 send_rt_signal_restart = 120 #send rt signal earlier for concatenation of output files in restart runs
 
 #paths to search for log files to determine runtime and/or vmem if not specified
@@ -141,7 +142,7 @@ even_split = False #force equal split between processors
 
 #%%
 '''Slot configurations and cluster settings'''
-mail_address = "matthias.goebel@uibk.ac.at"
+mail_address = ""
 clusters = ["leo", "vsc"]
 reduce_pool = True #reduce pool size to the actual uses number of slots; do not use if you do not want to share the node with others
 
@@ -175,7 +176,7 @@ if any([c in host for c in clusters]):
         qos = "normal_0064"
          #minimum pool size; should be equal to the number of available CPUs per node
         pool_size = misc_tools.get_node_size_slurm(queue)
-        force_pool = True #always use pooling as vsc only offers exclusive nodes
+        force_pool = True #always use pooling
 else:
     job_scheduler = "slurm"
     queue = "std"
@@ -187,6 +188,7 @@ else:
     force_pool = True
 
 #%%
+
 param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)
 
 #Below you can manually add parameters to the DataFrame combs

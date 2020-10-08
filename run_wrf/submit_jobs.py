@@ -63,7 +63,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
     """
 
-    import misc_tools
+    from run_wrf import misc_tools
 
     if (not init) and (outdir is not None):
         print("WARNING: option -o ignored when not in initialization mode!\n")
@@ -75,12 +75,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         raise ValueError("Do not use pooling for test runs!")
     if init and restart:
         raise ValueError("For restart runs no initialization is needed!")
-    if len(glob.glob(os.getcwd() + "/submit_jobs.py")) == 0:
-        raise RuntimeError("Script must be started from within its directory!")
 
     if config_file[-3:] == ".py":
         config_file = config_file[:-3]
-    conf = importlib.import_module("configs.{}".format(config_file))
+    conf = importlib.import_module("run_wrf.configs.{}".format(config_file))
     param_combs, combs = conf.param_combs, conf.combs
     combs_all = deepcopy(combs)
 

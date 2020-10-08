@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys
-from get_namelist import get_namelist_param_val, mod_namelist_val
+from run_wrf.get_namelist import get_namelist_param_val, mod_namelist_val
 line = sys.argv[1]
 new_val = sys.argv[2]
 

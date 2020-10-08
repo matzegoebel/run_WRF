@@ -12,7 +12,7 @@ For MPI testing with SLURM.
 
 """
 
-from configs.test.config_test_mpi import *
+from run_wrf.configs.test.config_test_mpi import *
 
 #%%
 

@@ -13,8 +13,8 @@ To test restart functionality
 """
 import os
 from collections import OrderedDict as odict
-import misc_tools
-from configs.test.config_test import *
+from run_wrf import misc_tools
+from run_wrf.configs.test.config_test import *
 from copy import deepcopy
 
 #%%

@@ -5,14 +5,14 @@ Created on Wed Nov 20 17:14:23 2019
 
 @author: c7071088
 """
-import misc_tools
-from misc_tools import Capturing
+from run_wrf import misc_tools
+from run_wrf.misc_tools import Capturing
 import pytest
 import numpy as np
 import subprocess as sp
 import os
 from collections import OrderedDict as odict
-import get_namelist
+from run_wrf import get_namelist
 import pandas as pd
 from collections import Counter
 

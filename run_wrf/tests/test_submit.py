@@ -9,17 +9,16 @@ Test submit_jobs function
 """
 
 import os
-from submit_jobs import submit_jobs
+from run_wrf.submit_jobs import submit_jobs
 import pytest
-from misc_tools import Capturing
+from run_wrf.misc_tools import Capturing
 from collections import Counter
-import configs.test.config_test as conf
+import run_wrf.configs.test.config_test as conf
 import shutil
 import time
-from netCDF4 import Dataset
-import misc_tools
-import get_namelist
-import wrf
+import xarray as xr
+from run_wrf import misc_tools
+from run_wrf import get_namelist
 import glob
 import pandas as pd
 
@@ -67,10 +66,10 @@ def test_basic():
     #check output data
     outfiles = ['fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
     assert sorted(os.listdir(outd)) == sorted(outfiles)
-    file = Dataset(outd + "/fastout_pytest_lin_0")
-    t = wrf.extract_times(file, timeidx=None)
+    file = xr.open_dataset(outd + "/fastout_pytest_lin_0")
+    t = file["XTIME"]
     t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:30:00', freq="5min")
-    assert (t == t_corr).all()
+    assert (len(t) == len(t_corr)) and (t == t_corr).all()
 
     #test behaviour if run already exists
     for run in os.listdir(conf.run_path):
@@ -109,10 +108,10 @@ def test_basic():
     #check output data
     outfiles = ['rst', 'bak', 'fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
     assert sorted(os.listdir(outd)) == sorted(outfiles)
-    file = Dataset(outd + "/fastout_pytest_lin_0")
-    t = wrf.extract_times(file, timeidx=None)
+    file = xr.open_dataset(outd + "/fastout_pytest_lin_0")
+    t = file["XTIME"]
     t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T08:00:00', freq="5min")
-    assert (t == t_corr).all()
+    assert (len(t) == len(t_corr)) and (t == t_corr).all()
 
 def test_repeats():
     """Test config repetitions functionality."""

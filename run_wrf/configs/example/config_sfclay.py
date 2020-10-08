@@ -11,7 +11,7 @@ Example settings
 """
 import os
 from collections import OrderedDict as odict
-import misc_tools
+from run_wrf import misc_tools
 from configs.config import *
 from copy import deepcopy
 

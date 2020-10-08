@@ -193,7 +193,7 @@ do
   then
       echo
       echo "Concatenate output from original and restarted run"
-      python -c "import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[i]}')"
+      python -c "from run_wrf import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[i]}')"
   fi
 done
 

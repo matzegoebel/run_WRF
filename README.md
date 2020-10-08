@@ -1,20 +1,20 @@
 # Readme
 ## Usage
 
-**Usage**: `python submit_jobs.py [OPTIONS]`
-print help: `python submit_jobs.py --help`
+**Usage**: `submit_jobs.py [OPTIONS]`
+print help: `submit_jobs.py --help`
 
 This package helps running idealized WRF experiments. You can define a grid of namelist parameters and additional settings for your experiments in the config file `configs/config.py`. Any namelist parameter can be added to the settings. However, it has to be already defined in the default namelist file of the used WRF build directory (`WRF${wrf_dir_pre}/test/${ideal_case}/namelist.input`). Otherwise, the namelist settings cannot be overridden and an error is raised. The two variables in the path above are specified in the config file.
 The input sounding is selected in the config file. This input sounding also needs to be in the ideal case directory of the WRF build.
 In addition, the script makes it easy to set the vertical and horizontal domain, start and end times of the simulations and output directories
 For additional parameters in the config file, that are not namelist parameters, refer to the comments in the config file.
 
-To initialize the simulations, run `python submit_jobs.py` with the `-i` flag and then again without this flag to start the simulations. The python script executes the bash scripts `init_wrf.job` and `run_wrf.job`, respectively. The former script copies the binaries of a specified WRF build to a new simulation directory, modifies the namelist parameters, selects the desired input sounding and executes `ideal.exe` and the latter executes `wrf.exe` in serial or parallel mode.
+To initialize the simulations, run `submit_jobs.py` with the `-i` flag and then again without this flag to start the simulations. The python script executes the bash scripts `init_wrf.job` and `run_wrf.job`, respectively. The former script copies the binaries of a specified WRF build to a new simulation directory, modifies the namelist parameters, selects the desired input sounding and executes `ideal.exe` and the latter executes `wrf.exe` in serial or parallel mode.
 When run in parallel mode, the script assumes the name of the parallel build directory ends with "_mpi".
 
 With the `-v` option (verbose mode) the arguments of the call to the bash scripts are displayed. In this way you can check if the namelist parameters that will be set for each configuration are as desired.
 
-With the `-c` option you can specify an alternative config file (default is `config`) located in (a subdirectory of) the folder `configs`. For instance, the config file `test_sfclay.py` is located in `configs/example/` and can be accessed with `python submit_jobs.py -i -c example.config_sfclay`. This example config file also shows how to use the parameters defined in another config file, such that only the parameters which are different in the new file have to be specified.
+With the `-c` option you can specify an alternative config file (default is `config`) located in (a subdirectory of) the folder `configs`. For instance, the config file `test_sfclay.py` is located in `configs/example/` and can be accessed with `submit_jobs.py -i -c example.config_sfclay`. This example config file also shows how to use the parameters defined in another config file, such that only the parameters which are different in the new file have to be specified.
 
 When initializing the simulations, the namelist settings are checked for sanity and consistency based on best practice guidelines for WRF. Warnings and---for severe problems---errors are raised. To ignore the errors and proceed with initializing the simulations, use the `-n` option.
 
@@ -39,9 +39,11 @@ The pooling option can also be used without job scheduler. Combined with the `-w
 
 ## Requirements
 The package is written for a Linux environment. For Windows, it may have to be adjusted.
-In addition to the standard library, the Python packages `numpy` and `pandas` are required. To concatenate the output of restarted and original runs, you also need the program `ncks` from the [NCO](http://nco.sourceforge.net/) package and the Python packages `netcdf4-python` and `wrf-python`.
+In addition to the standard library, the Python packages `numpy`, `pandas`, and `xarray` are required. To concatenate the output of restarted and original runs, you also need the program `ncks` from the [NCO](http://nco.sourceforge.net/) package.
 The package was tested with Python 3.6.
-After downloading or cloning the repository, add the location to your `$PYTHONPATH` environment variable.
+
+## Installation
+Run `pip install -e .` in the root directory.
 
 ## Testing
 The folder `tests` contains scripts and data for testing the code after changing it.
@@ -52,6 +54,6 @@ By default, for this to work, the ideal case `em_les` must be compiled in serial
 Currently, the script (especially the modification of the namelist files) does not work for nested runs, as it is meant to be used for idealized simulations, only.
 
 ## Getting involved
-Feel free to report [issues](https://git.uibk.ac.at/csat8800/run_wrf/issues) on Gitlab.
-You are also invited to improve the code and implement new features yourself. Your changes can be integrated with a [merge request](https://git.uibk.ac.at/csat8800/run_wrf/merge_requests).
+Feel free to report [issues](https://github.com/matzegoebel/run_wrf/issues) on Github.
+You are also invited to improve the code and implement new features yourself. Your changes can be integrated with a [pull request](https://github.com/matzegoebel/run_wrf/pulls).
 Especially, further tests for the automated testing suite are appreciated.

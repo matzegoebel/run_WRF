@@ -16,13 +16,11 @@ import math
 import os
 from collections import OrderedDict as odict
 import glob
-from netCDF4 import Dataset
-import wrf
 from datetime import datetime
 from io import StringIO
 import sys
-import get_namelist
-import vertical_grid
+from run_wrf import get_namelist
+from run_wrf import vertical_grid
 from pathlib import Path as fopen
 import xarray as xr
 
@@ -148,6 +146,13 @@ def remove_empty_str(l):
 def read_file(file):
     return fopen(file).read_text()
 
+def extract_times(ds):
+    if "XTIME" in ds:
+        time = ds["XTIME"]
+    else:
+        time = [datetime.fromisoformat(str(t.values.astype(str))) for t in ds["Times"]]
+        time = pd.DatetimeIndex(time)
+    return time.values
 #%%config grid related
 
 def grid_combinations(param_grid, add_params=None, return_df=False):
@@ -1083,12 +1088,12 @@ def concat_restart(path, id_filter=""):
         all_files_cut = []
         time_prev = None
         for cfile in all_files:
-            ds = Dataset(cfile, "r+")
-            time = wrf.extract_times(ds, timeidx=None)
+            ds = xr.open_dataset(cfile)
+            time = extract_times(ds)
+            ds.close()
             if time_prev is not None:
                 if time_prev[-1] >= time[0]:
                     start_idx = np.where(time_prev[-1]==time)[0][0] + 1
-                    ds.close()
                     if start_idx < len(time):
                         err = os.system("ncks -O -d Time,{},{} {} {}".format(start_idx, len(time)-1, cfile, cfile + "_cut"))
                         if err != 0:
@@ -1112,9 +1117,8 @@ def concat_restart(path, id_filter=""):
         err = os.system("ncrcat {} {}".format(" ".join(all_files_cut), new_concat))
         if err != 0:
             raise Exception("Error in ncrcat when concatenating output of original and restarted runs" )
-        file_final = Dataset(new_file + "_concat")
-        time_final = wrf.extract_times(file_final, timeidx=None)
-        file_final.close()
+        file_final = xr.open_dataset(new_file + "_concat")
+        time_final = extract_times(ds)
 
         res = np.median(time_final[1:] - time_final[:-1])
         time_corr = np.arange(time_final[0], time_final[-1] + res, res)
