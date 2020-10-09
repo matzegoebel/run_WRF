@@ -694,8 +694,9 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     """Sets some namelist parameters based on the config files settings."""
     print("Setting namelist parameters\n")
     wrf_build = "{}/{}".format(conf.build_path, wrf_dir)
-    namelist = get_namelist.namelist_to_dict("{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case))
-    namelist_all = get_namelist.namelist_to_dict("{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case), build_path=wrf_build, registries=conf.registries)
+    namelist_path = "{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case)
+    namelist = get_namelist.namelist_to_dict(namelist_path)
+    namelist_all = get_namelist.namelist_to_dict(namelist_path, build_path=wrf_build, registries=conf.registries)
 
     namelist_upd_all = deepcopy(namelist_all)
     namelist_upd_all.update(args)
@@ -897,7 +898,7 @@ def check_namelist_best_practice(namelist):
 
 
     #pbl scheme, LES and turbulence
-    if (namelist["bl_pbl_physics"] == 0) and (dx >= 500):
+    if (namelist["bl_pbl_physics"] == 0) and (dx >= 500) and (namelist["km_opt"] != 5):
         print("WARNING: PBL scheme recommended for dx > 500 m")
     elif namelist["bl_pbl_physics"] != 0:
         if dx <= 100:

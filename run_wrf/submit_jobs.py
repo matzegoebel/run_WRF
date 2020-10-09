@@ -76,6 +76,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     if init and restart:
         raise ValueError("For restart runs no initialization is needed!")
 
+    #change to code path
+    fpath = os.path.realpath(__file__)
+    os.chdir(fpath[:fpath.index("submit_jobs.py")])
+
     if config_file[-3:] == ".py":
         config_file = config_file[:-3]
     conf = importlib.import_module("run_wrf.configs.{}".format(config_file))
@@ -239,6 +243,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 elif job_scheduler == "slurm":
                     slot_comm = "-N {}".format(nslotsi)
 
+        #if code in extra subfolder
+        wrf_build = "{}/{}/".format(conf.build_path, wrf_dir_i)
+        if (not os.path.isdir(wrf_build + "/run")) and os.path.isdir(wrf_build + "/WRF/run"):
+            wrf_dir_i += "/WRF"
         #timestep
         if "dt_f" not in args:
             args["dt_f"] = r/1000*6 #wrf rule of thumb
