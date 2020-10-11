@@ -125,7 +125,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
     IDs = []
     rtr = []
-    wrf_dir = []
     vmem = []
     nslots = []
     nxny = []
@@ -270,11 +269,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 continue
             if conf.request_vmem:
                 vmemi = args["vmem"]
-        vmem.append(vmemi)
-        nslots.append(nslotsi)
-        nxny.append([nx,ny])
-        wrf_dir.append(wrf_dir_i)
-
 
         #not needed; just for completeness of dataframe:
         args["nx"] = nx
@@ -287,6 +281,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
         n_rep = args["n_rep"]
         for rep in range(n_rep): #repetion loop
+            vmem.append(vmemi)
+            nslots.append(nslotsi)
+            nxny.append([nx,ny])
+
             IDr = IDi + "_" + str(rep)
             run_dir_r = run_dir + "_" + str(rep)
 
@@ -422,7 +420,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     vmem = vmem[:-1]
                     nslots = nslots[:-1]
                     nxny = nxny[:-1]
-                    wrf_dir = wrf_dir[:-1]
                     #if last ID: do run but without current config, else: skip run
                     if (not last_id) or (len(nslots) == 0):
                         continue
@@ -441,7 +438,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         if len(nslots) > 1:
                             nslots = nslots[:-1]
                             nxny = nxny[:-1]
-                            wrf_dir = wrf_dir[:-1]
                             vmem = vmem[:-1]
                             rtr = rtr[:-1]
                             IDs = IDs[:-1]
@@ -471,13 +467,12 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                     slot_comm = "--ntasks-per-node={} -N {}".format(conf.pool_size, nodes)
                         else:
                             job_name = IDr
-                        wrf_dir = " ".join(wrf_dir)
                         jobs = " ".join(IDs)
                         nslots_str = " ".join([str(ns) for ns in nslots])
                         nx_str = " ".join([str(ns[0]) for ns in nxny])
                         ny_str = " ".join([str(ns[1]) for ns in nxny])
                         timestamp = datetime.datetime.now().isoformat()[:19]
-                        comm_args =dict(JOB_NAME=job_name, wrfv=wrf_dir, nslots=nslots_str, nx=nx_str, ny=ny_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
+                        comm_args =dict(JOB_NAME=job_name, nslots=nslots_str, nx=nx_str, ny=ny_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
                                         batch=int(use_job_scheduler), cluster=int(conf.cluster), restart=int(restart), outpath=outpath,
                                         module_load=conf.module_load, timestamp=timestamp)
                         for p, v in comm_args.items():
@@ -546,7 +541,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             vmem = [vmemi]
                             nslots = [nslotsi]
                             nxny = [[nx,ny]]
-                            wrf_dir = [wrf_dir_i]
 
                         #run residual jobs that did not fit in the last job pool
                             if last_id:
@@ -558,7 +552,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             vmem = []
                             nslots = []
                             nxny = []
-                            wrf_dir = []
 
     return pd.DataFrame(combs_all)
 

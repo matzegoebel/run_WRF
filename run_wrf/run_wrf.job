@@ -24,7 +24,6 @@ njobs=${#jobs[@]}
 nslots=(${nslots})
 nx=(${nx})
 ny=(${ny})
-wrfv=(${wrfv})
 runlog=run_${timestamp}.log
 runerr=run_${timestamp}.err
 
@@ -61,7 +60,6 @@ do
   echo
   echo "Running job: ${jobs[i]}"   >> $runlog
   nsi=${nslots[i]}
-  wrf_dir_i=${wrfv[i]}
   echo "slots: $nsi "    >> $runlog
 
   if (( nsi > 1 ))
