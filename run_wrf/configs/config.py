@@ -85,7 +85,7 @@ params["output_streams"] = {0: ["wrfout", 30] }
 # if None: use specified value in namelist.input: if "" no file is used
 params["iofields_filename"] = None
 
-params["restart_interval"] = 240 #restart interval (min)
+params["restart_interval_m"] = 240 #restart interval (min)
 
 split_output_res = 0 #dx (m) below which to split output in one timestep per file
 

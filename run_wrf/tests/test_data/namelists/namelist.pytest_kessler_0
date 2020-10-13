@@ -20,7 +20,7 @@
  history_outname = "/home/matze/phd/results/wrf/test/pytest/fastout_pytest_kessler_0"
  frames_per_outfile                  = 1000, 1000, 1000,
  restart                             = .false.,
- restart_interval = 30
+ restart_interval_m = 30
  io_form_history                     = 2
  io_form_restart                     = 2
  io_form_input                       = 2

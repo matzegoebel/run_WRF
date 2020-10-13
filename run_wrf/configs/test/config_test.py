@@ -84,7 +84,7 @@ params["output_streams"] = {24: ["wrfout", 10.], 0: ["fastout", 5.] }
 # if None: use specified value in namelist.input: if "" no file is used
 params["iofields_filename"] = "IO_test.txt"
 
-params["restart_interval"] = 30 #restart interval (min)
+params["restart_interval_m"] = 30 #restart interval (min)
 
 split_output_res = 0 #dx (m) below which to split output in one timestep per file
 
