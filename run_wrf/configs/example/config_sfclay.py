@@ -27,6 +27,6 @@ params = deepcopy(params)
 params["dx"] = 500 #horizontal grid spacing (m)
 
 #%%
-param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)
+param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
 
 

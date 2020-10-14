@@ -21,5 +21,5 @@ from run_wrf.configs.test.config_test import *
 vmem = 500
 
 #%%
-param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)
+param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
 

@@ -23,5 +23,5 @@ params["end_time"] = "2018-06-20_08:00:00" #format %Y-%m-%d_%H:%M:%S
 
 
 #%%
-param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)
+param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
 

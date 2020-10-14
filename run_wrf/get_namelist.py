@@ -51,10 +51,10 @@ def get_namelist_param_val(line, verbose=False, first_domain_only=True):
         if "!" in line:
             line = line[:line.index("!")]
         c = Counter(line)
-        if ("=" in c) and (c["="] > 1):
+        if "\n" in line:
             raise ValueError("Duplicate entry in namelist file:\n {}".format(line))
         try:
-            param, val = line.split("=")
+            param, val = line[:line.index("=")], line[line.index("=") + 1:]
         except ValueError as e:
             e.args = ("Error in line: {}\n".format(line)+ e.args[0], )
             raise(e)

@@ -68,11 +68,14 @@ def test_namelist_to_dict():
 
 def test_grid_combinations():
     param_grid = odict(input_sounding=["stable", "unstable"], res={"dx" : [200,4000], "dz0" : [10,50]})
-    param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, return_df=True)
-    param_combs_corr = pd.DataFrame(columns=["input_sounding", "dx", "dz0", "res_idx"], index=np.arange(4))
-    param_combs_corr.loc[:,:] = np.array([['stable', 200, 10, 0],
-                                          ['stable', 4000, 50, 1],
-                                          ['unstable', 200, 10, 0],
-                                          ['unstable', 4000, 50, 1]], dtype=object)
-
+    param_names = dict(res = [200, 4000])
+    param_combs = misc_tools.grid_combinations(param_grid, param_names=param_names, runID="")
+    param_combs = param_combs.drop(columns="fname")
+    param_combs_corr = pd.DataFrame(columns=["input_sounding", "dx", "dz0"], index=np.arange(5))
+    param_combs_corr.loc[:,:] = np.array([['stable', 200, 10],
+                                          ['stable', 4000, 50],
+                                          ['unstable', 200, 10],
+                                          ['unstable', 4000, 50],
+                                          [True, True, True]], dtype=object)
+    param_combs_corr.index = param_combs.index
     pd.testing.assert_frame_equal(param_combs.astype(object), param_combs_corr)

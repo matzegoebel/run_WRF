@@ -22,5 +22,5 @@ params = deepcopy(params)
 params["n_rep"] = 2 #number of repetitions for each configuration
 
 #%%
-param_combs, combs, param_grid_flat, composite_params = misc_tools.grid_combinations(param_grid, params)
+param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
 

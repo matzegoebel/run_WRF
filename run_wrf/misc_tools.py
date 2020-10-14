@@ -155,7 +155,7 @@ def extract_times(ds):
     return time.values
 #%%config grid related
 
-def grid_combinations(param_grid, add_params=None, return_df=False):
+def grid_combinations(param_grid, add_params=None, param_names=None, runID=None):
     """
     Create list of all combinations of parameter values defined in dictionary param_grid.
     Two or more parameters can be varied simultaneously by defining a composite
@@ -173,31 +173,29 @@ def grid_combinations(param_grid, add_params=None, return_df=False):
         input dictionary containing the parameter values
     add_params : pandas DataFrame
         additional parameters to add to result
-    return_df : bool
-        return pandas Dataframes instead of list of dicts
+    param_names : dictionary of lists or dictionaries
+        names of parameter values for output filenames
+    runID : str or None
+        General ID for the requested simulation series used as prefix in filenames
 
     Returns
     -------
     combs : list of dicts or pandas DataFrame
         parameter combinations
-    combs_full : list of dicts or pandas DataFrame
-        param_combs combined with add_params
-    param_grid_flat : dictionary
-        input param_grid with composite parameters flattened
-    composite_params : dictionary
-        included parameters for each composite parameter
+
 
     """
-    if param_grid is None:
-        composite_params = None
-        param_grid_flat = None
+    if (param_grid is None) or param_grid == {}:
         combs = [odict({})]
-
+        params = None
+        IDi, IDi_d = output_id_from_config(param_names=param_names, runID=runID)
+        index = [IDi]
+        fnames = index
     else:
+        #prepare grid
         d = deepcopy(param_grid)
-        param_grid_flat = deepcopy(param_grid)
         params = []
-        composite_params = {}
+        composite_params = []
         for param,val in d.items():
             if type(val) == dict:
                 val_list = list(val.values())
@@ -206,47 +204,57 @@ def grid_combinations(param_grid, add_params=None, return_df=False):
                     raise ValueError("All parameter ranges that belong to the same composite must have equal lengths!")
                 val_list.append(np.arange(lens[0]))
                 params.extend([*val.keys(), param + "_idx"])
-                composite_params[param] = list(val.keys())
-
+                composite_params.append( param + "_idx")
                 d[param] = transpose_list(val_list)
-                for k in val.keys():
-                    param_grid_flat[k] = val[k]
-                del param_grid_flat[param]
             else:
                 params.append(param)
 
         combs = list(itertools.product(*d.values()))
+        index = []
+        fnames = []
+        #create parameter grid
         for i,comb in enumerate(combs):
             c = flatten_list(comb)
             combs[i] = odict(zip(params,c))
-
-    combs_full = deepcopy(combs)
+            IDi, IDi_d = output_id_from_config(combs[i], param_grid, param_names=param_names, runID=runID)
+            index.append(str(IDi_d))
+            #IDs used for filenames
+            fnames.append(IDi)
     if add_params is not None:
         #combine param grid and additional settings
         for param, val in add_params.items():
-            for i,comb in enumerate(combs_full):
+            for i,comb in enumerate(combs):
                 if param not in comb:
                     comb[param] = val
 
-    if return_df:
-        combs = pd.DataFrame(combs)
-        combs_full = pd.DataFrame(combs_full)
+    combs = pd.DataFrame(combs).astype("object")
+    combs.index = index
+    combs["fname"] = fnames
+    if params is not None:
+        #add flags for core parameters that are defined in param_grid
+        core = combs.iloc[0].copy()
+        core[:] = False
+        core[params] = True
+        core = core.rename("core_param")
+        combs = combs.append(core)
+        #drop _idx colums
+        combs = combs.drop(columns=composite_params)
 
-    return combs, combs_full, param_grid_flat, composite_params
+    return combs
 
-def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
+def output_id_from_config(param_comb=None, param_grid=None, param_names=None, runID=None):
     """
     Create ID for output files. Param_names can be used to replace parameter values.
 
     Parameters
     ----------
-    param_comb : pandas Dataframe
+    param_comb : pandas Dataframe, optional
         current parameter configuration
-    param_grid : dictionary of lists or dictionaries
+    param_grid : dictionary of lists or dictionaries, optional
         input dictionary containing the parameter values
-    param_names : dictionary of lists or dictionaries
+    param_names : dictionary of lists or dictionaries, optional
         names of parameter values for output filenames
-    runID : str or None
+    runID : str or None, optional
         General ID for the requested simulation series used as prefix in filenames
 
     Returns
@@ -273,11 +281,11 @@ def output_id_from_config(param_comb, param_grid, param_names=None, runID=None):
                 raise ValueError("param_names need to be defined for composite parameters!")
             else:
                 ID[p] = param_comb[p]
-        ID_str = "_".join([str(v) for v in ID.values()])
+
+        for p, val in ID.items():
+            ID_str += "_{}={}".format(p, val)
 
     if runID is not None:
-        if ID_str != "":
-            ID_str = "_" + ID_str
         ID_str = runID + ID_str
 
     return ID_str, ID
@@ -814,11 +822,7 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
         # args_str = args_str + """ iofields_filename "'{}'" """.format(args["iofields_filename"])
 
     # delete non-namelist parameters
-    if conf.composite_params is not None:
-        composite_keys = conf.composite_params.keys()
-    else:
-        composite_keys = []
-    del_args = [*conf.del_args, *[p + "_idx" for p in composite_keys]]
+    del_args = conf.del_args
     args_clean = deepcopy(args)
     for del_arg in del_args:
         if del_arg in namelist_all:

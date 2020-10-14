@@ -21,7 +21,8 @@ from pathlib import Path as fopen
 
 #%%
 def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_job_scheduler=False,
-           check_args=False, pool_jobs=False, mail="ea", wait=False, no_namelist_check=False, test_run=False, verbose=False):
+           check_args=False, pool_jobs=False, mail="ea", wait=False, no_namelist_check=False, test_run=False, verbose=False,
+           param_combs=None):
     """
     Submit idealized WRF experiments. Refer to README.md for more information.
 
@@ -55,14 +56,15 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         Do short test runs on cluster to find out required runtime and virtual memory
     verbose : bool, optional
         Verbose mode
-
+    param_combs : list of dicts or pandas DataFrame, optional
+        DataFrame with settings for all configurations.
     Returns
     -------
-    combs : pandas DataFrame
-        DataFrame with settings for all submitted configurations.
+    param_combs : pandas DataFrame
+        DataFrame with settings for all configurations.
 
     """
-
+#TODO: param_combs, combs_all same?
     from run_wrf import misc_tools
 
     if (not init) and (outdir is not None):
@@ -82,9 +84,18 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
     if config_file[-3:] == ".py":
         config_file = config_file[:-3]
-    conf = importlib.import_module("run_wrf.configs.{}".format(config_file))
-    param_combs, combs = conf.param_combs, conf.combs
-    combs_all = deepcopy(combs)
+    try:
+        conf = importlib.import_module("run_wrf.configs.{}".format(config_file))
+    except ModuleNotFoundError:
+        conf = importlib.import_module(config_file)
+
+    if param_combs is None:
+        if param_combs in dir(conf):
+            param_combs = conf.param_combs
+        else:
+            param_combs = misc_tools.grid_combinations(conf.param_grid, conf.params, param_names=conf.param_names, runID=conf.runID)
+
+    param_combs = deepcopy(param_combs)
 
     if test_run:
         print("Do short test runs on cluster to find out required runtime and virtual memory\n\n")
@@ -137,20 +148,25 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         else:
             print("Run WRF simulations")
 
-    if conf.param_grid is not None:
-        print("Configs:")
-        print(pd.DataFrame(param_combs))
-        print("-"*40)
-    for i in range(len(combs)):
-        args = deepcopy(pd.Series(combs[i]).dropna().to_dict())
-        param_comb = param_combs[i]
+    print("Configs:")
+    if "core_param" in param_combs.index:
+        #print only core parameters
+        core_params = param_combs.loc["core_param"]
+        param_combs = param_combs.iloc[:-1]
+        print(param_combs.loc[:,core_params])
+    else:
+        print(param_combs.index.values)
+    print("-"*40)
+    for i, (cname, param_comb) in enumerate(param_combs.iterrows()):
+        IDi = param_comb["fname"]
+        args = deepcopy(param_comb.dropna().to_dict())
+        del args["fname"]
 
         #create output ID for current configuration
-        IDi, IDi_d = misc_tools.output_id_from_config(param_comb, conf.param_grid, conf.param_names, conf.runID)
         run_dir =  "{}/WRF_{}".format(conf.run_path, IDi)
 
         print("\n\nConfig:  " + IDi)
-        print("\n".join(str(param_comb).split("\n")[:-1]))
+        print(cname)
         print("\n")
 
         r = args["dx"]
@@ -276,7 +292,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         args["nslots"] = nslotsi
         args["run_dir"] = run_dir
         for arg, val in args.items():
-            combs_all[i][arg] = val
+            if arg not in param_combs.keys():
+                param_combs[arg] = None
+            param_combs[arg][cname] = val
 
 
         n_rep = args["n_rep"]
@@ -414,7 +432,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
 
                 last_id = False
-                if (rep == n_rep-1) and (i == len(combs) - 1):
+                if (rep == n_rep-1) and (i == len(param_combs) - 1):
                     last_id = True
                 if skip:
                     vmem = vmem[:-1]
@@ -553,7 +571,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             nslots = []
                             nxny = []
 
-    return pd.DataFrame(combs_all)
+    return param_combs
 
 #%%
 if __name__ == "__main__":
@@ -565,6 +583,7 @@ if __name__ == "__main__":
 
     #default function values
     defaults = {k : d.default for k, d in sig.items()}
+    del defaults["param_combs"]
     doc = submit_jobs.__doc__
     #get description from doc string
     desc = {}
@@ -608,5 +627,5 @@ if __name__ == "__main__":
 
 
 
-    submit_jobs(**options.__dict__)
+    param_combs = submit_jobs(**options.__dict__)
 

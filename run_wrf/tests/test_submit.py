@@ -64,9 +64,12 @@ def test_basic():
     assert input_sounding == input_sounding_corr
 
     #check output data
-    outfiles = ['fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
+    outfiles = ['fastout_pytest_mp_physics=kessler_0',
+                'fastout_pytest_mp_physics=lin_0',
+                'wrfout_pytest_mp_physics=kessler_0',
+                'wrfout_pytest_mp_physics=lin_0']
     assert sorted(os.listdir(outd)) == sorted(outfiles)
-    file = xr.open_dataset(outd + "/fastout_pytest_lin_0")
+    file = xr.open_dataset(outd + "/fastout_pytest_mp_physics=lin_0")
     t = file["XTIME"]
     t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:30:00', freq="5min")
     assert (len(t) == len(t_corr)) and (t == t_corr).all()
@@ -90,11 +93,10 @@ def test_basic():
                     assert count[success[init]] == combs["n_rep"].sum()
 
     #backup created?
-    bak = ['fastout_pytest_lin_0_bak_0',
-           'wrfout_pytest_lin_0_bak_0',
-           'fastout_pytest_kessler_0_bak_0',
-           'wrfout_pytest_kessler_0_bak_0']
-
+    bak = ['fastout_pytest_mp_physics=kessler_0_bak_0',
+           'fastout_pytest_mp_physics=lin_0_bak_0',
+           'wrfout_pytest_mp_physics=kessler_0_bak_0',
+           'wrfout_pytest_mp_physics=lin_0_bak_0']
     assert sorted(os.listdir(outd + "/bak")) == sorted(bak)
 
     with pytest.raises(ValueError, match="Value 'a' for -e option not defined!"):
@@ -106,9 +108,13 @@ def test_basic():
         assert count[m] == combs["n_rep"].sum()
 
     #check output data
-    outfiles = ['rst', 'bak', 'fastout_pytest_lin_0','wrfout_pytest_lin_0', 'fastout_pytest_kessler_0', 'wrfout_pytest_kessler_0']
+    outfiles = ['rst', 'bak',
+                'fastout_pytest_mp_physics=kessler_0',
+                'fastout_pytest_mp_physics=lin_0',
+                'wrfout_pytest_mp_physics=kessler_0',
+                'wrfout_pytest_mp_physics=lin_0']
     assert sorted(os.listdir(outd)) == sorted(outfiles)
-    file = xr.open_dataset(outd + "/fastout_pytest_lin_0")
+    file = xr.open_dataset(outd + "/fastout_pytest_mp_physics=lin_0")
     t = file["XTIME"]
     t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T08:00:00', freq="5min")
     assert (len(t) == len(t_corr)) and (t == t_corr).all()
@@ -128,7 +134,7 @@ def test_mpi_and_batch():
     _, output = capture_submit(init=False, pool_jobs=True, wait=True, exist="o", config_file="test.config_test_mpi")
     print(output)
     count = Counter(output)
-    m = "Submit IDs: ['pytest_kessler_0', 'pytest_lin_0']"
+    m = "Submit IDs: ['pytest_mp_physics=kessler_0', 'pytest_mp_physics=lin_0']"
     assert count[m] == 1
     m = "d01 2018-06-20_07:30:00 wrf: SUCCESS COMPLETE WRF"
     assert count[m] == combs["n_rep"].sum()
@@ -146,8 +152,8 @@ def test_mpi_and_batch():
     _, output = capture_submit(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_sge")
     print(output)
     count = Counter(output)
-    batch_comm = "qsub -cwd -q std.q -o {0}/logs/pytest_lin_0.out -e {0}/logs/pytest_lin_0.err -l h_rt=000:00:15 "\
-                 " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N pytest_lin_0 -V  -l h_vmem=85M "\
+    batch_comm = "qsub -cwd -q std.q -o {0}/logs/pytest_mp_physics=lin_0.out -e {0}/logs/pytest_mp_physics=lin_0.err -l h_rt=000:00:15 "\
+                 " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N pytest_mp_physics=lin_0 -V  -l h_vmem=85M "\
                  " run_wrf.job".format(conf.run_path)
     assert batch_comm == output[-1]
 
@@ -164,8 +170,8 @@ def test_mpi_and_batch():
     _, output = capture_submit(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_slurm")
     print(output)
     count = Counter(output)
-    batch_comm = "sbatch -p mem_0064 -o {0}/logs/pool_pytest_kessler_0_pytest_lin_0.out -e {0}/logs/pool_pytest_kessler_0_pytest_lin_0.err --time=000:00:15 "\
-                 "--ntasks-per-node=8 -N 1 --mail-user=matthias.goebel@uibk.ac.at --mail-type=END,FAIL -J pool_pytest_kessler_0_pytest_lin_0 "\
+    batch_comm = "sbatch -p mem_0064 -o {0}/logs/pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0.out -e {0}/logs/pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0.err --time=000:00:15 "\
+                 "--ntasks-per-node=8 -N 1 --mail-user=matthias.goebel@uibk.ac.at --mail-type=END,FAIL -J pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0 "\
                  "--export=ALL  --qos=normal_0064  run_wrf.job".format(conf.run_path)
     assert batch_comm == output[-1]
     assert count['Get runtime from previous runs'] == combs["n_rep"].sum()
