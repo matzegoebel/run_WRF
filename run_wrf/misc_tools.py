@@ -789,32 +789,20 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
             print("Setting isfflx=1")
 
 
-    #pbl scheme
-    if r >= args["pbl_res"]:
+    if "bl_pbl_physics" in args:
         pbl_scheme = args["bl_pbl_physics"]
 
-    else:
-        pbl_scheme = 0
-        if check_p_diff_2("km_opt", 2):
-            print("WARNING: km_opt not set.")
-        if check_p_diff_2("diff_opt", 2):
-            print("WARNING: diff_opt not set.")
-
-
-
-    args["bl_pbl_physics"] = pbl_scheme
-
-    #choose surface layer scheme that is compatible with PBL scheme
-    if pbl_scheme in [1,2,3,4,5,7,10]:
-        sfclay_scheme = pbl_scheme
-    elif pbl_scheme == 6:
-        sfclay_scheme = 5
-    else:
-        sfclay_scheme = 1
-    p = "sf_sfclay_physics"
-    if check_p_diff_2(p, sfclay_scheme):
-        print("Setting sf_sfclay_physics={} for compatibility with PBL scheme.".format(sfclay_scheme))
-        args[p] = sfclay_scheme
+        #choose surface layer scheme that is compatible with PBL scheme
+        if pbl_scheme in [1,2,3,4,5,7,10]:
+            sfclay_scheme = pbl_scheme
+        elif pbl_scheme == 6:
+            sfclay_scheme = 5
+        else:
+            sfclay_scheme = 1
+        p = "sf_sfclay_physics"
+        if check_p_diff_2(p, sfclay_scheme):
+            print("Setting sf_sfclay_physics={} for compatibility with PBL scheme.".format(sfclay_scheme))
+            args[p] = sfclay_scheme
 
     if namelist_upd_all["sf_sfclay_physics"] in [-1,0]:
         print("WARNING: no surface layer scheme selected")

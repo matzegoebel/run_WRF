@@ -18,4 +18,4 @@ from run_wrf.configs.test.config_test import *
 
 # non-namelist parameters that will not be included in namelist file
 del_args =   ["dx", "start_time", "end_time", "dz0", "dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
-              "n_rep", "pbl_res", "dt_f", "radt_min"]
+              "n_rep", "dt_f", "radt_min"]
