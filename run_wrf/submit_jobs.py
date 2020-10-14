@@ -397,9 +397,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     print("Run not initialized yet! Skipping...")
                     skip = True
                 stream_names = [stream[0] for stream in args["output_streams"].values()]
-                send_rt_signal = conf.send_rt_signal
                 if restart:
-                    send_rt_signal = conf.send_rt_signal_restart
                     run_hours  = misc_tools.prepare_restart(run_dir_r, outpath, stream_names, args["end_time"])
                     if (run_hours is None) or (run_hours <= 0):
                         skip = True
@@ -497,6 +495,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             os.environ[p] = str(v)
                         if use_job_scheduler:
                             os.environ["job_scheduler"] = job_scheduler
+                            if restart:
+                                send_rt_signal = conf.send_rt_signal_restart
+                            else:
+                                send_rt_signal = conf.send_rt_signal
 
                             if conf.request_vmem:
                                 vmemp = int(sum(vmem)/sum(nslots))
