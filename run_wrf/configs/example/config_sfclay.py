@@ -12,7 +12,7 @@ Example settings
 import os
 from collections import OrderedDict as odict
 from run_wrf import misc_tools
-from configs.config import *
+from run_wrf.configs.config import *
 from copy import deepcopy
 
 

@@ -43,11 +43,13 @@ In addition to the standard library, the Python packages `numpy`, `pandas`, and 
 The package was tested with Python 3.6.
 
 ## Installation
-Run `pip install -e .` in the root directory.
+In the root directory run:
+
+`pip install -e .` 
 
 ## Testing
 The folder `tests` contains scripts and data for testing the code after changing it.
-Type `pytest` in the command line to run the test suite and see if everything still works as expected.
+Change to that folder and type `pytest` in the command line to run the test suite and see if everything still works as expected.
 By default, for this to work, the ideal case `em_les` must be compiled in serial and parallel mode and the build directories `WRF_test` and `WRF_test_mpi` must reside in `$wrf_builds/test`.
 
 ## Known problems

@@ -24,7 +24,7 @@ exec 2> "init.err"
 
 if (( cluster==0 ))
 then
-  ulimit -s unlimited
+  #~ ulimit -s unlimited
   set -o errexit
 
 else

@@ -14,7 +14,7 @@ else
   cluster=false
 fi
 
-ulimit -s unlimited
+#~ ulimit -s unlimited
 
 code_dir=$(pwd)
 
