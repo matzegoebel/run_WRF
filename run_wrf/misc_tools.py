@@ -610,10 +610,6 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
         args["n_rep"] = 1
     elif conf.rt is not None:
         runtime_per_step = conf.rt*60/n_steps/conf.rt_buffer
-    elif (conf.runtime_per_step_dict is not None) and (r in conf.runtime_per_step_dict):
-        runtime_per_step = conf.runtime_per_step_dict[r]
-        print("Use runtime dict")
-        print_rt_step = True
     else:
         print("Get runtime from previous runs")
         run_dir_0 = run_dir + "_0" #use rep 0 as reference

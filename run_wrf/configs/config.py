@@ -120,8 +120,6 @@ rt_init = 10
 # if None: runtime is estimated from previous identical runs if present
 rt_buffer = 2 #buffer factor to multiply rt with (not used for test runs or if rt is given)
 rt = None #None or job runtime in minutes; buffer not used
-# if rt is None: runtime per time step in seconds for different dx
-runtime_per_step_dict = None #{ 100: 3., 500: 0.5, 1000: 0.3}
 rt_test = 5 #runtime (min) for test runs
 
 
