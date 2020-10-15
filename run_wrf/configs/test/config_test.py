@@ -44,7 +44,8 @@ params["end_time"] = "2018-06-20_07:30:00" #format %Y-%m-%d_%H:%M:%S
 params["n_rep"] = 1 #number of repetitions for each configuration
 
 #horizontal grid
-params["dx"] = 500 #horizontal grid spacing (m)
+params["dx"] = 500 #horizontal grid spacing x-direction(m)
+params["dy"] = None #horizontal grid spacing y-direction (m), if None: dy = dx
 params["lx"] = 1000 #minimum horizontal extent in east west (m)
 params["ly"] = 1000 #minimum horizontal extent in north south (m)
 #use minimum number of grid points set below:
@@ -62,7 +63,7 @@ params["dz0"] = 20 #height of first model level (m)
 params["dzmax"] = 300 #if nz is None and for dz_method=0 only: specify maximum vertical grid spacing instead of nz; either float or "dx" to make it equal to dx
 params["dz_method"] = 3 #method for creating vertical grid as defined in vertical_grid.py
 
-params["dt_f"] = None  #time step (s), if None calculated as dt = 6 s/m *dx/1000; can be float
+params["dt_f"] = None  #time step (s), if None calculated as dt = 6 s/m *min(dx,dy)/1000; can be float
 #minimum time between radiation calls (min); if radt is not specified: radt=max(radt_min, 10*dt)
 params["radt_min"] = 1
 

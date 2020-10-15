@@ -169,7 +169,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         print(cname)
         print("\n")
 
-        r = args["dx"]
+        if "dy" not in args:
+            args["dy"] = args["dx"]
 
         #start and end times
         date_format = '%Y-%m-%d_%H:%M:%S'
@@ -200,20 +201,20 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         gp = conf.use_min_gridpoints
         fm = conf.force_domain_multiple
         if (not gp) or (gp == "y"):
-            args["e_we"] = math.ceil(args["lx"]/r) + 1
+            args["e_we"] = math.ceil(args["lx"]/args["dx"]) + 1
         else:
-            args["e_we"] = max(math.ceil(args["lx"]/r), args["min_gridpoints_x"] - 1) + 1
+            args["e_we"] = max(math.ceil(args["lx"]/args["dx"]), args["min_gridpoints_x"] - 1) + 1
             if (fm == True) or (fm == "x"):
-                lxr = (args["e_we"] -1)*r/args["lx"]
+                lxr = (args["e_we"] -1)*args["dx"]/args["lx"]
                 if lxr != int(lxr):
                     raise Exception("Domain size must be multiple of lx")
 
         if (not gp) or (gp == "x"):
-            args["e_sn"] = math.ceil(args["ly"]/r) + 1
+            args["e_sn"] = math.ceil(args["ly"]/args["dy"]) + 1
         else:
-            args["e_sn"] = max(math.ceil(args["ly"]/r), args["min_gridpoints_y"] - 1) + 1
+            args["e_sn"] = max(math.ceil(args["ly"]/args["dy"]), args["min_gridpoints_y"] - 1) + 1
             if (fm == True) or (fm == "y"):
-                lyr = (args["e_sn"] -1)*r/args["ly"]
+                lyr = (args["e_sn"] -1)*args["dy"]/args["ly"]
                 if lyr != int(lyr):
                     raise Exception("Domain size must be multiple of ly")
 
@@ -261,7 +262,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             wrf_dir_i += "/WRF"
         #timestep
         if "dt_f" not in args:
-            args["dt_f"] = r/1000*6 #wrf rule of thumb
+            args["dt_f"] = min(args["dx"], args["dy"])/1000*6 #wrf rule of thumb
 
         vmemi = None
         if init:

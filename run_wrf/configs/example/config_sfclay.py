@@ -24,7 +24,8 @@ param_grid = odict(sf_sfclay_physics=[1, 2, 5])
 
 params = deepcopy(params)
 
-params["dx"] = 500 #horizontal grid spacing (m)
+params["dx"] = 500 #horizontal grid spacing x-direction(m)
+params["dy"] = None #horizontal grid spacing y-direction (m), if None: dy = dx
 
 #%%
 param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)

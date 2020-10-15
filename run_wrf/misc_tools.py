@@ -600,7 +600,6 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
     skip = False
 
     #get runtime per timestep
-    r = args["dx"]
     n_steps = 3600*run_hours/args["dt_f"]
     identical_runs = None
     runtime_per_step = None
@@ -710,10 +709,6 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     check_p_diff = lambda p,val=0: (p in namelist_upd_all) and (namelist_upd_all[p] != val)
     check_p_diff_2 = lambda p,val=0: (p not in args) and check_p_diff(p, val)
 
-    r = args["dx"]
-    if "dy" not in args:
-        args["dy"] = r
-
     #timestep
     dt_int = math.floor(args["dt_f"])
     args["time_step"] = dt_int
@@ -728,7 +723,7 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
         # input_sounding, p0 = read_input_sounding(input_sounding_path, scm="scm" in conf.ideal_case)
         # theta = input_sounding["theta"]
         if ("dzmax" in args) and (args["dzmax"] == "dx"):
-            args["dzmax"] = r
+            args["dzmax"] = args["dx"]
         vert_keys = ["nz", "dzmax", "etaz1", "etaz2", "n2", "z1", "z2", "alpha"]
         vert_args = {}
         for key in vert_keys:
@@ -849,40 +844,41 @@ def check_namelist_best_practice(namelist):
 
     raise_err = False
     dx = namelist["dx"]
-    print("Checking consistency of namelist settings for horizontal grid spacing of dx={0:.1f} m".format(dx))
+    dy = namelist["dy"]
+    print("Checking consistency of namelist settings for horizontal grid spacing of dx={0:.1f} m, dy={0:.1f} m".format(dx, dy))
 
     #dt
     dt =  namelist["time_step"] + namelist["time_step_fract_num"]/namelist["time_step_fract_den"]
-    if dt > 6*dx/1000:
-        print("WARNING: time step is larger then recommended. This may cause numerical instabilities. Recommendation: dt(s) = 6 * dx(km)")
+    if dt > 6*min(dx, dy)/1000:
+        print("WARNING: time step is larger then recommended. This may cause numerical instabilities. Recommendation: dt(s) = 6 * min(dx, dy)(km)")
 
     #vertical grid
     if "dz" in namelist:
         dz_max = np.nanmax(namelist["dz"])
-        if dz_max > dx:
-            print("ERROR: There are levels with dz > dx (dz_max={0:.1f} m). Use more vertical levels, a lower model top or a higher dx!".format(dz_max))
+        if dz_max > min(dx, dy):
+            print("ERROR: There are levels with dz > min(dx, dy) (dz_max={0:.1f} m). Use more vertical levels, a lower model top or a higher dx!".format(dz_max))
             raise_err = True
         if dz_max > 1000:
             print("ERROR: There are levels with dz > 1000 m (dz_max={0:.1f} m). Use more vertical levels or a lower model top!".format(dz_max))
             raise_err = True
-        if (np.nanmin(namelist["dz"]) < 0.5 * dx) and (namelist["mix_isotropic"] == 1):
+        if (np.nanmin(namelist["dz"]) < 0.5 * max(dx, dy)) and (namelist["mix_isotropic"] == 1):
             print("WARNING: At some levels the vertical grid spacing is less than half the horizontal grid spacing."
                   " Consider using anisotropic mixing (mix_isotropic=0).")
 
     #MP_physics
     graupel = namelist["mp_physics"] not in [1,3,4,14]
-    if (not graupel) and (dx <= 4000):
+    if (not graupel) and (max(dx, dy) <= 4000):
         print("WARNING: Microphysics scheme with graupel necessary at convection-permitting resolution. Avoid the following settings for mp_physics: 1,3,4 or 14")
-    elif graupel and (dx >= 10000):
+    elif graupel and (min(dx, dy) >= 10000):
         print("HINT: Microphysics scheme with graupel not necessary for grid spacings above 10 km. You can instead use one of the following settings for mp_physics: 1,3,4 or 14")
 
 
     #pbl scheme, LES and turbulence
-    if (namelist["bl_pbl_physics"] == 0) and (dx >= 500) and (namelist["km_opt"] != 5):
-        print("WARNING: PBL scheme recommended for dx > 500 m")
+    if (namelist["bl_pbl_physics"] == 0) and (max(dx, dy) >= 500) and (namelist["km_opt"] != 5):
+        print("WARNING: PBL scheme recommended for dx >= 500 m")
     elif namelist["bl_pbl_physics"] != 0:
-        if dx <= 100:
-            print("WARNING: No PBL scheme necessary for dx < 100 m, use LES!")
+        if max(dx, dy) <= 100:
+            print("WARNING: No PBL scheme necessary for dx <= 100 m, use LES!")
         else:
             if ("dz" in namelist) and (namelist["dz"][0] > 100):
                 print("WARNING: First vertical level should be within surface layer (max. 100 m). Current lowest level at {0:.2f} m".format(namelist["dz"][0]))
@@ -892,7 +888,7 @@ def check_namelist_best_practice(namelist):
                     print("WARNING: First eta level should not be larger than 0.995 for ACM2, GFS and MRF PBL schemes. Found: {0:.4f}".format(eta_levels[1]))
 
 
-    if (namelist["bl_pbl_physics"] == 0) and (dx <= 500): #LES
+    if (namelist["bl_pbl_physics"] == 0) and (max(dx, dy) <= 500): #LES
         if namelist["km_opt"]==4:
             print("ERROR: For LES, eddy diffusivity based on horizontal deformation (km_opt=4) is not appropriate.")
             raise_err = True
@@ -916,16 +912,16 @@ def check_namelist_best_practice(namelist):
         print("WARNING: If boundary layer scheme is used, SGS turbulent mixing should be based on 2D deformation (km_opt=4).")
 
     #Cumulus
-    if (dx >= 10000) and (namelist["cu_physics"] == 0):
+    if (max(dx, dy) >= 10000) and (namelist["cu_physics"] == 0):
         print("WARNING: For dx >= 10 km, the use of a cumulus scheme is strongly recommended.")
-    elif (dx <= 4000) and (namelist["cu_physics"] != 0):
+    elif (max(dx, dy) <= 4000) and (namelist["cu_physics"] != 0):
         print("WARNING: For dx <= 4 km, a cumulus scheme is probably not needed.")
-    elif (dx > 4000) and (dx < 10000) and (namelist["cu_physics"] not in [3, 5, 11, 14]):
+    elif (max(dx, dy) > 4000) and (min(dx, dy) < 10000) and (namelist["cu_physics"] not in [3, 5, 11, 14]):
         print("WARNING: The grid spacing lies in the gray zone for cumulus convection. Consider using a scale-aware cumulus parametrization (cu_physics={3, 5, 11, 14})")
 
-    if (dx >= 500) and (namelist["shcu_physics"] == 0) and (namelist["bl_pbl_physics"] not in [4,5,6,10]):
-        print("WARNING: For dx > 500 m, a shallow cumulus scheme or PBL scheme with mass flux component (bl_pbl_physics=4,5,6 or 10) is recommended")
-    elif (dx < 500) and (namelist["shcu_physics"] != 0):
+    if (max(dx, dy) >= 500) and (namelist["shcu_physics"] == 0) and (namelist["bl_pbl_physics"] not in [4,5,6,10]):
+        print("WARNING: For dx >= 500 m, a shallow cumulus scheme or PBL scheme with mass flux component (bl_pbl_physics=4,5,6 or 10) is recommended")
+    elif (max(dx, dy) < 500) and (namelist["shcu_physics"] != 0):
         print("WARNING: For dx < 500 m, usually no shallow convection scheme is needed")
 
 
@@ -933,7 +929,7 @@ def check_namelist_best_practice(namelist):
     #advection scheme
     basic_adv = np.array([namelist[adv + "_adv_opt"] for adv in ["moist", "scalar", "momentum"]])
     any_basic_adv = (basic_adv < 2).any()
-    if (dx > 100) and (dx < 1000) and any_basic_adv:
+    if (max(dx, dy) > 100) and (min(dx, dy) < 1000) and any_basic_adv:
         print("WARNING: Monotonic or non-oscillatory advection options are recommended for 100m < dx < 1km (moist/scalar/momentum_adv_opt >= 2)")
 
     #surface fluxes
