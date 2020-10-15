@@ -130,7 +130,6 @@ send_rt_signal_restart = 120 #send rt signal earlier for concatenation of output
 resource_search_paths = [run_path]
 
 # slots
-nslots_dict = {} #set number of slots for each dx
 min_n_per_proc = 16 #25, minimum number of grid points per processor
 even_split = False #force equal split between processors
 
