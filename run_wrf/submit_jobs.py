@@ -268,7 +268,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
         vmemi = None
         if init:
-            args, args_str, one_frame = misc_tools.prepare_init(args, conf, wrf_dir_i, namelist_check=not no_namelist_check)
+            args, args_str = misc_tools.prepare_init(args, conf, wrf_dir_i, namelist_check=not no_namelist_check)
             #job scheduler queue and vmem
             if use_job_scheduler and conf.request_vmem:
                 vmem_init = max(conf.vmem_init_min, int(conf.vmem_init_per_grid_point*args["e_we"]*args["e_sn"]))
@@ -332,8 +332,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 hist_paths = r""
                 for stream, (outfile, _) in args["output_streams"].items():
                     outname = r"{}{}_{}".format(outpath_esc, outfile, IDr)
-                    if one_frame:
-                        outname += "_<date>"
 
                     if stream == 0:
                         stream_arg = "history_outname"

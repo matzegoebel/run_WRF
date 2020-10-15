@@ -85,7 +85,6 @@ params["iofields_filename"] = "IO_test.txt"
 
 params["restart_interval_m"] = 30 #restart interval (min)
 
-split_output_res = 0 #dx (m) below which to split output in one timestep per file
 
 registries = ["Registry.EM_COMMON", "registry.hyb_coord", "registry.les", "registry.io_boilerplate"] #registries to look for default namelist parameters
 

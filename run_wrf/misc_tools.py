@@ -748,14 +748,6 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     args["eta_levels"] = "'" + ",".join(["{0:.6f}".format(e) for e in  args["eta_levels"]])  + "'"
     if "scm" in conf.ideal_case:
         print("WARNING: Eta levels are neglected in the standard initialization of the single column model case!")
-    #split output in one timestep per file
-    one_frame = False
-    if r <= conf.split_output_res:
-        args["frames_per_outfile"] = 1
-        for out_ind in args["output_streams"].keys():
-            if out_ind != 0:
-                args["frames_per_auxhist{}".format(out_ind)] = 1
-        one_frame = True
 
     #output streams
     for stream, (_, out_int) in args["output_streams"].items():
@@ -854,7 +846,7 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     args_dict = args_df.astype(new_dtypes).iloc[0].to_dict()
     args_str = " ".join(["{} {}".format(param, val) for param, val in args_dict.items()])
 
-    return args, args_str, one_frame
+    return args, args_str
 
 def check_namelist_best_practice(namelist):
     """Check consistency of namelist parameters and print warnings if strange parameter combinations are used"""
