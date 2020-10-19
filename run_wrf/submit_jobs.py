@@ -64,7 +64,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         DataFrame with settings for all configurations.
 
     """
-#TODO: param_combs, combs_all same?
     from run_wrf import misc_tools
 
     if (not init) and (outdir is not None):

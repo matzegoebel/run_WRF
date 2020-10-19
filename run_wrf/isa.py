@@ -10,7 +10,6 @@ ICAO Doc 7488 (this module is based on the 1993 version)
 Author(s)
 ---------
 Martin Steinheimer, Austro Control (original version)
-    TODO: Ask for Martin's permission to use / share this module.
 Lukas Strauss, Austro Control (modifications)
 
 """
