@@ -109,9 +109,9 @@ def height_from_eta(eta, eta_c=0.2, pt=100, ps=1013.25, p0=1013.25, **kwargs):
     pt : float, optional
         pressure at model top (hPa). The default is 100.
     ps : float, optional
-        pressure at surface (hPa). The default is 1000.
+        pressure at surface (hPa). The default is 1013.25.
     p0 : float, optional
-        reference sea-level pressure (hPa). The default is 1000.
+        reference sea-level pressure (hPa). The default is 1013.25.
 
     Returns
     -------
@@ -535,11 +535,10 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
     psfc = p.max()
     # Define stretched grid in pressure-based eta coordinate.
     eta = (p - ptop) / (psfc-ptop)
-    eta[0] = 1
-    eta[-1] = 0
+    # scale to 0-1 range
+    eta = (eta - eta.min())/(eta.max() - eta.min())
 
     # Compute dp, dz and the alphas
-
     dp = np.diff(p)
     dp = np.append(np.nan, dp)
     dz = z[1:] - z[:-1]
@@ -548,7 +547,6 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
     alpha = np.append(np.append(np.nan,alpha),np.nan)
     alpha_z = np.diff(z)[1:] / np.diff(z)[:-1]
     alpha_z = np.append(np.append(np.nan,alpha_z),np.nan)
-    eps = 1e-6
 
     #---------------------------------------------------------------------------
     # Make a plot.
@@ -649,7 +647,8 @@ if __name__ == '__main__':
     # axp = ax.twinx()
 
     ms = 3.
-    alpha = np.diff(eta)[1:] / np.diff(eta)[:-1]
+    deta = np.diff(eta)
+    alpha = deta[1:] / deta[:-1]
     pt = height_to_pressure_std(ztop, p0=p0, strat=strat)
     eta_c = .2
     zss = [1000, 0]
