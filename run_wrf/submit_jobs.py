@@ -218,8 +218,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     raise Exception("Domain size must be multiple of ly")
 
         #slots
-        nx = misc_tools.find_nproc(args["e_we"]-1, min_n_per_proc=conf.min_n_per_proc, even_split=conf.even_split )
-        ny = misc_tools.find_nproc(args["e_sn"]-1, min_n_per_proc=conf.min_n_per_proc, even_split=conf.even_split )
+        nx = misc_tools.find_nproc(args["e_we"]-1, min_n_per_proc=conf.min_nx_per_proc, even_split=conf.even_split )
+        ny = misc_tools.find_nproc(args["e_sn"]-1, min_n_per_proc=conf.min_ny_per_proc, even_split=conf.even_split )
 
         # max_nslotsx = None
         # max_nslotsy = None
