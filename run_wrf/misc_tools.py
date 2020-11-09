@@ -857,7 +857,7 @@ def check_namelist_best_practice(namelist):
     #vertical grid
     if "dz" in namelist:
         dz_max = np.nanmax(namelist["dz"])
-        if dz_max > min(dx, dy):
+        if round(dz_max, 1) > min(dx, dy):
             print("ERROR: There are levels with dz > min(dx, dy) (dz_max={0:.1f} m). Use more vertical levels, a lower model top or a higher dx!".format(dz_max))
             raise_err = True
         if dz_max > 1000:
