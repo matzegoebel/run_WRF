@@ -756,7 +756,7 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     #specified heat fluxes or land surface model
     if "spec_hfx" in args:
         print("Specified heatflux used:")
-        phys = ["ra_sw_physics", "ra_lw_physics"]
+        phys = ["ra_sw_physics", "ra_lw_physics", "sf_surface_physics"]
         for p in phys:
             if check_p_diff(p):
                 print("Setting {}=0".format(p))
