@@ -53,22 +53,21 @@ do
     source ${code_dir}/search_replace.sh namelist.input namelist.input 0 nproc_x ${nx[i]} nproc_y ${ny[i]}
   fi
 
-  exec 1> run.log
-  exec 2> run.err
+  exec 1> $runlog
+  exec 2> $runerr
   echo
   echo
-  echo "Running job: ${jobs[i]}"   >> $runlog
+  echo "Running job: ${jobs[i]}"
   nsi=${nslots[i]}
-  echo "slots: $nsi "    >> $runlog
-
+  echo "slots: $nsi "
   if (( nsi > 1 ))
   then
-    echo "parallel"  >> $runlog
+    echo "parallel"
     if $pool
     then
-      echo "si $si"  >> $runlog
+      echo "si $si"
       hostsi=${hosts[@]:$si:$nsi}
-      echo "on hosts: $hostsi" >> $runlog
+      echo "on hosts: $hostsi"
 
       H=$(python ${code_dir}/pool/get_hosts_set.py "$hostsi")
       python ${code_dir}/pool/rankfile.py  "${hosts[*]}" "$si" "$nsi" > rankfile.$JOB_ID
@@ -79,10 +78,10 @@ do
       #~ sleep 20
     else
       mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!
-      echo "mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!"  >> $runlog
+      echo "mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!"
     fi
   else
-    echo "serial run"  > $runlog
+    echo "serial run"
     ./wrf.exe & pid[i]=$!
   fi
   echo
@@ -90,7 +89,7 @@ do
 done
 
 sleep 1
-top -u $USER -bn 1 >> ../pidlog
+#~ top -u $USER -bn 1 >> ../pidlog
 
 finished=() #finished jobs
 
@@ -153,8 +152,6 @@ do
 
   echo
   echo
-  cat run.log
-  cat run.err
 
   if (( ${nslots[i]} > 1 ))
   then
@@ -193,6 +190,9 @@ do
       python -c "from run_wrf import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[i]}')"
   fi
 done
+
+cat $runlog > run.log
+cat $runerr > run.err
 
 #echo "trap" $rc
 exit ${rc}
