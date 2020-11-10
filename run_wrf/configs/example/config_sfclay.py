@@ -13,6 +13,8 @@ import os
 from collections import OrderedDict as odict
 from run_wrf import misc_tools
 from run_wrf.configs.config import *
+if "param_combs" in dir():
+    del param_combs
 from copy import deepcopy
 
 

@@ -89,7 +89,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         conf = importlib.import_module(config_file)
 
     if param_combs is None:
-        if param_combs in dir(conf):
+        if "param_combs" in dir(conf):
             param_combs = conf.param_combs
         else:
             param_combs = misc_tools.grid_combinations(conf.param_grid, conf.params, param_names=conf.param_names, runID=conf.runID)
