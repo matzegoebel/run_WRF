@@ -256,9 +256,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     slot_comm = "-N {}".format(nslotsi)
 
         #if code in extra subfolder
-        wrf_build = "{}/{}/".format(conf.build_path, wrf_dir_i)
-        if (not os.path.isdir(wrf_build + "/run")) and os.path.isdir(wrf_build + "/WRF/run"):
-            wrf_dir_i += "/WRF"
+        wrf_build = os.path.join(conf.build_path, wrf_dir_i)
+        print("Using WRF build in: {}\n".format(wrf_build))
+
         #timestep
         if "dt_f" not in args:
             args["dt_f"] = min(args["dx"], args["dy"])/1000*6 #wrf rule of thumb
