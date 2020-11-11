@@ -179,8 +179,8 @@ do
       sacct -j $SLURM_JOB_ID -l -p > resources_${timestamp}.info
     fi
     #prepend log to run log
-    echo -e "$(cat ${run_path}/logs/$JOB_NAME.out)\n$(cat $runlog)"
-    echo -e "$(cat ${run_path}/logs/$JOB_NAME.err)\n$(cat $runerr)" >> $runerr
+    echo -e "$(cat ${qlog}.out)\n$(cat $runlog)" > $runlog
+    echo -e "$(cat ${qlog}.err)\n$(cat $runerr)" > $runerr
   fi
 
   if (( restart == 1 ))
@@ -189,10 +189,20 @@ do
       echo "Concatenate output from original and restarted run"
       python -c "from run_wrf import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[i]}')"
   fi
+  cat $runlog > run.log
+  cat $runerr > run.err
 done
 
-cat $runlog > run.log
-cat $runerr > run.err
+for (( i=0; i<$njobs; i++ ))
+do
+  cd ${run_path}/WRF_${jobs[i]}
+  exec 1>> $runlog
+  exec 2>> $runerr
+
+  echo
+  elapsed_t=$(($(date +%s) - start_time))
+  echo  "Job finished, total elapsed time (s): ${elapsed_t}"
+done
 
 #echo "trap" $rc
 exit ${rc}
