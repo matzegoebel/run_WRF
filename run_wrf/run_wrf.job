@@ -136,7 +136,7 @@ do
       #~ echo "${sum}/$nsi" | bc -l  >> vmemusage_RES_$timestamp
     fi
   done
-  if [[ ${enforce_rtlimit}==false ]]
+  if ! ${enforce_rtlimit}
   then
     elapsed_t=0
   fi
