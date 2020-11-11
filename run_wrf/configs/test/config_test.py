@@ -128,8 +128,8 @@ rt_test = 5 #runtime (min) for test runs
 send_rt_signal = 10 #seconds before requested runtime is exhausted and signal is sent to job
 send_rt_signal_restart = 120 #send rt signal earlier for concatenation of output files in restart runs
 
-#paths to search for log files to determine runtime and/or vmem if not specified
-resource_search_paths = [run_path]
+#additional paths (other than run_path) to search for log files to determine runtime and/or vmem if not specified
+resource_search_paths = []
 
 # slots
 min_nx_per_proc = 16 #25, minimum number of grid points per processor in x-direction

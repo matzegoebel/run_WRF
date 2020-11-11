@@ -599,6 +599,8 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
     """Set vmem and runtime per time step  based on settings in config file."""
     skip = False
 
+    resource_search_paths = [conf.run_path, *conf.resource_search_paths]
+
     #get runtime per timestep
     n_steps = 3600*run_hours/args["dt_f"]
     identical_runs = None
@@ -614,7 +616,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
     else:
         print("Get runtime from previous runs")
         run_dir_0 = run_dir + "_0" #use rep 0 as reference
-        identical_runs = get_identical_runs(run_dir_0, conf.resource_search_paths)
+        identical_runs = get_identical_runs(run_dir_0, resource_search_paths)
         if len(identical_runs) > 0:
             timing = get_runtime_all(runs=identical_runs, all_times=False)
             if len(timing) > 0:
@@ -653,7 +655,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
             print("Get vmem from previous runs")
             if identical_runs is None:
                 run_dir_0 = run_dir + "_0" #use rep 0 as reference
-                identical_runs = get_identical_runs(run_dir_0, conf.resource_search_paths, ignore_nxy=False)
+                identical_runs = get_identical_runs(run_dir_0, resource_search_paths, ignore_nxy=False)
 
             vmemi = get_vmem(identical_runs)
             if vmemi is None:
