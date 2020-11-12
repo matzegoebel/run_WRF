@@ -29,6 +29,7 @@ then
 
 else
   echo "start cluster job"
+  module purge
   eval $module_load
 fi
 

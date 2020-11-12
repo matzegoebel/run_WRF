@@ -8,6 +8,7 @@ set -e
 if (( cluster == 1 ))
 then
   cluster=true
+  module purge
   eval $module_load
 
 else
