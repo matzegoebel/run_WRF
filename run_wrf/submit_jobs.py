@@ -482,7 +482,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                     slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
                                 elif job_scheduler == "slurm":
                                     nodes = math.ceil(sum(nslots)/conf.pool_size)
-                                    slot_comm = "--ntasks-per-node={} -N {}".format(conf.pool_size, nodes)
+                                    if nodes == 1:
+                                        ntasks = sum(nslots)
+                                    else:
+                                        ntasks = conf.pool_size
+                                    slot_comm = "--ntasks-per-node={} -N {}".format(ntasks, nodes)
                         else:
                             job_name = IDr
                         jobs = " ".join(IDs)
