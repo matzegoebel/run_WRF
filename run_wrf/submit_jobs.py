@@ -70,10 +70,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         print("WARNING: option -o ignored when not in initialization mode!\n")
     if wait and use_job_scheduler:
         raise ValueError("Waiting for batch jobs is not yet implemented")
-    if test_run and (not use_job_scheduler):
-        raise ValueError("Test runs without job scheduler do not make sense!")
-    if test_run and pool_jobs:
-        raise ValueError("Do not use pooling for test runs!")
     if init and restart:
         raise ValueError("For restart runs no initialization is needed!")
 
@@ -110,7 +106,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     outpath_esc = outpath.replace("/", "\/") #need to escape slashes
 
     #temporary log output for job scheduler
-    job_scheduler = None
     if use_job_scheduler:
         batch_log_dir = conf.run_path + "/logs/"
         os.makedirs(batch_log_dir, exist_ok=True)
@@ -128,6 +123,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             mail = ",".join(mail_slurm)
         if (conf.mail_address is None) or (conf.mail_address==""):
             raise ValueError("For jobs using {}, provide valid mail address in config file".format(job_scheduler))
+    else:
+        job_scheduler = None
+        conf.request_vmem = False
 
     # if test_run and (job_scheduler == "sge"):
     #     #do test run on one node by using openmpi-xperhost to ensure correct vmem logging
@@ -275,7 +273,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     queue = conf.queue
 
 
-        elif use_job_scheduler:
+        elif use_job_scheduler or test_run:
             queue = conf.queue
             args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi, pool_jobs=pool_jobs, restart=restart, test_run=test_run, request_vmem=conf.request_vmem)
             if skip:
@@ -446,7 +444,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 else:
                     IDs.append(IDr)
                     rtri = None
-                    if use_job_scheduler:
+                    if use_job_scheduler or test_run:
                         rtri = args["rt_per_timestep"] * run_hours/args["dt_f"] *3600 #runtime in seconds
                         rtr.append(rtri)
 
@@ -497,6 +495,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                                         module_load=conf.module_load, timestamp=timestamp)
                         for p, v in comm_args.items():
                             os.environ[p] = str(v)
+
+                        if use_job_scheduler or test_run:
+                            rtr_max = max(rtr)
+
                         if use_job_scheduler:
                             os.environ["job_scheduler"] = job_scheduler
                             if restart:
@@ -504,12 +506,12 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             else:
                                 send_rt_signal = conf.send_rt_signal
 
+
                             if conf.request_vmem:
                                 vmemp = int(sum(vmem)/sum(nslots))
                                 if ("bigmem_limit" in dir(conf)) and (vmemp > conf.bigmem_limit):
                                     queue = conf.bigmem_queue
 
-                            rtr_max = max(rtr)
                             rtp = misc_tools.format_timedelta(rtr_max)
                             if rtr_max < send_rt_signal:
                                 raise ValueError("Requested runtime is smaller then the time when the runtime limit signal is sent!")
@@ -535,7 +537,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             comm = batch_args_str + " run_wrf.job"
 
                         else:
-                            os.environ["rtlimit"] = ""
+                            if test_run:
+                                os.environ["rtlimit"] = str(int(rtr_max))
+                            else:
+                                os.environ["rtlimit"] = ""
+
                             comm = "bash run_wrf.job"
                             if not wait:
                                 comm += " &"
