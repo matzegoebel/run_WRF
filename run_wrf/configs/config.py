@@ -166,9 +166,8 @@ if any([c in host for c in clusters]):
 
     elif "vsc" in host:
         job_scheduler = "slurm"
-        module_load = "module load intel/16.0.3 intel-mpi/5.1.3 hdf5/1.8.16 pnetcdf/1.5.0 netcdf/4.3.2;\
-                       export NETCDF=/opt/sw/x86_64/glibc-2.12/ivybridge-ep/netcdf/4.3.2/intel-14.0.2;\
-                       export PNETCDF=/opt/sw/x86_64/glibc-2.12/ivybridge-ep/parallel/netcdf/1.5.0/intel-14.0.2"
+        module_load = "module load intel/19 intel-mpi/2019 hdf5/1.8.12-MPI pnetcdf/1.10.0 netcdf_C/4.4.1.1 netcdf_Fortran/4.4.4;\
+                       export NETCDF=/opt/sw/x86_64/glibc-2.17/ivybridge-ep/netcdf_Fortran/4.4.4/intel/19/intel-mpi/2019/hdf5/1.8.12-MPI/pnetcdf/1.10.0/netcdf_C/4.4.1.1/"
         queue = "mem_0064" #partition on vsc3
         qos = "normal_0064"
          #minimum pool size; should be equal to the number of available CPUs per node
