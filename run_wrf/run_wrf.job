@@ -119,22 +119,6 @@ do
       sleep 1
       echo  "Job WRF_${jobs[i]} finished. Elapsed time (s): ${elapsed_t}"
       finished+=($i)
-    #~ else
-      #~ #write current memory usage of all MPI processes to file
-      #~ children=$(pgrep -P ${pid[i]} -d " ")
-      #~ children_l=($children)
-      #~ if [[ ${#children_l[@]} == 1 ]]
-      #~ then
-        #~ children="$children $(pgrep -P $children -d " ")"
-      #~ fi
-      #~ all_pids_arr="${pid[i]} $children"
-      #~ all_pids_arr=(${all_pids_arr})
-      #~ all_pids=$(IFS=, ; echo "${all_pids_arr[*]}")
-      #~ echo "${jobs[i]} $all_pids" >> ../pidlog
-      #~ sum=$(top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $5) };' | paste -sd+ | bc)
-      #~ echo "${sum}/$nsi" | bc -l  >> vmemusage_VIRT_$timestamp
-      #~ sum=$(top -bn 1 -p $all_pids | tail -n ${#all_pids_arr[@]}  | awk '{ printf("%-8s\n", $6) };' | paste -sd+ | bc)
-      #~ echo "${sum}/$nsi" | bc -l  >> vmemusage_RES_$timestamp
     fi
   done
   if ! ${enforce_rtlimit}
