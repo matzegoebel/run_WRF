@@ -86,7 +86,7 @@ def test_basic():
                 print("\n\n")
                 print(exist, message)
                 combs, output = capture_submit(init=init, exist=exist, wait=True, config_file="test.config_test")
-                print(output)
+                print("\n".join(output))
                 count = Counter(output)
                 assert count[message] == combs["n_rep"].sum()
                 if "Skipping..." not in message:
@@ -103,7 +103,7 @@ def test_basic():
         combs = submit_jobs(init=True, exist="a", config_file="test.config_test")
     _, output = capture_submit(init=False, restart=True, wait=True, config_file="test.config_test_rst")
     count = Counter(output)
-    print(output)
+    print("\n".join(output))
     for m in ["Restart run from 2018-06-20 07:30:00", 'd01 2018-06-20_08:00:00 wrf: SUCCESS COMPLETE WRF']:
         assert count[m] == combs["n_rep"].sum()
 
@@ -123,7 +123,7 @@ def test_repeats():
     """Test config repetitions functionality."""
     combs = submit_jobs(init=True, exist="o", config_file="test.config_test_reps")
     _, output = capture_submit(init=False, wait=True, exist="o", config_file="test.config_test_reps")
-    print(output)
+    print("\n".join(output))
     count = Counter(output)
     assert count[success[False]] == combs["n_rep"].sum()
 
@@ -132,7 +132,7 @@ def test_mpi_and_batch():
     """Test MPI runs and check commands generated for job schedulers (without running them)"""
     combs = submit_jobs(init=True, wait=True, exist="o", config_file="test.config_test_mpi")
     _, output = capture_submit(init=False, pool_jobs=True, wait=True, exist="o", config_file="test.config_test_mpi")
-    print(output)
+    print("\n".join(output))
     count = Counter(output)
     m = "Submit IDs: ['pytest_mp_physics=kessler_0', 'pytest_mp_physics=lin_0']"
     assert count[m] == 1
@@ -150,12 +150,14 @@ def test_mpi_and_batch():
         shutil.copy("tests/test_data/runs/WRF_pytest_eta_0/run_2018-04-10T06:13:14.log", rundir)
     #test SGE
     _, output = capture_submit(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_sge")
-    print(output)
+    print("\n".join(output))
     count = Counter(output)
-    batch_comm = "qsub -cwd -q std.q -o {0}/logs/pytest_mp_physics=lin_0.out -e {0}/logs/pytest_mp_physics=lin_0.err -l h_rt=000:00:15 "\
+    c = output[-1]
+    date = c[c.index("lin_0"):c.index(".out")][6:]
+    batch_comm = "qsub -cwd -q std.q -o {0}/logs/run_pytest_mp_physics=lin_0_{1}.out -e {0}/logs/run_pytest_mp_physics=lin_0_{1}.err -l h_rt=000:00:15 "\
                  " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N pytest_mp_physics=lin_0 -V  -l h_vmem=85M "\
-                 " run_wrf.job".format(conf.run_path)
-    assert batch_comm == output[-1]
+                 " run_wrf.job".format(conf.run_path, date)
+    assert batch_comm == c
 
     messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 85.6M']
     for m in messages:
@@ -168,12 +170,14 @@ def test_mpi_and_batch():
 
     #test SLURM
     _, output = capture_submit(init=False, check_args=True, verbose=True, use_job_scheduler=True, exist="o", config_file="test.config_test_slurm")
-    print(output)
+    print("\n".join(output))
     count = Counter(output)
-    batch_comm = "sbatch -p mem_0064 -o {0}/logs/pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0.out -e {0}/logs/pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0.err --time=000:00:15 "\
-                 "--ntasks-per-node=8 -N 1 --mail-user=matthias.goebel@uibk.ac.at --mail-type=END,FAIL -J pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0 "\
-                 "--export=ALL  --qos=normal_0064  run_wrf.job".format(conf.run_path)
-    assert batch_comm == output[-1]
+    c = output[-1]
+    date = c[c.index("lin_0"):c.index(".out")][6:]
+    batch_comm = "sbatch -p mem_0064 -o {0}/logs/run_pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0_{1}.out -e {0}/logs/run_pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0_{1}.err --time=000:00:15 "\
+                 "--ntasks-per-node=4 -N 1 --mail-user=matthias.goebel@uibk.ac.at --mail-type=END,FAIL -J pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0 "\
+                 "--export=ALL  --qos=normal_0064  run_wrf.job".format(conf.run_path, date)
+    assert batch_comm == c
     assert count['Get runtime from previous runs'] == combs["n_rep"].sum()
     assert count[message_rt] == 2
 
@@ -184,14 +188,14 @@ def test_scheduler_full():
     if os.popen("command -v {}".format(batch_dict[conf.job_scheduler])).read() != "":
         combs = submit_jobs(init=True, exist="o", config_file="test.config_test_mpi")
         _, output = capture_submit(init=False, use_job_scheduler=True, test_run=True, exist="o", verbose=True, config_file="test.config_test_mpi")
-        print(output)
+        print("\n".join(output))
         job_sched = conf.job_scheduler.lower()
 
         if job_sched  == "slurm":
-            jobs = ["pool_pytest_kessler_0_pytest_lin_0"]
+            jobs = ["pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0"]
             comm = "squeue -n "
         elif job_sched  == "sge":
-            jobs = ["pytest_lin_0", "pytest_kessler_0"]
+            jobs = ["pytest_mp_physics=kessler_0", "pytest_mp_physics=lin_0"]
             comm = "qstat -j "
         else:
             raise ValueError("Job scheduler {} not known!".format(job_sched))

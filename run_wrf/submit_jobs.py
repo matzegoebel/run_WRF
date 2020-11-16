@@ -300,15 +300,6 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
             IDr = IDi + "_" + str(rep)
             run_dir_r = run_dir + "_" + str(rep)
-            if use_job_scheduler:
-                if init:
-                    qlog = "init_"
-                else:
-                    qlog = "run_"
-                qlog = batch_log_dir + qlog + IDr + "_"
-                qlog += datetime.datetime.now().isoformat()[:19].replace(":", "")
-                os.environ["qlog"] = qlog
-                qout, qerr = [qlog + s for s in [".out", ".err"]]
 
             if init:
                 if os.path.isdir(run_dir_r):
@@ -361,7 +352,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     os.environ["wrf_args"] = args_str_r
                     #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                     rt_init = misc_tools.format_timedelta(conf.rt_init*60)
-
+                    qlog = batch_log_dir + "init_" + IDr + "_"
+                    qlog += datetime.datetime.now().isoformat()[:19].replace(":", "")
+                    os.environ["qlog"] = qlog
+                    qout, qerr = [qlog + s for s in [".out", ".err"]]
                     batch_args = [queue, qout, qerr, rt_init, conf.mail_address, mail, IDr]
                     if job_scheduler == "sge":
                         batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -M {} -m {} -N {} -V ".format(*batch_args)
@@ -520,7 +514,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             if rtr_max < send_rt_signal:
                                 raise ValueError("Requested runtime is smaller then the time when the runtime limit signal is sent!")
 
-                            #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
+                            qlog = batch_log_dir + "run_" + job_name + "_"
+                            qlog += datetime.datetime.now().isoformat()[:19].replace(":", "")
+                            os.environ["qlog"] = qlog
+                            qout, qerr = [qlog + s for s in [".out", ".err"]]
                             batch_args = [conf.queue, qout, qerr, rtp, slot_comm, conf.mail_address, mail, job_name]
                             os.environ["rtlimit"] = str(int(rtr_max - send_rt_signal))
 
