@@ -291,7 +291,7 @@ def output_id_from_config(param_comb=None, param_grid=None, param_names=None, ru
     return ID_str, ID
 
 #%%runtime
-def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, levels=None, remove=None, verbose=False):
+def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, levels=None, remove=None, use_median=False, verbose=False):
     """
     Get runtime per timestep from all given run directories or for all directories in dirs that pass the filter id_filter.
 
@@ -309,6 +309,8 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
         Names of the parameters used to construct the filenames. The default is None.
     remove : list of str, optional
         Parameter values to remove from filenames. The default is None.
+    use_median : bool, optional
+        Use median instead of mean to get average timing. The default is False.
     verbose : bool, optional
         Verbose output. The default is False.
 
@@ -335,7 +337,7 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
         nlevels = max([len(ID) for ID in IDls])
         columns = list(np.arange(nlevels))
 
-    columns.extend(["path", "nx", "ny", "ide", "jde", "timing", "timing_sd"])
+    columns.extend(["path", "nx", "ny", "ide", "jde", "timing", "timing_sd", "nsteps"])
     index = None
     runlogs = {}
     runlogs_list = []
@@ -355,16 +357,8 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
         if len(IDl) > nlevels:
             print("{} does not have not the correct id length".format(ID))
             continue
-        for i,a in enumerate(IDl):
-            try:
-                a = float(a)
-                if a == int(a):
-                    a = int(a)
-                IDl[i] = a
-            except:
-                pass
         for runlog in runlogs[ID]:
-            _, new_counter = get_runtime(runlog, timing=timing, counter=counter, all_times=all_times)
+            _, new_counter = get_runtime(runlog, timing=timing, counter=counter, all_times=all_times, use_median=use_median)
             timing.iloc[counter:new_counter, :len(IDl)] = IDl
             timing.loc[counter:new_counter-1, "path"] = runpath
             counter = new_counter
@@ -377,7 +371,7 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
     timing = timing.dropna(axis=1,how="all")
     return timing
 
-def get_runtime(runlog, timing=None, counter=None, all_times=False):
+def get_runtime(runlog, timing=None, counter=None, all_times=False, use_median=False):
     """
     Get runtime, MPI slot and domain size information from log file in run_dir.
 
@@ -393,6 +387,8 @@ def get_runtime(runlog, timing=None, counter=None, all_times=False):
         Index at which to start writing information in timing. The default is None.
     all_times : bool, optional
         Output all timestamps instead of averaging. The default is False.
+    use_median : bool, optional
+        Use median instead of mean to get average timing. The default is False.
 
     Raises
     ------
@@ -452,18 +448,22 @@ def get_runtime(runlog, timing=None, counter=None, all_times=False):
                 ind = [0]
 
             timing = pd.DataFrame(columns=columns, index=ind)
+            timing.loc[:, "nsteps"] = 1
             counter = 0
         if len(timing_ID) > 0:
             if all_times:
                 timing.loc[counter:counter+len(timing_ID)-1, "time"] = times
                 timing.loc[counter:counter+len(timing_ID)-1, "timing"] = timing_ID
                 timing.loc[counter:counter+len(timing_ID)-1, settings.keys()] = list(settings.values())
-               # timing.iloc[counter:counter+len(timing_ID), -7:-2] = settings
                 counter += len(timing_ID)
             else:
                 timing.loc[counter, settings.keys()] = list(settings.values())
-                timing.loc[counter, "timing"] = np.nanmean(timing_ID)
+                if use_median:
+                    timing.loc[counter, "timing"] = np.nanmedian(timing_ID)
+                else:
+                    timing.loc[counter, "timing"] = np.nanmean(timing_ID)
                 timing.loc[counter, "timing_sd"] = np.nanstd(timing_ID)
+                timing.loc[counter, "nsteps"] = len(timing_ID)
                 counter += 1
         else:
             counter += 1
@@ -614,9 +614,10 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
         run_dir_0 = run_dir + "_0" #use rep 0 as reference
         identical_runs = get_identical_runs(run_dir_0, resource_search_paths)
         if len(identical_runs) > 0:
-            timing = get_runtime_all(runs=identical_runs, all_times=False)
+            timing = get_runtime_all(runs=identical_runs, all_times=False, use_median=conf.rt_use_median)
             if len(timing) > 0:
-                runtime_per_step, rt_sd = timing["timing"].mean(), timing["timing_sd"].mean()
+                runtime_per_step = np.average(timing.timing, weights=timing.nsteps)
+                rt_sd = np.average(timing.timing_sd, weights=timing.nsteps)
                 print("Runtime per time step standard deviation: {0:.5f} s".format(rt_sd))
             else:
                 skip = True

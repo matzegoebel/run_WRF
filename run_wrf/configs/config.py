@@ -123,6 +123,7 @@ runtime_per_step = None
 rt_buffer = 2 #buffer factor to multiply rt with (not used for test runs or if rt is given)
 rt = None #None or job runtime in minutes; buffer not used
 rt_test = 5 #runtime (min) for test runs
+rt_use_median = False #use median when averaging runtime of previous runs, may be necessary if previous runs are short
 
 
 send_rt_signal = 20 #seconds before requested runtime is exhausted and signal is sent to job
