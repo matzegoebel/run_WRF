@@ -105,6 +105,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
     outpath_esc = outpath.replace("/", "\/") #need to escape slashes
 
+    if init:
+        job_name = "init_"
+    else:
+        job_name = "run_"
+    job_name += conf.runID
     #temporary log output for job scheduler
     if use_job_scheduler:
         batch_log_dir = conf.run_path + "/logs/"
@@ -123,6 +128,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
             mail = ",".join(mail_slurm)
         if (conf.mail_address is None) or (conf.mail_address==""):
             raise ValueError("For jobs using {}, provide valid mail address in config file".format(job_scheduler))
+
+        if job_scheduler == "slurm":
+            job_id = "_%j"
+        else:
+            job_id = "_$JOB_ID"
     else:
         job_scheduler = None
         conf.request_vmem = False
@@ -342,7 +352,8 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     iofile_ = args["iofields_filename"].replace("'","").replace('"',"")
                     if iofile_ != "NONE_SPECIFIED":
                         iofile = iofile_
-                comm_args =dict(JOB_NAME=IDr, wrfv=wrf_dir_i, ideal_case=conf.ideal_case, input_sounding=args["input_sounding"],
+
+                comm_args =dict(JOB_NAME=job_name, wrfv=wrf_dir_i, ideal_case=conf.ideal_case, input_sounding=args["input_sounding"],
                                 sleep=rep, nx=nx, ny=ny, run_path=conf.run_path, build_path=conf.build_path,
                                 batch=int(use_job_scheduler), wrf_args="", cluster=int(conf.cluster), iofile=iofile, module_load=conf.module_load)
                 for p, v in comm_args.items():
@@ -352,8 +363,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     os.environ["wrf_args"] = args_str_r
                     #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                     rt_init = misc_tools.format_timedelta(conf.rt_init*60)
-                    qlog = batch_log_dir + "init_" + IDr + "_"
-                    qlog += datetime.datetime.now().isoformat()[:19].replace(":", "")
+                    qlog = batch_log_dir + job_name + job_id
                     os.environ["qlog"] = qlog
                     qout, qerr = [qlog + s for s in [".out", ".err"]]
                     batch_args = [queue, qout, qerr, rt_init, conf.mail_address, mail, IDr]
@@ -462,27 +472,23 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         iterate = False
                         print("Submit IDs: {}".format(IDs))
                         print("with total cores: {}".format(sum(nslots)))
+                        if pool_jobs and use_job_scheduler:
+                            if job_scheduler == "sge":
+                                nperhost = conf.pool_size
+                                if conf.reduce_pool:
+                                    #select smallest available nperhost that is greater or equal to the number of requested slots
+                                    pes = os.popen("qconf -spl").read().split("\n")
+                                    nperhost_available = np.array([int(pe[8:pe.index("per")]) for pe in pes if "perhost" in pe])
+                                    nperhost = nperhost_available[nperhost_available >= sum(nslots)].min()
+                                slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
+                            elif job_scheduler == "slurm":
+                                nodes = math.ceil(sum(nslots)/conf.pool_size)
+                                if nodes == 1:
+                                    ntasks = sum(nslots)
+                                else:
+                                    ntasks = conf.pool_size
+                                slot_comm = "--ntasks-per-node={} -N {}".format(ntasks, nodes)
 
-                        if pool_jobs:
-                            job_name = "pool_" + "_".join(IDs)
-                            if use_job_scheduler:
-                                if job_scheduler == "sge":
-                                    nperhost = conf.pool_size
-                                    if conf.reduce_pool:
-                                        #select smallest available nperhost that is greater or equal to the number of requested slots
-                                        pes = os.popen("qconf -spl").read().split("\n")
-                                        nperhost_available = np.array([int(pe[8:pe.index("per")]) for pe in pes if "perhost" in pe])
-                                        nperhost = nperhost_available[nperhost_available >= sum(nslots)].min()
-                                    slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
-                                elif job_scheduler == "slurm":
-                                    nodes = math.ceil(sum(nslots)/conf.pool_size)
-                                    if nodes == 1:
-                                        ntasks = sum(nslots)
-                                    else:
-                                        ntasks = conf.pool_size
-                                    slot_comm = "--ntasks-per-node={} -N {}".format(ntasks, nodes)
-                        else:
-                            job_name = IDr
                         jobs = " ".join(IDs)
                         nslots_str = " ".join([str(ns) for ns in nslots])
                         nx_str = " ".join([str(ns[0]) for ns in nxny])
@@ -514,8 +520,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                             if rtr_max < send_rt_signal:
                                 raise ValueError("Requested runtime is smaller then the time when the runtime limit signal is sent!")
 
-                            qlog = batch_log_dir + "run_" + job_name + "_"
-                            qlog += datetime.datetime.now().isoformat()[:19].replace(":", "")
+                            qlog = batch_log_dir + job_name + job_id
                             os.environ["qlog"] = qlog
                             qout, qerr = [qlog + s for s in [".out", ".err"]]
                             batch_args = [conf.queue, qout, qerr, rtp, slot_comm, conf.mail_address, mail, job_name]
