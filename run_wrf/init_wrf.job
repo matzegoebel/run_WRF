@@ -10,7 +10,7 @@ set -e
 
 code_dir=$(pwd)
 build_dir="${build_path}/$wrfv"
-run_dir="${run_path}/WRF_$JOB_NAME"
+run_dir="${run_path}/WRF_${run_id}"
 wrf_case_dir="${build_dir}/test/$ideal_case"
 
 echo "Copy files to $run_dir"
@@ -71,8 +71,8 @@ echo
 echo "create namelist"
 #echo $wrf_args
 
-source ${code_dir}/search_replace.sh namelist.input namelist.$JOB_NAME 1 $wrf_args
-cp namelist.$JOB_NAME namelist.input
+source ${code_dir}/search_replace.sh namelist.input namelist.$RUN_ID 1 $wrf_args
+cp namelist.$RUN_ID namelist.input
 
 echo
 echo "Running ideal"

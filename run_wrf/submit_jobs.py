@@ -354,7 +354,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     if iofile_ != "NONE_SPECIFIED":
                         iofile = iofile_
 
-                comm_args =dict(JOB_NAME=job_name, wrfv=wrf_dir_i, ideal_case=conf.ideal_case, input_sounding=args["input_sounding"],
+                comm_args =dict(run_id=IDr, wrfv=wrf_dir_i, ideal_case=conf.ideal_case, input_sounding=args["input_sounding"],
                                 sleep=rep, nx=nx, ny=ny, run_path=conf.run_path, build_path=conf.build_path,
                                 batch=int(use_job_scheduler), wrf_args="", cluster=int(conf.cluster), iofile=iofile, module_load=conf.module_load)
                 for p, v in comm_args.items():
@@ -362,12 +362,11 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                 if use_job_scheduler:
                     os.environ["job_scheduler"] = job_scheduler
                     os.environ["wrf_args"] = args_str_r
-                    #comm_args_str = ",".join(["{}='{}'".format(p,v) for p,v in comm_args.items()])
                     rt_init = misc_tools.format_timedelta(conf.rt_init*60)
                     qlog = batch_log_dir + job_name + job_id
                     os.environ["qlog"] = qlog
                     qout, qerr = [qlog + s for s in [".out", ".err"]]
-                    batch_args = [queue, qout, qerr, rt_init, conf.mail_address, mail, IDr]
+                    batch_args = [queue, qout, qerr, rt_init, conf.mail_address, mail, job_name]
                     if job_scheduler == "sge":
                         batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -M {} -m {} -N {} -V ".format(*batch_args)
                         if "h_stack_init" in dir(conf) and conf.h_stack_init is not None:
@@ -495,7 +494,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         nx_str = " ".join([str(ns[0]) for ns in nxny])
                         ny_str = " ".join([str(ns[1]) for ns in nxny])
                         timestamp = datetime.datetime.now().isoformat()[:19]
-                        comm_args =dict(JOB_NAME=job_name, nslots=nslots_str, nx=nx_str, ny=ny_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
+                        comm_args =dict(nslots=nslots_str, nx=nx_str, ny=ny_str, jobs=jobs, pool_jobs=int(pool_jobs), run_path=conf.run_path,
                                         batch=int(use_job_scheduler), cluster=int(conf.cluster), restart=int(restart), outpath=outpath,
                                         module_load=conf.module_load, timestamp=timestamp)
                         for p, v in comm_args.items():
