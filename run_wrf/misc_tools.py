@@ -237,9 +237,11 @@ def grid_combinations(param_grid, add_params=None, param_names=None, runID=None)
         core[params] = True
         core = core.rename("core_param")
         combs = combs.append(core)
-        #drop _idx colums
-        combs = combs.drop(columns=composite_params)
-
+        #mark _idx colums
+        composite = core.rename("composite_idx")
+        composite[:] = False
+        composite[composite_params] = True
+        combs = combs.append(composite)
     return combs
 
 def output_id_from_config(param_comb=None, param_grid=None, param_names=None, runID=None):

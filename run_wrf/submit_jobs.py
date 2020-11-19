@@ -159,8 +159,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     if "core_param" in param_combs.index:
         #print only core parameters
         core_params = param_combs.loc["core_param"]
-        param_combs = param_combs.iloc[:-1]
         print(param_combs.loc[:,core_params])
+        #delete core_param and composite_idx lines
+        param_combs = param_combs.iloc[:-2]
     else:
         print(param_combs.index.values)
     print("-"*40)
