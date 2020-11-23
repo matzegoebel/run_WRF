@@ -111,7 +111,7 @@ def elapsed_time(start):
     time_diff = datetime.now() - start
     return time_diff.total_seconds()
 
-def print_progress(start=None, counter=None, length=None, message="Elapsed time", prog=True):
+def print_progress(start=None, prog=True, counter=None, length=None, message="Elapsed time"):
     """Print progress and elapsed time since start date."""
     msg = ""
     if prog != False:
@@ -362,7 +362,7 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
         for runlog in runlogs[ID]:
             _, new_counter = get_runtime(runlog, timing=timing, counter=counter, all_times=all_times, use_median=use_median)
             timing.iloc[counter:new_counter, :len(IDl)] = IDl
-            timing.loc[counter:new_counter-1, "path"] = runpath
+            timing["path"].iloc[counter:new_counter] = runpath
             counter = new_counter
         if verbose:
             print_progress(counter=j+1, length=len(runs))
