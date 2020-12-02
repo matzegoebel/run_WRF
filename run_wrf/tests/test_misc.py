@@ -25,7 +25,7 @@ def test_get_runtime():
     assert timing.notna().all().all()
     timing_m, _ = misc_tools.get_runtime(runs_dir + "WRF_pytest_eta_0/run_2018-04-10T06:13:14.log", all_times=False, counter=None, timing=None)
     np.testing.assert_allclose( timing_m["timing"].values.mean(), timing["timing"].mean())
-    assert (timing_m.values[0,:-2] == np.array([1,1,6,6])).all()
+    assert (timing_m.values[0,:4] == np.array([1,1,6,6])).all()
     with pytest.raises(FileNotFoundError):
         timing, counter = misc_tools.get_runtime(runs_dir + "/run.log", all_times=True)
 
@@ -71,11 +71,12 @@ def test_grid_combinations():
     param_names = dict(res = [200, 4000])
     param_combs = misc_tools.grid_combinations(param_grid, param_names=param_names, runID="")
     param_combs = param_combs.drop(columns="fname")
-    param_combs_corr = pd.DataFrame(columns=["input_sounding", "dx", "dz0"], index=np.arange(5))
-    param_combs_corr.loc[:,:] = np.array([['stable', 200, 10],
-                                          ['stable', 4000, 50],
-                                          ['unstable', 200, 10],
-                                          ['unstable', 4000, 50],
-                                          [True, True, True]], dtype=object)
+    param_combs_corr = pd.DataFrame(columns=["input_sounding", "dx", "dz0", "res_idx"], index=np.arange(6))
+    param_combs_corr.loc[:,:] = np.array([['stable', 200, 10, 0],
+                                          ['stable', 4000, 50, 1],
+                                          ['unstable', 200, 10, 0],
+                                          ['unstable', 4000, 50, 1],
+                                          [True, True, True, True],
+                                          [False,False,False, True]], dtype=object)
     param_combs_corr.index = param_combs.index
     pd.testing.assert_frame_equal(param_combs.astype(object), param_combs_corr)

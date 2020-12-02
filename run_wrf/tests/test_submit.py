@@ -153,10 +153,9 @@ def test_mpi_and_batch():
     print("\n".join(output))
     count = Counter(output)
     c = output[-1]
-    date = c[c.index("lin_0"):c.index(".out")][6:]
-    batch_comm = "qsub -cwd -q std.q -o {0}/logs/run_pytest_mp_physics=lin_0_{1}.out -e {0}/logs/run_pytest_mp_physics=lin_0_{1}.err -l h_rt=000:00:15 "\
-                 " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N pytest_mp_physics=lin_0 -V  -l h_vmem=85M "\
-                 " run_wrf.job".format(conf.run_path, date)
+    batch_comm = "qsub -cwd -q std.q -o {0}/logs/run_pytest_$JOB_ID.out -e {0}/logs/run_pytest_$JOB_ID.err -l h_rt=000:00:15 "\
+                 " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N run_pytest -V  -l h_vmem=85M "\
+                 " run_wrf.job".format(conf.run_path)
     assert batch_comm == c
 
     messages = ['Get runtime from previous runs', 'Get vmem from previous runs', 'Use vmem per slot: 85.6M']
@@ -173,10 +172,9 @@ def test_mpi_and_batch():
     print("\n".join(output))
     count = Counter(output)
     c = output[-1]
-    date = c[c.index("lin_0"):c.index(".out")][6:]
-    batch_comm = "sbatch -p mem_0064 -o {0}/logs/run_pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0_{1}.out -e {0}/logs/run_pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0_{1}.err --time=000:00:15 "\
-                 "--ntasks-per-node=4 -N 1 --mail-user=matthias.goebel@uibk.ac.at --mail-type=END,FAIL -J pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0 "\
-                 "--export=ALL  --qos=normal_0064  run_wrf.job".format(conf.run_path, date)
+    batch_comm = "sbatch -p mem_0064 -o {0}/logs/run_pytest_%j.out -e {0}/logs/run_pytest_%j.err --time=000:00:15 "\
+                 "--ntasks-per-node=4 -N 1 --mail-user=matthias.goebel@uibk.ac.at --mail-type=END,FAIL -J run_pytest "\
+                 "--export=ALL  --qos=normal_0064  run_wrf.job".format(conf.run_path)
     assert batch_comm == c
     assert count['Get runtime from previous runs'] == combs["n_rep"].sum()
     assert count[message_rt] == 2
