@@ -188,29 +188,27 @@ def test_scheduler_full():
         _, output = capture_submit(init=False, use_job_scheduler=True, test_run=True, exist="o", verbose=True, config_file="test.config_test_mpi")
         print("\n".join(output))
         job_sched = conf.job_scheduler.lower()
-
         if job_sched  == "slurm":
-            jobs = ["pool_pytest_mp_physics=kessler_0_pytest_mp_physics=lin_0"]
             comm = "squeue -n "
         elif job_sched  == "sge":
-            jobs = ["pytest_mp_physics=kessler_0", "pytest_mp_physics=lin_0"]
             comm = "qstat -j "
         else:
             raise ValueError("Job scheduler {} not known!".format(job_sched))
 
         finished = False
+        first_loop = True
         while not finished:
             finished = True
+            status = os.popen(comm + "run_pytest").read().split("\n")
+            status = misc_tools.remove_empty_str(status)
+            if "Following jobs do not exist:" in status:
+                pass
+            if len(status) > 1:
+                finished = False
+            elif first_loop:
+                raise RuntimeError("Batch job was not submitted!")
             time.sleep(5)
-            for j in jobs:
-                status = os.popen(comm + j).read().split("\n")
-                status = misc_tools.remove_empty_str(status)
-
-                if "Following jobs do not exist:" in status:
-                    pass
-                elif len(status) > 1:
-                    finished = False
-
+            first_loop = False
         rundirs = combs["run_dir"].values + "_0"
         print(rundirs)
         for rundir in rundirs:
