@@ -20,7 +20,7 @@ from copy import deepcopy
 from pathlib import Path as fopen
 
 #%%
-def submit_jobs(config_file="config", init=False, restart=False, outdir=None, exist="s", debug=False, use_job_scheduler=False,
+def submit_jobs(config_file="config", init=False, outdir=None, exist="s", debug=False, use_job_scheduler=False,
            check_args=False, pool_jobs=False, mail="ea", wait=False, no_namelist_check=False, test_run=False, verbose=False,
            param_combs=None):
     """
@@ -32,12 +32,10 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         Name of config file in configs folder. The default is "config".
     init : bool, optional
         Initialize simulations.
-    restart : bool, optional
-        Restart simulations.
     outdir : str, optional
         Subdirectory for WRF output. Default defined in script. Only effective during initialization.
     exist : str, optional
-        What to do if output already exists: Skip run ('s'), overwrite ('o') or backup files ('b'). Default is 's'.
+        What to do if output already exists: Skip run ('s'), overwrite ('o'), restart ('r') or backup files ('b'). Default is 's'.
     debug : bool, optional
         Run wrf in debugging mode. Just adds '_debug' to the build directory.
     use_job_scheduler : bool, optional
@@ -70,7 +68,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
         print("WARNING: option -o ignored when not in initialization mode!\n")
     if wait and use_job_scheduler:
         raise ValueError("Waiting for batch jobs is not yet implemented")
-    if init and restart:
+    if init and (exist == "r"):
         raise ValueError("For restart runs no initialization is needed!")
 
     #change to code path
@@ -150,10 +148,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
     if init:
         print("Initialize WRF simulations")
     else:
-        if restart:
-            print("Restart WRF simulations")
-        else:
-            print("Run WRF simulations")
+        print("Run WRF simulations")
 
     print("Configs:")
     if "core_param" in param_combs.index:
@@ -289,7 +284,7 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
 
         elif use_job_scheduler or test_run:
             queue = conf.queue
-            args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi, pool_jobs=pool_jobs, restart=restart, test_run=test_run, request_vmem=conf.request_vmem)
+            args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi, pool_jobs=pool_jobs, test_run=test_run, request_vmem=conf.request_vmem)
             if skip:
                 continue
             if conf.request_vmem:
@@ -406,37 +401,42 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                     print("Run not initialized yet! Skipping...")
                     skip = True
                 stream_names = [stream[0] for stream in args["output_streams"].values()]
+
+                outfiles = ["{}/{}_{}".format(outpath, outfile, IDr) for outfile in stream_names]
+                outfiles = [o for o in outfiles if os.path.isfile(o)]
+                restart = False
+                if len(outfiles) > 0:
+                    print("Output files already exist.")
+                    if exist == "s":
+                            print("Skipping...")
+                            skip = True
+
+                    elif exist == "o":
+                        print("Overwriting...")
+                    elif exist == "b":
+                        print("Creating backup...")
+                        bk_dir =  "{}/bak/".format(outpath)
+                        os.makedirs(bk_dir, exist_ok=True)
+                        for outfile in outfiles:
+                            outfile_name = outfile.split("/")[-1]
+                            outfile_bk = "{}/{}_bak_".format(bk_dir, outfile_name)
+                            bk_ind = 0
+                            while os.path.isfile(outfile_bk + str(bk_ind)):
+                                bk_ind += 1
+                            os.rename(outfile, outfile_bk + str(bk_ind))
+                    elif exist == "r":
+                        restart = True
+                    else:
+                        raise ValueError("Value '{}' for -e option not defined!".format(exist))
+
                 if restart:
-                    run_hours  = misc_tools.prepare_restart(run_dir_r, outpath, stream_names, args["end_time"])
-                    if (run_hours is None) or (run_hours <= 0):
+                    run_hours_rst, rst_opt  = misc_tools.get_restart_times(run_dir_r, args["end_time"])
+                    if run_hours_rst is None:
+                        restart = False
+                    elif run_hours <= 0:
                         skip = True
-
-                else:
-                    outfiles = ["{}/{}_{}".format(outpath, outfile, IDr) for outfile in stream_names]
-                    outfiles = [o for o in outfiles if os.path.isfile(o)]
-                    if len(outfiles) > 0:
-                        print("Output files already exist.")
-                        if exist == "s":
-                                print("Skipping...")
-                                skip = True
-
-                        elif exist == "o":
-                            print("Overwriting...")
-                        elif exist == "b":
-                            print("Creating backup...")
-                            bk_dir =  "{}/bak/".format(outpath)
-                            os.makedirs(bk_dir, exist_ok=True)
-                            for outfile in outfiles:
-                                outfile_name = outfile.split("/")[-1]
-                                outfile_bk = "{}/{}_bak_".format(bk_dir, outfile_name)
-                                bk_ind = 0
-                                while os.path.isfile(outfile_bk + str(bk_ind)):
-                                    bk_ind += 1
-                                os.rename(outfile, outfile_bk + str(bk_ind))
-                        else:
-                            raise ValueError("Value '{}' for -e option not defined!".format(exist))
-
-
+                    else:
+                        run_hours = run_hours_rst
 
                 last_id = False
                 if (rep == n_rep-1) and (i == len(param_combs) - 1):
@@ -558,6 +558,9 @@ def submit_jobs(config_file="config", init=False, restart=False, outdir=None, ex
                         if verbose:
                             print(comm)
                         if not check_args:
+                            if restart:
+                                misc_tools.prepare_restart(run_dir_r, outpath, stream_names, rst_opt)
+
                             err = os.system(comm)
                             if wait:
                                 if restart:
@@ -617,7 +620,6 @@ if __name__ == "__main__":
     #short form, long form, action
     parse_params = {"config_file":    ("-c", "--config", "store"),
                     "init":           ("-i", "--init", "store_true"),
-                    "restart":        ("-r", "--restart", "store_true"),
                     "outdir":         ("-o", "--outdir", "store"),
                     "exist":          ("-e", "--exist", "store"),
                     "debug":          ("-d", "--debug", "store_true"),
@@ -632,7 +634,7 @@ if __name__ == "__main__":
                     }
 
     assert sorted(parse_params.keys()) == sorted(desc.keys())
-    add_args = {"exist" : {"choices" : ["s", "o", "b"]}}
+    add_args = {"exist" : {"choices" : ["s", "o", "r", "b"]}}
 
     parser = argparse.ArgumentParser(description=intro)
     for p, default in defaults.items():

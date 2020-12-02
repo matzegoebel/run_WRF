@@ -101,7 +101,7 @@ def test_basic():
 
     with pytest.raises(ValueError, match="Value 'a' for -e option not defined!"):
         combs = submit_jobs(init=True, exist="a", config_file="test.config_test")
-    _, output = capture_submit(init=False, restart=True, wait=True, config_file="test.config_test_rst")
+    _, output = capture_submit(init=False, exist="r", wait=True, config_file="test.config_test_rst")
     count = Counter(output)
     print("\n".join(output))
     for m in ["Restart run from 2018-06-20 07:30:00", 'd01 2018-06-20_08:00:00 wrf: SUCCESS COMPLETE WRF']:

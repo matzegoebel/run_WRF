@@ -593,7 +593,7 @@ def get_job_usage(resource_file):
     return usage
 
 
-def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, restart=False, test_run=False, request_vmem=True):
+def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, test_run=False, request_vmem=True):
     """Set vmem and runtime per time step  based on settings in config file."""
     skip = False
 
@@ -635,8 +635,6 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, resta
         args["rt_per_timestep"] = runtime_per_step*conf.rt_buffer
         if print_rt_step:
             print("Runtime per time step: {0:.5f} s".format(runtime_per_step))
-        if not restart:
-            print("Runtime: {0:.1f} min".format(args["rt_per_timestep"]*n_steps/60))
 
     #virtual memory
     if request_vmem:
@@ -964,21 +962,14 @@ def check_namelist_best_practice(namelist):
 
 #%%restart
 
-def prepare_restart(wdir, outpath, output_streams, end_time):
+def get_restart_times(wdir, end_time):
     """
-    Prepare restart runs.
-
-    Search for restart files, select the most recent one and adapt the namelist file of the simulation.
-    The output of the previous simulation is backed up in a folder called rst.
+    Search for restart files, select the most recent one, and update the model start and end times.
 
     Parameters
     ----------
     wdir : str
         Path of the simulation folder that contains the restart files.
-    outpath : str
-        Directory where simulation output is placed.
-    output_streams : list
-        List of output stream names.
     end_time : datetime.datetime
         End time of simulation.
 
@@ -986,28 +977,30 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
     -------
     run_hours : datetime.datetime
         Start time of restart run.
+    rst_opt : dict
+        Updated namelist options for restart run.
     """
     #check if already finished
     runlogs = glob.glob(wdir + "/run_*.log")
-    if len(runlogs) > 1:
-        timestamp = sorted([r.split("/")[-1].split("_")[1].split(".")[0] for r in runlogs])[-1]
-        runlog = wdir + "/run_{}.log".format(timestamp)
-    else:
-        runlog = runlogs[0]
-    with open(runlog) as f:
-        runlog = f.readlines()
+    if len(runlogs) > 0:
+        if len(runlogs) > 1:
+            timestamp = sorted([r.split("/")[-1].split("_")[1].split(".")[0] for r in runlogs])[-1]
+            runlog = wdir + "/run_{}.log".format(timestamp)
+        else:
+            runlog = runlogs[0]
+        with open(runlog) as f:
+            runlog = f.readlines()
 
-    if "d01 {} wrf: SUCCESS COMPLETE WRF\n".format(end_time) in runlog:
-        print("Run already complete")
-        return
+        if "d01 {} wrf: SUCCESS COMPLETE WRF\n".format(end_time) in runlog:
+            print("Run already complete")
+            return
 
     #search rst files and determine start time
     rstfiles = os.popen("ls -t {}/wrfrst*".format(wdir)).read()
     if rstfiles == "":
-        print("WARNING: no restart files found. Skipping...")
-        return
+        print("no restart files found. Run from start...")
+        return None, None
 
-    ID = "_".join(wdir.split("/")[-1].split("_")[1:])
     restart_time = rstfiles.split("\n")[0].split("/")[-1].split("_")[-2:]
     print("Restart run from {}".format(" ".join(restart_time)))
 
@@ -1025,14 +1018,37 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
     run_hours = (end_time_dt - start_time_rst).total_seconds()/3600
     if run_hours  <= 0:
         print("Run already complete")
-        return
+        return None, None
 
     rst_opt = "restart .true."
     for se in ["start", "end"]:
         for unit, t in zip(["year", "month", "day", "hour", "minute", "second"], times[se]):
             rst_opt += " {}_{} {}".format(se, unit, t)
 
+
+    return run_hours, rst_opt
+
+def prepare_restart(wdir, outpath, output_streams, rst_opt):
+    """
+    Prepare restart runs.
+
+    Adapt the namelist file of the restart simulation.
+    The output of the previous simulation is backed up in a folder called rst.
+
+    Parameters
+    ----------
+    wdir : str
+        Path of the simulation folder that contains the restart files.
+    outpath : str
+        Directory where simulation output is placed.
+    output_streams : list
+        List of output stream names.
+    rst_opt : dict
+        Updated namelist options for restart run.
+
+    """
     os.makedirs("{}/rst/".format(outpath), exist_ok=True) #move previous output in backup directory
+    ID = "_".join(wdir.split("/")[-1].split("_")[1:])
     outfiles = [glob.glob("{}/{}_{}".format(outpath, stream, ID)) for stream in output_streams]
     for f in flatten_list(outfiles):
         fname = f.split("/")[-1]
@@ -1044,8 +1060,6 @@ def prepare_restart(wdir, outpath, output_streams, end_time):
     err = os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input 0 {1}".format(wdir, rst_opt))
     if err != 0:
         raise RuntimeError("Error in preparing restart run! Failed to modify namelist values!")
-
-    return run_hours
 
 def concat_restart(path, id_filter=""):
     """Concatenate output from restarted run and original run."""
