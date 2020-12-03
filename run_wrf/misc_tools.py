@@ -993,7 +993,7 @@ def get_restart_times(wdir, end_time):
 
         if "d01 {} wrf: SUCCESS COMPLETE WRF\n".format(end_time) in runlog:
             print("Run already complete")
-            return
+            return -1, None
 
     #search rst files and determine start time
     rstfiles = os.popen("ls -t {}/wrfrst*".format(wdir)).read()
@@ -1018,7 +1018,7 @@ def get_restart_times(wdir, end_time):
     run_hours = (end_time_dt - start_time_rst).total_seconds()/3600
     if run_hours  <= 0:
         print("Run already complete")
-        return None, None
+        return -1, None
 
     rst_opt = "restart .true."
     for se in ["start", "end"]:

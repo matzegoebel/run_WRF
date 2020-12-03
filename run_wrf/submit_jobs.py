@@ -433,7 +433,7 @@ def submit_jobs(config_file="config", init=False, outdir=None, exist="s", debug=
                     run_hours_rst, rst_opt  = misc_tools.get_restart_times(run_dir_r, args["end_time"])
                     if run_hours_rst is None:
                         restart = False
-                    elif run_hours <= 0:
+                    elif run_hours_rst <= 0:
                         skip = True
                     else:
                         run_hours = run_hours_rst
