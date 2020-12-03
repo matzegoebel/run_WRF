@@ -21,7 +21,7 @@ from copy import deepcopy
 
 #%%
 params = deepcopy(params)
-params["end_time"] = "2018-06-20_08:00:00" #format %Y-%m-%d_%H:%M:%S
+params["end_time"] = "2018-06-20_07:40:00" #format %Y-%m-%d_%H:%M:%S
 
 
 #%%

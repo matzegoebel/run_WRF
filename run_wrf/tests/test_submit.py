@@ -104,7 +104,7 @@ def test_basic():
     _, output = capture_submit(init=False, exist="r", wait=True, config_file="test.config_test_rst")
     count = Counter(output)
     print("\n".join(output))
-    for m in ["Restart run from 2018-06-20 07:30:00", 'd01 2018-06-20_08:00:00 wrf: SUCCESS COMPLETE WRF']:
+    for m in ["Restart run from 2018-06-20 07:20:00", 'd01 2018-06-20_07:40:00 wrf: SUCCESS COMPLETE WRF']:
         assert count[m] == combs["n_rep"].sum()
 
     #check output data
@@ -116,7 +116,7 @@ def test_basic():
     assert sorted(os.listdir(outd)) == sorted(outfiles)
     file = xr.open_dataset(outd + "/fastout_pytest_mp_physics=lin_0")
     t = file["XTIME"]
-    t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T08:00:00', freq="5min")
+    t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:40:00', freq="5min")
     assert (len(t) == len(t_corr)) and (t == t_corr).all()
 
 def test_repeats():

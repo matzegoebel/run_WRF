@@ -1072,56 +1072,29 @@ def concat_restart(path, id_filter=""):
         print("Process file {}".format(ID))
         new_file = path + ID
 
-        old_files = ls_t("{}/rst/{}_rst_*".format(path, ID))[::-1]
-        old_files = [o for o in old_files if o[-4:] != "_cut"]
-        time = None
+        old_files = ls_t("{}/rst/{}_rst_*".format(path, ID))
         if os.path.isfile(new_file):
-            all_files = [*old_files, new_file]
+            all_files = [new_file, *old_files]
         else:
             all_files = old_files
-
-        all_files_cut = []
-        time_prev = None
-        for cfile in all_files:
-            ds = xr.open_dataset(cfile)
-            time = extract_times(ds)
-            ds.close()
-            if time_prev is not None:
-                if time_prev[-1] >= time[0]:
-                    start_idx = np.where(time_prev[-1]==time)[0][0] + 1
-                    if start_idx < len(time):
-                        err = os.system("ncks -O -d Time,{},{} {} {}".format(start_idx, len(time)-1, cfile, cfile + "_cut"))
-                        if err != 0:
-                            raise Exception("Error in ncks when reducing {}".format(cfile))
-                    else:
-                        print("File {} is redundant!".format(cfile))
-                        continue
-                elif time_prev[0] >= time[0]:
-                    raise RuntimeError("Error in concatenating output for restarted runs!")
-                else:
-                    os.system("cp {} {}".format(cfile, cfile + "_cut"))
-            else:
-                os.system("cp {} {}".format(cfile, cfile + "_cut"))
-
-            all_files_cut.append(cfile + "_cut")
-            time_prev = time
-
-        new_concat = new_file + "_concat"
-        if os.path.isfile(new_concat):
-            os.remove(new_concat)
-        err = os.system("ncrcat {} {}".format(" ".join(all_files_cut), new_concat))
+        os.environ["SKIP_SAME_TIME"] = "1"
+        skip = False
+        nt = 0
+        for f in all_files:
+            ncinfo = os.popen("ncinfo " +  f).read()
+            if "XTIME" not in ncinfo:
+                skip = True
+        if skip:
+            print("Cannot concatenate output of original and restarted runs for {}. XTIME not in variables!".format(ID))
+            continue
+        new_file_c = new_file + "_concat"
+        err = os.system("cdo mergetime {} {}".format(" ".join(all_files), new_file_c))
         if err != 0:
-            raise Exception("Error in ncrcat when concatenating output of original and restarted runs" )
-        file_final = xr.open_dataset(new_file + "_concat")
-        time_final = extract_times(ds)
-
-        res = np.median(time_final[1:] - time_final[:-1])
-        time_corr = np.arange(time_final[0], time_final[-1] + res, res)
-        if (len(time_corr) != len(time_final)) or (time_corr != time_final).any():
-            raise RuntimeError("Error in concatenated time dimension for final file {}".format(ID))
-        for f in all_files_cut + all_files:
+            raise Exception("Error in cdo when concatenating output of original and restarted runs!" )
+            continue
+        for f in all_files:
             os.remove(f)
-        os.rename(new_file + "_concat", new_file)
+        os.rename(new_file_c, new_file)
 
 
 #%%job scheduler

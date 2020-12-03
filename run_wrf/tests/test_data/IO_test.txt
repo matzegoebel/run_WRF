@@ -1,6 +1,6 @@
 -:h:0:U,V,W,T,THM
 -:h:0:P,PB,PH,PHB,P_HYD
 -:h:0:T2,Q2,TSK,U10,V10
-+:h:4:U,V,W,T,THM
-+:h:4:P,PB,PH,PHB
-+:h:4:T2,Q2,TSK,U10,V10
++:h:24:XTIME,U,V,W,T,THM
++:h:24:P,PB,PH,PHB
++:h:24:T2,Q2,TSK,U10,V10
