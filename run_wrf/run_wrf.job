@@ -168,12 +168,6 @@ do
     echo -e "$(cat ${qlog}.err)\n$(cat $runerr)" > $runerr
   fi
 
-  if (( restart == 1 ))
-  then
-      echo
-      echo "Concatenate output from original and restarted run"
-      python -c "from run_wrf import misc_tools; misc_tools.concat_restart('$outpath', '${jobs[i]}')"
-  fi
   cat $runlog > run.log
   cat $runerr > run.err
 done

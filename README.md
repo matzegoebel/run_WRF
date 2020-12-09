@@ -20,7 +20,7 @@ When initializing the simulations, the namelist settings are checked for sanity 
 
 The log output is written to `init.log/init.err` and `run_$TIME.log/run_$TIME.err` in the respective simulation folder for initialization and simulation mode, respectively. The subdirectory for the simulation output can be specified in the script or with the `-o` option. Currently, the default config file uses the environment variables `$wrf_builds`, `$wrf_runs` and `$wrf_res` as base directories for WRF build, run and output directories, respectively.
 
-If the simulation folder (in init mode) or the output files (in simulation mode) already exist, the desired action can be specified with the `-e` option: Skipping this run (`-e s`), overwriting (`-e o`) or backing up the data (`-e b`). If a simulation aborts or you want to continue it to a later end time (as specified in the config file), you can also use the option `-e r` (not for init mode). This restarts the existent simulations from the most recent restart files. The original output is moved to a backup folder and concatenated with the output of the restarted run (with overlap removed) after the restarted run is finished. An unlimited number of restarts is possible. If no restart files are available, the simulation is run from the start.
+If the simulation folder (in init mode) or the output files (in simulation mode) already exist, the desired action can be specified with the `-e` option: Skipping this run (`-e s`), overwriting (`-e o`) or backing up the data (`-e b`). If a simulation aborts or you want to continue it to a later end time (as specified in the config file), you can also use the option `-e r` (not for init mode). This restarts the existent simulations from the most recent restart files. If no restart files are available, the simulation is run from the start.
 
 When run on a cluster, the `-j` flag allows submitting the jobs with a job scheduler, `SGE` or `SLURM`. The job scheduler and other cluster specific settings such as required modules and queues can be set in the config file for each cluster in use. In the default config file settings for the LEO cluster of the University of Innsbruck and the Vienna Scientific Cluster (*VSC*) are included. Email settings for the job scheduler can be set with the `-m` option.
 
@@ -35,9 +35,11 @@ The `-d` option leads to "_debug" being appended to the build directory name. Th
 If you want to run several simulations on the same cluster node, you can use the `-p` option. This gathers jobs until the specified pool size is reached and runs them simultaneously in one batch job. If you do not want to share the node with other users, you can fill up the whole node by specifying a pool size as large as the available slots on a node. On the *VSC* cluster only one job per node is allowed. Therefore job pooling is important to make best use of the available resources and thus switched on by default.
 The pooling option can also be used without job scheduler. Combined with the `-w` option, you can ensure that only `pool_size` cores are used simultaneously.
 
+To concatenate all available output files (e.g., from restarted runs) of each run defined in a config file, execute: `concat_output config_file`.
+
 ## Requirements
 The package is written for a Linux environment. For Windows, it may have to be adjusted.
-In addition to the standard library, the Python packages `numpy`, `pandas`, and `xarray` are required. To concatenate the output of restarted and original runs, you also need the program `ncks` from the [NCO](http://nco.sourceforge.net/) package.
+In addition to the standard library, the Python packages `numpy`, `pandas`, `xarray`, `metpy`, and `nco` are required.
 The package was tested with Python 3.6.
 
 ## Installation

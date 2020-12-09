@@ -50,9 +50,10 @@ setup(
     author_email='matthias-goebel@freenet.de',
     keywords='WRF',
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
-    install_requires=['numpy', 'pandas', 'xarray'],
+    install_requires=['numpy', 'pandas', 'xarray', 'metpy', 'nco'],
     extras_require={
         'test': ['pytest'],
     },
-    scripts=['run_wrf/submit_jobs.py']
+    scripts=['run_wrf/submit_jobs.py'],
+    entry_points={'console_scripts': ['concat_outfiles=run_wrf.misc_tools:concat_outfiles']}
 )

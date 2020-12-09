@@ -40,7 +40,6 @@ def test_basic():
     """
     with pytest.raises(RuntimeError, match="Parameter dx used in submit_jobs.py already defined in namelist.input! Rename this parameter!"):
         submit_jobs(config_file="test.config_test_del_args", init=True)
-
     #run wrf
     submit_jobs(init=True, exist="o", config_file="test.config_test")
     combs = submit_jobs(init=False, verbose=True, wait=True, exist="o", config_file="test.config_test")
@@ -107,18 +106,28 @@ def test_basic():
     for m in ["Restart run from 2018-06-20 07:20:00", 'd01 2018-06-20_07:40:00 wrf: SUCCESS COMPLETE WRF']:
         assert count[m] == combs["n_rep"].sum()
 
-    #check output data
-    outfiles = ['rst', 'bak',
-                'fastout_pytest_mp_physics=kessler_0',
-                'fastout_pytest_mp_physics=lin_0',
-                'wrfout_pytest_mp_physics=kessler_0',
-                'wrfout_pytest_mp_physics=lin_0']
-    assert sorted(os.listdir(outd)) == sorted(outfiles)
-    file = xr.open_dataset(outd + "/fastout_pytest_mp_physics=lin_0")
-    t = file["XTIME"]
-    t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:40:00', freq="5min")
-    assert (len(t) == len(t_corr)) and (t == t_corr).all()
+    outfiles_corr =['bak',
+                    'fastout_d01_2018-06-20_07:00:00',
+                    'fastout_d01_2018-06-20_07:25:00',
+                    'wrfout_d01_2018-06-20_07:00:00',
+                    'wrfout_d01_2018-06-20_07:30:00']
+    #check output
+    for run in os.listdir(outd):
+        outfiles = sorted(os.listdir(os.path.join(outd, run)))
+        assert outfiles == outfiles_corr
 
+    #concat output and check
+    misc_tools.concat_output("test.config_test")
+    for run in os.listdir(outd):
+        outfiles = sorted(os.listdir(os.path.join(outd, run)))
+        outfiles_corr = ['fastout_d01_2018-06-20_07:00:00', 'wrfout_d01_2018-06-20_07:00:00']
+        assert outfiles_corr == outfiles[1:]
+        for f, freq in zip(outfiles_corr, ["5", "10"]):
+            ds = xr.open_dataset(os.path.join(outd, run, f))
+            t = misc_tools.extract_times(ds)
+            t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:40:00', freq=freq+"min")
+            assert (len(t) == len(t_corr)) and (t == t_corr).all()
+#%%
 def test_repeats():
     """Test config repetitions functionality."""
     combs = submit_jobs(init=True, exist="o", config_file="test.config_test_reps")
@@ -240,7 +249,6 @@ def run_around_tests():
     #check skipping non-initialized runs
     _, output = capture_submit(init=False, config_file="test.config_test")
     assert Counter(output)["Run not initialized yet! Skipping..."] == 2
-
 
     # A test function will be run at this point
     yield

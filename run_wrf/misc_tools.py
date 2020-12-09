@@ -23,7 +23,7 @@ from run_wrf import get_namelist
 from run_wrf import vertical_grid
 from pathlib import Path as fopen
 import xarray as xr
-
+import importlib
 #%%nproc
 
 
@@ -147,11 +147,8 @@ def read_file(file):
     return fopen(file).read_text()
 
 def extract_times(ds):
-    if "XTIME" in ds:
-        time = ds["XTIME"]
-    else:
-        time = [datetime.fromisoformat(str(t.values.astype(str))) for t in ds["Times"]]
-        time = pd.DatetimeIndex(time)
+    time = [datetime.fromisoformat(str(t.values.astype(str))) for t in ds["Times"]]
+    time = pd.DatetimeIndex(time)
     return time.values
 #%%config grid related
 
@@ -1028,74 +1025,103 @@ def get_restart_times(wdir, end_time):
 
     return run_hours, rst_opt
 
-def prepare_restart(wdir, outpath, output_streams, rst_opt):
+def prepare_restart(wdir, rst_opt):
     """
     Prepare restart runs.
 
     Adapt the namelist file of the restart simulation.
-    The output of the previous simulation is backed up in a folder called rst.
 
     Parameters
     ----------
     wdir : str
         Path of the simulation folder that contains the restart files.
-    outpath : str
-        Directory where simulation output is placed.
-    output_streams : list
-        List of output stream names.
     rst_opt : dict
         Updated namelist options for restart run.
 
     """
-    os.makedirs("{}/rst/".format(outpath), exist_ok=True) #move previous output in backup directory
-    ID = "_".join(wdir.split("/")[-1].split("_")[1:])
-    outfiles = [glob.glob("{}/{}_{}".format(outpath, stream, ID)) for stream in output_streams]
-    for f in flatten_list(outfiles):
-        fname = f.split("/")[-1]
-        rst_ind = 0
-        while os.path.isfile("{}/rst/{}_rst_{}".format(outpath, fname, rst_ind)):
-            rst_ind += 1
-        os.rename(f, "{}/rst/{}_rst_{}".format(outpath, fname, rst_ind))
+
     os.environ["code_dir"] = os.path.curdir
     err = os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input 0 {1}".format(wdir, rst_opt))
     if err != 0:
         raise RuntimeError("Error in preparing restart run! Failed to modify namelist values!")
 
-def concat_restart(path, id_filter=""):
-    """Concatenate output from restarted run and original run."""
-    path = path + "/"
-    old_files_IDs = glob.glob("{}/rst/*{}_rst_*".format(path, id_filter))
-    old_files_IDs = set([f[:f.index("_rst_")].split("/")[-1] for f in old_files_IDs])
-    if len(old_files_IDs) == 0:
-        print("No files to concatenate!")
-    for ID in old_files_IDs:
-        print("Process file {}".format(ID))
-        new_file = path + ID
+def concat_output(config_file=None):
+    """Concatenate all output files for each run defined in config_file and delete them."""
 
-        old_files = ls_t("{}/rst/{}_rst_*".format(path, ID))
-        if os.path.isfile(new_file):
-            all_files = [new_file, *old_files]
-        else:
-            all_files = old_files
-        os.environ["SKIP_SAME_TIME"] = "1"
-        skip = False
-        nt = 0
-        for f in all_files:
-            ncinfo = os.popen("ncinfo " +  f).read()
-            if "XTIME" not in ncinfo:
-                skip = True
-        if skip:
-            print("Cannot concatenate output of original and restarted runs for {}. XTIME not in variables!".format(ID))
-            continue
-        new_file_c = new_file + "_concat"
-        err = os.system("cdo mergetime {} {}".format(" ".join(all_files), new_file_c))
-        if err != 0:
-            raise Exception("Error in cdo when concatenating output of original and restarted runs!" )
-            continue
-        for f in all_files:
-            os.remove(f)
-        os.rename(new_file_c, new_file)
+    if config_file is None:
+        args = sys.argv[1:]
+        if (len(args) != 1) or (args[0] in ["-h", "--help", "-help"]):
+            print("Concatenate all output files for each run defined in config_file and delete them.\nUsage:\n concat_output config_file")
+            sys.exit()
+        config_file = args[0]
 
+    #get runs
+    if config_file[-3:] == ".py":
+        config_file = config_file[:-3]
+    try:
+        conf = importlib.import_module("run_wrf.configs.{}".format(config_file))
+    except ModuleNotFoundError:
+        conf = importlib.import_module(config_file)
+
+    if "param_combs" in dir(conf):
+        param_combs = conf.param_combs
+    else:
+        param_combs = grid_combinations(conf.param_grid, conf.params, param_names=conf.param_names, runID=conf.runID)
+    ind = [i for i in param_combs.index if i not in ["core_param", "composite_idx"]]
+    param_combs = param_combs.loc[ind]
+
+    for cname, param_comb in param_combs.iterrows():
+        for rep in range(param_comb["n_rep"]): #repetion loop
+            rundir = param_comb["fname"] + "_" + str(rep)
+            outpath = os.path.join(conf.outpath, rundir, "") #WRF output path
+            print("Concatenate files in " + outpath)
+            for stream, (outfile, _) in param_comb["output_streams"].items():
+                #get all files
+                outfiles = sorted(glob.glob(outpath + outfile + "*"))
+                if len(outfiles) == 0:
+                    print("No files to concatenate for stream {}!".format(outfile))
+                    continue
+                elif len(outfiles) == 1:
+                    print("Only 1 file available for stream {}!".format(outfile))
+                    continue
+                outfiles_names = [f.split("/")[-1] for f in outfiles]
+                print("Files: {}".format(" ".join(outfiles_names)))
+                outfiles = outfiles[::-1]
+
+                #cut out overlapping time stamps
+                time_prev = None
+                all_times = []
+                for outfile in outfiles:
+                    ds = xr.open_dataset(outfile, decode_times=False)
+                    time = extract_times(ds)
+                    all_times.append(time)
+                    ds.close()
+                    if time_prev is not None:
+                        if time_prev[0] <= time[-1]:
+                            stop_idx = np.where(time_prev[0]==time)[0][0]-1
+                            if stop_idx > -1:
+                                err = os.system("ncks -O -d Time,0,{0} {1} {1}".format(stop_idx, outfile))
+                                if err != 0:
+                                    raise Exception("Error in ncks when reducing {}".format(outfile))
+                            else:
+                                print("File {} is redundant!".format(outfile))
+                                os.remove(outfile)
+                                continue
+
+                    time_prev = time
+                all_times = np.array(sorted(set(np.concatenate(all_times))))
+                #concatenate files
+                err = os.system("ncrcat --rec_apn {} {}".format(" ".join(sorted(outfiles[:-1])), outfiles[-1]))
+                if err != 0:
+                    raise Exception("Error in ncrcat when concatenating output of original and restarted runs" )
+
+                #check final file
+                ds = xr.open_dataset(outfiles[-1], decode_times=False)
+                concat_times = extract_times(ds)
+                if (len(all_times) != len(concat_times)) or (all_times != concat_times).any():
+                    raise RuntimeError("Error in concatenated time dimension")
+                for f in outfiles[:-1]:
+                    os.remove(f)
 
 #%%job scheduler
 def get_node_size_slurm(queue):
