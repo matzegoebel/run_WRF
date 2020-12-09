@@ -21,8 +21,7 @@ wrf_dir_pre = "WRF" #prefix for WRF build directory (_debug or _mpi are appended
 ideal_case = "em_les" #idealized WRF case
 runID = "test" #name for this simulation series
 
-outpath = os.environ["wrf_res"] #WRF output path root
-outdir = "test/" #subdirectory for WRF output if not set in command line
+outpath = os.environ["wrf_res"] + "test"#WRF output path root
 run_path = os.environ["wrf_runs"] #path where run directories of simulations will be created
 build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
 

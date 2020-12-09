@@ -20,7 +20,6 @@ from copy import deepcopy
 
 #%%
 runID = "sfclay" #name for this simulation series
-outdir = "test/" + runID #subdirectory for WRF output if not set in command line
 
 param_grid = odict(sf_sfclay_physics=[1, 2, 5])
 

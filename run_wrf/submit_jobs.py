@@ -20,7 +20,7 @@ from copy import deepcopy
 from pathlib import Path as fopen
 
 #%%
-def submit_jobs(config_file="config", init=False, outdir=None, exist="s", debug=False, use_job_scheduler=False,
+def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug=False, use_job_scheduler=False,
            check_args=False, pool_jobs=False, mail="ea", wait=False, no_namelist_check=False, test_run=False, verbose=False,
            param_combs=None):
     """
@@ -32,8 +32,8 @@ def submit_jobs(config_file="config", init=False, outdir=None, exist="s", debug=
         Name of config file in configs folder. The default is "config".
     init : bool, optional
         Initialize simulations.
-    outdir : str, optional
-        Subdirectory for WRF output. Default defined in script. Only effective during initialization.
+    outpath : str, optional
+        Directory for WRF output. Default defined in script. Only effective during initialization.
     exist : str, optional
         What to do if output already exists: Skip run ('s'), overwrite ('o'), restart ('r') or backup files ('b'). Default is 's'.
     debug : bool, optional
@@ -64,7 +64,7 @@ def submit_jobs(config_file="config", init=False, outdir=None, exist="s", debug=
     """
     from run_wrf import misc_tools
 
-    if (not init) and (outdir is not None):
+    if (not init) and (outpath is not None):
         print("WARNING: option -o ignored when not in initialization mode!\n")
     if wait and use_job_scheduler:
         raise ValueError("Waiting for batch jobs is not yet implemented")
@@ -93,15 +93,10 @@ def submit_jobs(config_file="config", init=False, outdir=None, exist="s", debug=
     if test_run:
         print("Do short test runs on cluster to find out required runtime and virtual memory\n\n")
 
-
-    if outdir is None:
-        outdir = conf.outdir
-
-    outpath = os.path.join(conf.outpath, outdir, "") #WRF output path
-    if not os.path.isdir(outpath):
-        os.makedirs(outpath)
-
-    outpath_esc = outpath.replace("/", "\/") #need to escape slashes
+    if outpath is None:
+        base_outpath = conf.outpath
+    else:
+        base_outpath = outpath
 
     if init:
         job_name = "init_"
@@ -310,6 +305,12 @@ def submit_jobs(config_file="config", init=False, outdir=None, exist="s", debug=
             IDr = IDi + "_" + str(rep)
             run_dir_r = run_dir + "_" + str(rep)
 
+            #create output path
+            outpath = os.path.join(base_outpath, IDr, "") #WRF output path
+            if not os.path.isdir(outpath):
+                os.makedirs(outpath)
+            outpath_esc = outpath.replace("/", "\/") #need to escape slashes
+
             if init:
                 if os.path.isdir(run_dir_r):
                     if exist == "s":
@@ -335,7 +336,7 @@ def submit_jobs(config_file="config", init=False, outdir=None, exist="s", debug=
 
                 hist_paths = r""
                 for stream, (outfile, _) in args["output_streams"].items():
-                    outname = r"{}{}_{}".format(outpath_esc, outfile, IDr)
+                    outname = r"{}{}_d<domain>_<date>".format(outpath_esc, outfile)
 
                     if stream == 0:
                         stream_arg = "history_outname"
@@ -401,9 +402,9 @@ def submit_jobs(config_file="config", init=False, outdir=None, exist="s", debug=
                     print("Run not initialized yet! Skipping...")
                     skip = True
                 stream_names = [stream[0] for stream in args["output_streams"].values()]
-
-                outfiles = ["{}/{}_{}".format(outpath, outfile, IDr) for outfile in stream_names]
-                outfiles = [o for o in outfiles if os.path.isfile(o)]
+                outfiles = []
+                for outfile in stream_names:
+                    outfiles.extend(glob.glob("{}/{}*".format(outpath, outfile)))
                 restart = False
                 if len(outfiles) > 0:
                     print("Output files already exist.")
@@ -559,7 +560,7 @@ def submit_jobs(config_file="config", init=False, outdir=None, exist="s", debug=
                             print(comm)
                         if not check_args:
                             if restart:
-                                misc_tools.prepare_restart(run_dir_r, outpath, stream_names, rst_opt)
+                                misc_tools.prepare_restart(run_dir_r, rst_opt)
 
                             err = os.system(comm)
                             if wait:
@@ -620,7 +621,7 @@ if __name__ == "__main__":
     #short form, long form, action
     parse_params = {"config_file":    ("-c", "--config", "store"),
                     "init":           ("-i", "--init", "store_true"),
-                    "outdir":         ("-o", "--outdir", "store"),
+                    "outpath":        ("-o", "--outpath", "store"),
                     "exist":          ("-e", "--exist", "store"),
                     "debug":          ("-d", "--debug", "store_true"),
                     "use_job_scheduler": ("-j", "--use_job_sched", "store_true"),

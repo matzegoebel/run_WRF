@@ -23,7 +23,7 @@ import glob
 import pandas as pd
 
 success = {True : 'wrf: SUCCESS COMPLETE IDEAL INIT', False : 'd01 2018-06-20_07:30:00 wrf: SUCCESS COMPLETE WRF'}
-outd = os.path.join(conf.outpath, conf.outdir)
+outd = conf.outpath
 
 test_dir = os.getcwd()
 code_dir = "/".join(test_dir.split("/")[:-1])
@@ -64,15 +64,15 @@ def test_basic():
     assert input_sounding == input_sounding_corr
 
     #check output data
-    outfiles = ['fastout_pytest_mp_physics=kessler_0',
-                'fastout_pytest_mp_physics=lin_0',
-                'wrfout_pytest_mp_physics=kessler_0',
-                'wrfout_pytest_mp_physics=lin_0']
-    assert sorted(os.listdir(outd)) == sorted(outfiles)
-    file = xr.open_dataset(outd + "/fastout_pytest_mp_physics=lin_0")
-    t = file["XTIME"]
-    t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:30:00', freq="5min")
-    assert (len(t) == len(t_corr)) and (t == t_corr).all()
+    for run in os.listdir(outd):
+        outfiles = sorted(os.listdir(os.path.join(outd, run)))
+        outfiles_corr = ['fastout_d01_2018-06-20_07:00:00', 'wrfout_d01_2018-06-20_07:00:00']
+        assert outfiles_corr == outfiles
+        for f, freq in zip(outfiles, ["5", "10"]):
+            ds = xr.open_dataset(os.path.join(outd, run, f))
+            t = misc_tools.extract_times(ds)
+            t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:30:00', freq=freq+"min")
+            assert (len(t) == len(t_corr)) and (t == t_corr).all()
 
     #test behaviour if run already exists
     for run in os.listdir(conf.run_path):
@@ -93,11 +93,11 @@ def test_basic():
                     assert count[success[init]] == combs["n_rep"].sum()
 
     #backup created?
-    bak = ['fastout_pytest_mp_physics=kessler_0_bak_0',
-           'fastout_pytest_mp_physics=lin_0_bak_0',
-           'wrfout_pytest_mp_physics=kessler_0_bak_0',
-           'wrfout_pytest_mp_physics=lin_0_bak_0']
-    assert sorted(os.listdir(outd + "/bak")) == sorted(bak)
+    bak = ['fastout_d01_2018-06-20_07:00:00_bak_0',
+           'wrfout_d01_2018-06-20_07:00:00_bak_0']
+    for run in os.listdir(outd):
+        outfiles = sorted(os.listdir(os.path.join(outd, run, "bak")))
+        assert outfiles == bak
 
     with pytest.raises(ValueError, match="Value 'a' for -e option not defined!"):
         combs = submit_jobs(init=True, exist="a", config_file="test.config_test")
