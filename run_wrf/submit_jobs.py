@@ -498,7 +498,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
 
                         if use_job_scheduler:
                             os.environ["job_scheduler"] = job_scheduler
-                            signal = conf.send_rt_signal
+                            send_rt_signal = conf.send_rt_signal
 
                             if conf.request_vmem:
                                 vmemp = int(sum(vmem)/sum(nslots))
