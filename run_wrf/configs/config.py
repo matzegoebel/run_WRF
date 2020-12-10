@@ -128,7 +128,6 @@ rt_use_median = False #use median when averaging runtime of previous runs, may b
 
 
 send_rt_signal = 20 #seconds before requested runtime is exhausted and signal is sent to job
-send_rt_signal_restart = 120 #send rt signal earlier for concatenation of output files in restart runs
 
 #additional paths (other than run_path) to search for log files to determine runtime and/or vmem if not specified
 resource_search_paths = []
