@@ -395,7 +395,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
                 for outfile in stream_names:
                     outfiles.extend(glob.glob("{}/{}*".format(outpath, outfile)))
                 restart = False
-                if len(outfiles) > 0:
+                if (len(outfiles) > 0) and (not skip):
                     print("Output files already exist.")
                     if exist == "s":
                             print("Skipping...")
