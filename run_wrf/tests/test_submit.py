@@ -241,8 +241,8 @@ def run_around_tests():
         if os.path.isdir(d):
             shutil.rmtree(d)
     #copy namelist and io file for tests
-    for add in ["_mpi", ""]:
-        target_dir = "{}/{}{}/test/{}/".format(conf.build_path, conf.wrf_dir_pre, add, conf.ideal_case)
+    for build in [conf.parallel_build, conf.serial_build]:
+        target_dir = "{}/{}/test/{}/".format(conf.build_path, build, conf.ideal_case)
         shutil.copy("{}/test_data/IO_test.txt".format(test_dir), target_dir)
         shutil.copy("{}/test_data/namelists/namelist.input".format(test_dir), target_dir)
 

@@ -233,20 +233,20 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
             ny = -1
         nslotsi = nx*ny
 
-        #add suffix for special folders
+        #determine which build to use
         slot_comm = ""
-        wrf_dir_i = conf.wrf_dir_pre
         if debug:
-            wrf_dir_i += "_debug"
-        if (nslotsi > 1) or (job_scheduler == "slurm"):
-            wrf_dir_i += "_mpi"
+            wrf_dir_i = conf.debug_build
+        elif (np.array([*nslots, nslotsi]) > 1).any():
+            wrf_dir_i = conf.parallel_build
             if use_job_scheduler and (not pool_jobs):
                 if job_scheduler == "sge":
                     slot_comm = "-pe openmpi-fillup {}".format(nslotsi)
                 elif job_scheduler == "slurm":
                     slot_comm = "-N {}".format(nslotsi)
+        else:
+            wrf_dir_i = conf.serial_build
 
-        #if code in extra subfolder
         wrf_build = os.path.join(conf.build_path, wrf_dir_i)
         print("Using WRF build in: {}\n".format(wrf_build))
 

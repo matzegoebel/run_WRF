@@ -17,13 +17,15 @@ from run_wrf import misc_tools
 '''Simulations settings'''
 params = {} #parameter dict for params not used in param_grid
 
-wrf_dir_pre = "WRF_test" #prefix for WRF build directory (_debug or _mpi are appended automatically)
 ideal_case = "em_les" #idealized WRF case
 runID = "pytest" #name for this simulation series
 
 outpath = os.environ["wrf_res"] + "/test/" + runID #WRF output path root
 run_path = os.environ["wrf_runs"] + "/" + runID #path where run directories of simulations will be created
-build_path = os.environ["wrf_builds"] + "tests" #path where different versions of the compiled WRF model code reside
+build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
+serial_build = "WRF" #used if nslots=1
+parallel_build = "WRF_mpi" #used if nslots > 1
+debug_build = "WRF_debug" #used for -d option
 
 #Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
 param_grid = odict(mp_physics=[1,2])
