@@ -223,17 +223,6 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
         nx = misc_tools.find_nproc(args["e_we"]-1, min_n_per_proc=conf.min_nx_per_proc, even_split=conf.even_split )
         ny = misc_tools.find_nproc(args["e_sn"]-1, min_n_per_proc=conf.min_ny_per_proc, even_split=conf.even_split )
 
-        # max_nslotsx = None
-        # max_nslotsy = None
-        # if test_run and ("max_nslotsx_test" in dir(conf)):
-        #     max_nslotsx = conf.max_nslotsx_test
-        # elif conf.max_nslotsx is not None:
-        #     max_nslotsx = conf.max_nslotsx
-        # if test_run and ("max_nslotsy_test" in dir(conf)):
-        #     max_nslotsy = conf.max_nslotsy_test
-        # elif conf.max_nslotsy is not None:
-        #     max_nslotsy = conf.max_nslotsy
-
         if conf.max_nslotsx is not None:
             nx = min(conf.max_nslotsx, nx)
         if conf.max_nslotsy is not None:
