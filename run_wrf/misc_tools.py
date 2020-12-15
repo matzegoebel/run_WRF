@@ -1126,7 +1126,12 @@ def concat_output(config_file=None):
 #%%job scheduler
 def get_node_size_slurm(queue):
     queue = queue.split(",")
-    ncpus = [os.popen("sinfo -o %c -h -p {}".format(q)).read() for q in queue]
+    ncpus = []
+    for q in queue:
+        n = os.popen("sinfo -o %c -h -p {}".format(q)).read()
+        if n == "":
+            raise ValueError("Job queue {} not available!".format(q))
+        ncpus.append(n)
     node_size = np.array([int(int(n)/2) for n in ncpus])
     if any(node_size[0] != node_size):
         print("WARNING: Different node sizes for the given queues: {}\n Choosing smaller one...".format(dict(zip(queue, node_size))))
