@@ -155,29 +155,24 @@ do
     #save resource usage of job
     if [[ $job_scheduler == "sge" ]]
     then
+      jobid=$JOB_ID
       qstat -j $JOB_ID > resources_${timestamp}.info
     elif [[ $job_scheduler == "slurm" ]]
     then
+      jobid=$SLURM_JOB_ID
       sacct -j $SLURM_JOB_ID -l -p > resources_${timestamp}.info
     fi
     #prepend log to run log
-    echo -e "$(cat ${qlog}.out)\n$(cat $runlog)" > $runlog
-    echo -e "$(cat ${qlog}.err)\n$(cat $runerr)" > $runerr
+    echo -e "$(cat ${qlog}_${jobid}.out)\n$(cat $runlog)" > $runlog
+    echo -e "$(cat ${qlog}_${jobid}.err)\n$(cat $runerr)" > $runerr
   fi
-
-  cat $runlog > run.log
-  cat $runerr > run.err
-done
-
-for (( i=0; i<$njobs; i++ ))
-do
-  cd ${run_path}/WRF_${jobs[i]}
-  exec 1>> $runlog
-  exec 2>> $runerr
 
   echo
   elapsed_t=$(($(date +%s) - start_time))
   echo  "Job finished, total elapsed time (s): ${elapsed_t}"
+
+  cat $runlog > run.log
+  cat $runerr > run.err
 done
 
 #echo "trap" $rc

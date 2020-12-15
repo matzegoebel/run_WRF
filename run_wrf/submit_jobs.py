@@ -351,9 +351,9 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
                     os.environ["job_scheduler"] = job_scheduler
                     os.environ["wrf_args"] = args_str_r
                     rt_init = misc_tools.format_timedelta(conf.rt_init*60)
-                    qlog = batch_log_dir + job_name + job_id
+                    qlog = batch_log_dir + job_name
                     os.environ["qlog"] = qlog
-                    qout, qerr = [qlog + s for s in [".out", ".err"]]
+                    qout, qerr = [qlog + job_id + s for s in [".out", ".err"]]
                     batch_args = [queue, qout, qerr, rt_init, conf.mail_address, mail, job_name]
                     if job_scheduler == "sge":
                         batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -M {} -m {} -N {} -V ".format(*batch_args)
@@ -509,9 +509,9 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
                             if rtr_max < send_rt_signal:
                                 raise ValueError("Requested runtime is smaller then the time when the runtime limit signal is sent!")
 
-                            qlog = batch_log_dir + job_name + job_id
+                            qlog = batch_log_dir + job_name
                             os.environ["qlog"] = qlog
-                            qout, qerr = [qlog + s for s in [".out", ".err"]]
+                            qout, qerr = [qlog + job_id + s for s in [".out", ".err"]]
                             batch_args = [conf.queue, qout, qerr, rtp, slot_comm, conf.mail_address, mail, job_name]
                             os.environ["rtlimit"] = str(int(rtr_max - send_rt_signal))
 
