@@ -22,7 +22,7 @@ runID = "pytest" #name for this simulation series
 
 outpath = os.environ["wrf_res"] + "/test/" + runID #WRF output path root
 run_path = os.environ["wrf_runs"] + "/" + runID #path where run directories of simulations will be created
-build_path = os.environ["wrf_builds"] #path where different versions of the compiled WRF model code reside
+build_path = os.environ["wrf_builds"] + "/tests" #path where different versions of the compiled WRF model code reside
 serial_build = "WRF" #used if nslots=1
 parallel_build = "WRF_mpi" #used if nslots > 1
 debug_build = "WRF_debug" #used for -d option
