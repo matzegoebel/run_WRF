@@ -141,7 +141,7 @@ even_split = False #force equal split between processors
 #%%
 '''Slot configurations and cluster settings'''
 mail_address = ""
-clusters = ["leo", "vsc"]
+clusters = ["leo", "vsc3", "vsc4"]
 reduce_pool = True #reduce pool size to the actual uses number of slots; do not use if you do not want to share the node with others
 
 host = os.popen("hostname -d").read()
@@ -163,21 +163,27 @@ if any([c in host for c in clusters]):
         bigmem_limit = 25e3 #limit (MB) where bigmem_queue is used
         pool_size = 28 #number of cores per pool if job pooling is used
         request_vmem = True
-
-
-    elif "vsc" in host:
+    elif "vsc3" in host:
         job_scheduler = "slurm"
         module_load = "module load intel/19 intel-mpi/2019 hdf5/1.8.12-MPI pnetcdf/1.10.0 netcdf_C/4.4.1.1 netcdf_Fortran/4.4.4;\
                        export NETCDF=/opt/sw/x86_64/glibc-2.17/ivybridge-ep/netcdf_Fortran/4.4.4/intel/19/intel-mpi/2019/hdf5/1.8.12-MPI/pnetcdf/1.10.0/netcdf_C/4.4.1.1/"
-        queue = "mem_0064" #partition on vsc3
-        qos = "normal_0064"
+        queue = "vsc3plus_0064" #partition on vsc3
+        qos = "vsc3plus_0064"
+        #queue = "mem_0064"
+        #qos = "normal_0064"
          #minimum pool size; should be equal to the number of available CPUs per node
         pool_size = misc_tools.get_node_size_slurm(queue)
-        force_pool = True #always use pooling
+        force_pool = True #always use pooling as vsc only offers exclusive nodes
+    elif "vsc4" in host:
+        job_scheduler = "slurm"
+        module_load = "module load intel intel-mpi;\
+                       export NETCDF=$HOME/wrf/lib/LIBRARIES/netcdf"
+        queue = "mem_0096"
+        qos = "mem_0096"
+        #minimum pool size; should be equal to the number of available CPUs per node
+        pool_size = misc_tools.get_node_size_slurm(queue)
+        force_pool = True #always use pooling as vsc only offers exclusive nodes
 else:
-    job_scheduler = "slurm"
-    queue = "std"
-    qos = None
     pool_size = 4
     cluster = False
     max_nslotsy = None
