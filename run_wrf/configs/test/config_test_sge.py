@@ -8,7 +8,7 @@ Test settings for automated tests.
 
 For MPI testing with SGE.
 
-@author: matze
+@author: Matthias Göbel
 
 """
 

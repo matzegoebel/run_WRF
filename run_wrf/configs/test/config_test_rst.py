@@ -8,7 +8,7 @@ Test settings for automated tests.
 
 To test restart functionality
 
-@author: matze
+@author: Matthias Göbel
 
 """
 import os

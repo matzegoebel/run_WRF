@@ -5,7 +5,7 @@ Created on Fri Jun 21 11:08:01 2019
 
 Automatically initialize and run idealized experiments in WRF on a single computer or cluster.
 
-@author: c7071088
+@author: Matthias Göbel
 """
 import numpy as np
 import pandas as pd

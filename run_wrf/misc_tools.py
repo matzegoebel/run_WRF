@@ -5,7 +5,7 @@ Created on Wed Nov 13 19:22:36 2019
 
 Miscellaneous functions for submit_jobs.py
 
-@author: c7071088
+@author: Matthias Göbel
 """
 
 from copy import deepcopy

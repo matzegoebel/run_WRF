@@ -6,8 +6,7 @@ Created on Fri Nov 22 17:36:46 2019
 Settings for submit_jobs.py
 Test settings for automated tests.
 
-@author: matze
-
+@author: Matthias Göbel
 """
 import os
 from collections import OrderedDict as odict

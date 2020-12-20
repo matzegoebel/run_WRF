@@ -5,7 +5,7 @@ Created on Wed Aug  7 18:25:41 2019
 
 Produce rankfile to pin jobs to certain processors.
 
-@author: c7071088
+@author: Matthias Göbel
 """
 
 import sys

@@ -7,7 +7,7 @@ Settings for submit_jobs.py
 Test settings for automated tests.
 
 To test repetitions functionality
-@author: matze
+@author: Matthias Göbel
 
 """
 import os

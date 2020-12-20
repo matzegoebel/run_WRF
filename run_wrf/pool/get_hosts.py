@@ -5,7 +5,7 @@ Created on Wed Aug  7 16:52:16 2019
 
 Get list of hosts available for certain job
 
-@author: c7071088
+@author: Matthias Göbel
 """
 
 import sys

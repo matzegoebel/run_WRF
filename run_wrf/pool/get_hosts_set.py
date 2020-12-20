@@ -5,7 +5,7 @@ Created on Thu Aug  8 00:10:19 2019
 
 Drop duplicates from list of hosts.
 
-@author: c7071088
+@author: Matthias Göbel
 """
 
 import sys

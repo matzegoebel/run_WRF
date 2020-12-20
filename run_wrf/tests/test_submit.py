@@ -5,7 +5,7 @@ Created on Tue Nov 26 12:26:51 2019
 
 Test submit_jobs function
 
-@author: c7071088
+@author: Matthias Göbel
 """
 
 import os

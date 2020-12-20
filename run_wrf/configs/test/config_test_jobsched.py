@@ -8,7 +8,7 @@ Test settings for automated tests.
 
 To test run with job scheduler
 
-@author: matze
+@author: Matthias Göbel
 
 """
 import os

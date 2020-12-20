@@ -8,7 +8,7 @@ Test settings for automated tests.
 
 For MPI testing with SLURM.
 
-@author: matze
+@author: Matthias Göbel
 
 """
 

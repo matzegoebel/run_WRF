@@ -3,7 +3,7 @@
 """
 Created on Wed Nov 20 17:14:23 2019
 
-@author: c7071088
+@author: Matthias Göbel
 """
 from run_wrf import misc_tools
 from run_wrf.misc_tools import Capturing

@@ -8,7 +8,7 @@ Test settings for automated tests.
 
 Assert RuntimeError due to dx being in del_args
 
-@author: matze
+@author: Matthias Göbel
 
 """
 import os

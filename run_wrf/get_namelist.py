@@ -3,7 +3,7 @@
 """
 Created on Fri Nov 29 20:17:50 2019
 
-@author: c7071088
+@author: Matthias Göbel
 """
 from collections import Counter
 
