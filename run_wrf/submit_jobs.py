@@ -247,15 +247,15 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
         else:
             wrf_dir_i = conf.serial_build
 
-        wrf_build = os.path.join(conf.build_path, wrf_dir_i)
-        print("Using WRF build in: {}\n".format(wrf_build))
-
         #timestep
         if "dt_f" not in args:
             args["dt_f"] = min(args["dx"], args["dy"])/1000*6 #wrf rule of thumb
 
         vmemi = None
         if init:
+            wrf_build = os.path.join(conf.build_path, wrf_dir_i)
+            print("Using WRF build in: {}\n".format(wrf_build))
+
             args, args_str = misc_tools.prepare_init(args, conf, wrf_dir_i, namelist_check=not no_namelist_check)
             #job scheduler queue and vmem
             if use_job_scheduler and conf.request_vmem:
