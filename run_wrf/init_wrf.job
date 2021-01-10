@@ -74,8 +74,8 @@ echo
 echo "create namelist"
 #echo $wrf_args
 
-source ${code_dir}/search_replace.sh namelist.input namelist.$RUN_ID 1 $wrf_args
-cp namelist.$RUN_ID namelist.input
+source ${code_dir}/search_replace.sh namelist.input namelist.$run_id 1 $wrf_args
+cp namelist.$run_id namelist.input
 
 echo
 echo "Running ideal"
