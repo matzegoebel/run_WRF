@@ -18,6 +18,7 @@ import importlib
 import inspect
 from copy import deepcopy
 from pathlib import Path as fopen
+import sys
 
 #%%
 def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug=False, use_job_scheduler=False,
@@ -71,16 +72,18 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
     if init and (exist == "r"):
         raise ValueError("For restart runs no initialization is needed!")
 
-    #change to code path
-    fpath = os.path.realpath(__file__)
-    os.chdir(fpath[:fpath.index("submit_jobs.py")])
 
     if config_file[-3:] == ".py":
         config_file = config_file[:-3]
     try:
         conf = importlib.import_module("run_wrf.configs.{}".format(config_file))
     except ModuleNotFoundError:
+        sys.path.append(os.getcwd())
         conf = importlib.import_module(config_file)
+
+    #change to code path
+    fpath = os.path.realpath(__file__)
+    os.chdir(fpath[:fpath.index("submit_jobs.py")])
 
     if param_combs is None:
         if "param_combs" in dir(conf):
