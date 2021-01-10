@@ -41,8 +41,8 @@ fi
 
 #from run directory for data files needed by physics modules; symbolic links sufficient
 cp -s ${build_dir}/run/* .
-#remove wrfinput if already available
-rm -f wrfinput*
+#remove old data if available
+rm -f wrfinput* rsl.*
 
 #from ideal case directory for namelist file, input sounding and IO file 
 cd $wrf_case_dir
