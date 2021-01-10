@@ -204,6 +204,7 @@ def grid_combinations(param_grid, add_params=None, param_names=None, runID=None)
                 composite_params.append( param + "_idx")
                 d[param] = transpose_list(val_list)
             else:
+                d[param] = make_list(d[param])
                 params.append(param)
 
         combs = list(itertools.product(*d.values()))
