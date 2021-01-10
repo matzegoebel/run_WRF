@@ -86,7 +86,14 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
         if "param_combs" in dir(conf):
             param_combs = conf.param_combs
         else:
-            param_combs = misc_tools.grid_combinations(conf.param_grid, conf.params, param_names=conf.param_names, runID=conf.runID)
+            args = []
+            for k in ["param_grid", "params", "param_names"]:
+                if k in dir(conf):
+                    args.append(eval("conf.{}".format(k)))
+                else:
+                    args.append(None)
+
+            param_combs = misc_tools.grid_combinations(*args, runID=conf.runID)
 
     param_combs = deepcopy(param_combs)
 
@@ -170,7 +177,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
         print(cname)
         print("\n")
 
-        if "dy" not in args:
+        if ("dy" not in args) and ("dx" in args):
             args["dy"] = args["dx"]
 
         #start and end times
@@ -199,25 +206,34 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
 
 
         #hor. domain
-        gp = conf.use_min_gridpoints
-        fm = conf.force_domain_multiple
-        if (not gp) or (gp == "y"):
-            args["e_we"] = math.ceil(args["lx"]/args["dx"]) + 1
+        if "use_min_gridpoints" in dir(conf):
+            gp = conf.use_min_gridpoints
         else:
-            args["e_we"] = max(math.ceil(args["lx"]/args["dx"]), args["min_gridpoints_x"] - 1) + 1
-            if (fm == True) or (fm == "x"):
-                lxr = (args["e_we"] -1)*args["dx"]/args["lx"]
-                if lxr != int(lxr):
-                    raise Exception("Domain size must be multiple of lx")
+            gp = False
+        if "use_min_gridpoints" in dir(conf):
+            fm = conf.force_domain_multiple
+        else:
+            fm = False
 
-        if (not gp) or (gp == "x"):
-            args["e_sn"] = math.ceil(args["ly"]/args["dy"]) + 1
-        else:
-            args["e_sn"] = max(math.ceil(args["ly"]/args["dy"]), args["min_gridpoints_y"] - 1) + 1
-            if (fm == True) or (fm == "y"):
-                lyr = (args["e_sn"] -1)*args["dy"]/args["ly"]
-                if lyr != int(lyr):
-                    raise Exception("Domain size must be multiple of ly")
+        if ("lx" in conf.params) and ("dx" in conf.params):
+            if (not gp) or (gp == "y"):
+                args["e_we"] = math.ceil(args["lx"]/args["dx"]) + 1
+            else:
+                args["e_we"] = max(math.ceil(args["lx"]/args["dx"]), args["min_gridpoints_x"] - 1) + 1
+                if (fm == True) or (fm == "x"):
+                    lxr = (args["e_we"] -1)*args["dx"]/args["lx"]
+                    if lxr != int(lxr):
+                        raise Exception("Domain size must be multiple of lx")
+
+        if ("ly" in conf.params) and ("dy" in conf.params):
+            if (not gp) or (gp == "x"):
+                args["e_sn"] = math.ceil(args["ly"]/args["dy"]) + 1
+            else:
+                args["e_sn"] = max(math.ceil(args["ly"]/args["dy"]), args["min_gridpoints_y"] - 1) + 1
+                if (fm == True) or (fm == "y"):
+                    lyr = (args["e_sn"] -1)*args["dy"]/args["ly"]
+                    if lyr != int(lyr):
+                        raise Exception("Domain size must be multiple of ly")
 
         #slots
         nx = misc_tools.find_nproc(args["e_we"]-1, min_n_per_proc=conf.min_nx_per_proc, even_split=conf.even_split )
@@ -246,10 +262,6 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
                     slot_comm = "-N {}".format(nslotsi)
         else:
             wrf_dir_i = conf.serial_build
-
-        #timestep
-        if "dt_f" not in args:
-            args["dt_f"] = min(args["dx"], args["dy"])/1000*6 #wrf rule of thumb
 
         vmemi = None
         if init:
@@ -284,8 +296,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
                 param_combs[arg] = None
             param_combs[arg][cname] = val
 
-
-        n_rep = args["n_rep"]
+        n_rep = args.setdefault("n_rep", 1)
         for rep in range(n_rep): #repetion loop
             vmem.append(vmemi)
             nslots.append(nslotsi)

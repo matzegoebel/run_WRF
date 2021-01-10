@@ -708,15 +708,17 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
     check_p_diff_2 = lambda p,val=0: (p not in args) and check_p_diff(p, val)
 
     #timestep
-    dt_int = math.floor(args["dt_f"])
-    args["time_step"] = dt_int
-    args["time_step_fract_num"] = round((args["dt_f"] - dt_int)*10)
-    args["time_step_fract_den"] = 10
-    if "radt" not in args:
-        args["radt"] = max(args["radt_min"], 10*dt_int/60) #rule of thumb
+    if "dt_f" in args:
+        dt_int = math.floor(args["dt_f"])
+        args["time_step"] = dt_int
+        args["time_step_fract_num"] = round((args["dt_f"] - dt_int)*10)
+        args["time_step_fract_den"] = 10
+
+        if ("radt" not in args) and ("radt_min" in args):
+            args["radt"] = max(args["radt_min"], 10*dt_int/60) #rule of thumb
 
     #vert. domain
-    if "eta_levels" not in args:
+    if ("eta_levels" not in args) and ("ztop" in args) and ("dz0" in args):
         # input_sounding_path = "{}/test/{}/input_sounding_{}".format(wrf_build, conf.ideal_case, args["input_sounding"])
         # input_sounding, p0 = read_input_sounding(input_sounding_path, scm="scm" in conf.ideal_case)
         # theta = input_sounding["theta"]
@@ -729,12 +731,17 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
                 vert_args[key] = args[key]
                 del args[key]
 
-        args["eta_levels"], dz = vertical_grid.create_levels(args["ztop"], args["dz0"], method=args["dz_method"],
+        if "dz_method" in args:
+            vert_args["method"] = args["dz_method"]
+
+        args["eta_levels"], dz = vertical_grid.create_levels(args["ztop"], args["dz0"],
                                                              plot=False, table=False, **vert_args)
         args["e_vert"] = len(args["eta_levels"])
         print("Created vertical grid:\n{0} levels\nlowest level at {1:.1f} m\nthickness of uppermost layer: {2:.1f} m\n".format(args["e_vert"], dz[0], dz[-2]))
 
-    args["eta_levels"] = "'" + ",".join(["{0:.6f}".format(e) for e in  args["eta_levels"]])  + "'"
+    if "eta_levels" in args:
+        args["eta_levels"] = "'" + ",".join(["{0:.6f}".format(e) for e in  args["eta_levels"]])  + "'"
+
     if "scm" in conf.ideal_case:
         print("WARNING: Eta levels are neglected in the standard initialization of the single column model case!")
 
