@@ -55,5 +55,5 @@ setup(
         'test': ['pytest'],
     },
     scripts=['run_wrf/submit_jobs.py'],
-    entry_points={'console_scripts': ['concat_outfiles=run_wrf.misc_tools:concat_outfiles']}
+    entry_points={'console_scripts': ['concat_output=run_wrf.misc_tools:concat_output']}
 )
