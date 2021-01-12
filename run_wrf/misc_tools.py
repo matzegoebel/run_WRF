@@ -1054,7 +1054,8 @@ def prepare_restart(wdir, rst_opt):
         raise RuntimeError("Error in preparing restart run! Failed to modify namelist values!")
 
 def concat_output(config_file=None):
-    """Concatenate all output files for each run defined in config_file and delete them."""
+    """Concatenate all output files for each run and output stream defined in config_file
+       to a single file and delete the original files."""
 
     if config_file is None:
         args = sys.argv[1:]
