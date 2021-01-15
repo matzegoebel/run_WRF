@@ -357,7 +357,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s", debug
                         iofile = iofile_
 
                 comm_args =dict(run_id=IDr, wrfv=wrf_dir_i, ideal_case=conf.ideal_case, input_sounding=args["input_sounding"],
-                                sleep=rep, nx=nx, ny=ny, run_path=conf.run_path, build_path=conf.build_path,
+                                nx=nx, ny=ny, run_path=conf.run_path, build_path=conf.build_path,
                                 batch=int(use_job_scheduler), wrf_args="", cluster=int(conf.cluster), iofile=iofile, module_load=conf.module_load)
                 for p, v in comm_args.items():
                     os.environ[p] = str(v)

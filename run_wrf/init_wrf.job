@@ -13,14 +13,25 @@ build_dir="${build_path}/$wrfv"
 run_dir="${run_path}/WRF_${run_id}"
 wrf_case_dir="${build_dir}/test/$ideal_case"
 
+echo
 echo "Copy files to $run_dir"
 rm $run_dir -rf
 mkdir -p $run_dir
 cd $run_dir
 
-#redirect logs to file
-exec 1> "init.log"
-exec 2> "init.err"
+#redirect logs to file and screen
+exec 1> >(tee -a "init.log")
+exec 2> >(tee -a "init.err")
+
+#print current wrf version (commit)
+cd ${build_dir}
+if [ -d .git ]; then
+  echo "Current WRF commit:"
+  git show -s --oneline
+  echo
+fi
+
+cd $run_dir
 
 if (( cluster==0 ))
 then
@@ -61,7 +72,6 @@ then
     cp ${input_sounding} ${input_sounding_org}
   else
     echo "Input sounding ${input_sounding} not available! Exit..." >&2
-    
     exit 1
   fi
 else
@@ -69,22 +79,16 @@ else
 fi
 
 echo "use input sounding: ${input_sounding}"
-
-echo
 echo "create namelist"
-#echo $wrf_args
 
-source ${code_dir}/search_replace.sh namelist.input namelist.$run_id 1 $wrf_args
+source ${code_dir}/search_replace.sh namelist.input namelist.$run_id 1 $wrf_args >> init.log 2>> init.err
 cp namelist.$run_id namelist.input
 
-echo
 echo "Running ideal"
 
-#make simulations asynchronous (prevent simultaneous writing to disk)
-echo
-echo "sleep $sleep s"
-echo
-sleep $sleep
+#redirect output to file only
+exec 1>> "init.log"
+exec 2>> "init.err"
 
 set +e
 ./ideal.exe

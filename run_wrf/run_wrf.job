@@ -73,7 +73,6 @@ do
 
       mpiexec -H $H -rf rankfile.$JOB_ID -mca rmaps_rank_file_physical 1 -np $nsi -v -report-bindings -display-map -display-allocation ./wrf.exe & pid[i]=$!
       si=$((si + nsi))
-      #~ sleep 20
     else
       mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!
       echo "mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!"
