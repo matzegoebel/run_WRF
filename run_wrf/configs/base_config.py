@@ -23,8 +23,6 @@ serial_build = "WRF"  # used if nslots=1
 parallel_build = "WRF_mpi"  # used if nslots > 1
 debug_build = "WRF_debug"  # used for -d option
 
-#TODO: delete
-force_domain_multiple = False  # "x", "y", True (for both) or False
 # registries to look for default namelist parameters
 registries = ["Registry.EM_COMMON", "registry.hyb_coord", "registry.les", "registry.io_boilerplate"]
 

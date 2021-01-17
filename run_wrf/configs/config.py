@@ -43,11 +43,7 @@ params["n_rep"] = 1  # number of repetitions for each configuration
 params["dx"] = 1000  # horizontal grid spacing x-direction(m)
 params["dy"] = None  # horizontal grid spacing y-direction (m), if None: dy = dx
 params["lx"] = 1000  # horizontal extent in east west (m)
-params["ly"] = 1000  # minimum horizontal extent in north south (m)
-# use minimum number of grid points set below:
-use_min_gridpoints = False  # "x", "y", True (for both) or False
-params["min_gridpoints_x"] = 10  # minimum number of grid points in x direction
-params["min_gridpoints_y"] = 10  # minimum number of grid points in y direction
+params["ly"] = 1000  # horizontal extent in north south (m)
 
 # vertical grid
 params["ztop"] = 5000  # top of domain (m)

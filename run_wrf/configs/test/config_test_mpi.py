@@ -23,9 +23,8 @@ from copy import deepcopy
 param_grid = odict(mp_physics=[1, 2])
 params = deepcopy(params)
 
-use_min_gridpoints = True  # "x", "y", True (for both) or False
-params["min_gridpoints_x"] = 33  # minimum number of grid points in x direction
-params["min_gridpoints_y"] = 11  # minimum number of grid points in y direction
+params["lx"] = 16000
+params["ly"] = 5000
 
 mail_address = "test@test.com"
 # %%
