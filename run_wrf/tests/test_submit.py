@@ -22,8 +22,9 @@ from run_wrf import get_namelist
 import glob
 import pandas as pd
 
+end_time = "2018-06-20_07:06:00"
 success = {True: 'wrf: SUCCESS COMPLETE IDEAL INIT',
-           False: 'd01 2018-06-20_07:30:00 wrf: SUCCESS COMPLETE WRF'}
+           False: 'd01 {} wrf: SUCCESS COMPLETE WRF'.format(end_time)}
 outd = conf.outpath
 
 test_dir = os.getcwd()
@@ -71,10 +72,10 @@ def test_basic():
         outfiles = sorted(os.listdir(os.path.join(outd, run)))
         outfiles_corr = ['fastout_d01_2018-06-20_07:00:00', 'wrfout_d01_2018-06-20_07:00:00']
         assert outfiles_corr == outfiles
-        for f, freq in zip(outfiles, ["5", "10"]):
+        for f, freq in zip(outfiles, ["1", "2"]):
             ds = xr.open_dataset(os.path.join(outd, run, f))
             t = misc_tools.extract_times(ds)
-            t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:30:00',
+            t_corr = pd.date_range(start="2018-06-20T07:00:00", end=end_time.replace("_", "T"),
                                    freq=freq + "min")
             assert (len(t) == len(t_corr)) and (t == t_corr).all()
 
@@ -111,15 +112,15 @@ def test_basic():
                                config_file="test.config_test_rst")
     count = Counter(output)
     print("\n".join(output))
-    for m in ["Restart run from 2018-06-20 07:20:00",
-              'd01 2018-06-20_07:40:00 wrf: SUCCESS COMPLETE WRF']:
+    for m in ["Restart run from 2018-06-20 07:04:00",
+              'd01 2018-06-20_07:08:00 wrf: SUCCESS COMPLETE WRF']:
         assert count[m] == combs["n_rep"].sum()
 
     outfiles_corr = ['bak',
                      'fastout_d01_2018-06-20_07:00:00',
-                     'fastout_d01_2018-06-20_07:25:00',
+                     'fastout_d01_2018-06-20_07:05:00',
                      'wrfout_d01_2018-06-20_07:00:00',
-                     'wrfout_d01_2018-06-20_07:30:00']
+                     'wrfout_d01_2018-06-20_07:06:00']
     # check output
     for run in os.listdir(outd):
         outfiles = sorted(os.listdir(os.path.join(outd, run)))
@@ -131,10 +132,10 @@ def test_basic():
         outfiles = sorted(os.listdir(os.path.join(outd, run)))
         outfiles_corr = ['fastout_d01_2018-06-20_07:00:00', 'wrfout_d01_2018-06-20_07:00:00']
         assert outfiles_corr == outfiles[1:]
-        for f, freq in zip(outfiles_corr, ["5", "10"]):
+        for f, freq in zip(outfiles_corr, ["1", "2"]):
             ds = xr.open_dataset(os.path.join(outd, run, f))
             t = misc_tools.extract_times(ds)
-            t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:40:00',
+            t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:08:00',
                                    freq=freq + "min")
             assert (len(t) == len(t_corr)) and (t == t_corr).all()
 # %%
@@ -159,7 +160,7 @@ def test_mpi_and_batch():
     count = Counter(output)
     m = "Submit IDs: ['pytest_mp_physics=kessler_0', 'pytest_mp_physics=lin_0']"
     assert count[m] == 1
-    m = "d01 2018-06-20_07:30:00 wrf: SUCCESS COMPLETE WRF"
+    m = success[False]
     assert count[m] == combs["n_rep"].sum()
 
     rundirs = []
@@ -178,9 +179,9 @@ def test_mpi_and_batch():
     count = Counter(output)
     c = output[-1]
     batch_comm = "qsub -cwd -q std.q -o {0}/logs/run_pytest_$JOB_ID.out "\
-                 "-e {0}/logs/run_pytest_$JOB_ID.err -l h_rt=000:00:15 "\
-                 " -pe openmpi-fillup 2 -M matthias.goebel@uibk.ac.at -m ea -N run_pytest -V  "\
-                 "-l h_vmem=85M run_wrf.job".format(conf.run_path)
+                 "-e {0}/logs/run_pytest_$JOB_ID.err -l h_rt=000:00:27 "\
+                 " -pe openmpi-fillup 2  -M matthias.goebel@uibk.ac.at -m ea -N run_pytest -V  "\
+                 "-l h_vmem=85M  run_wrf.job".format(conf.run_path)
     assert batch_comm == c
 
     messages = ['Get runtime from previous runs', 'Get vmem from previous runs',
@@ -200,7 +201,7 @@ def test_mpi_and_batch():
     count = Counter(output)
     c = output[-1]
     batch_comm = "sbatch -p mem_0064 -o {0}/logs/run_pytest_%j.out -e {0}/logs/run_pytest_%j.err "\
-                 " --time=000:00:15 --ntasks-per-node=4 -N 1 "\
+                 "--time=000:00:27 --ntasks-per-node=4 -N 1 "\
                  "--mail-user=matthias.goebel@uibk.ac.at --mail-type=END,FAIL -J run_pytest "\
                  "--export=ALL  --qos=normal_0064  run_wrf.job".format(conf.run_path)
     assert batch_comm == c
@@ -211,7 +212,8 @@ def test_mpi_and_batch():
 def test_scheduler_full():
     """Test runs using a job scheduler if available"""
     # Check if job scheduler is available
-    if os.popen("command -v {}".format(batch_dict[conf.job_scheduler])).read() != "":
+    if ("job_scheduler" in dir(conf)) and \
+            os.popen("command -v {}".format(batch_dict[conf.job_scheduler])).read() != "":
         combs = submit_jobs(init=True, exist="o", config_file="test.config_test_mpi")
         _, output = capture_submit(init=False, use_job_scheduler=True, test_run=True, exist="o",
                                    verbose=True, config_file="test.config_test_mpi")
@@ -243,7 +245,7 @@ def test_scheduler_full():
         for rundir in rundirs:
             runlog = glob.glob(rundir + "/run_*.log")[0]
             runlog = misc_tools.read_file(runlog)
-            m = "d01 2018-06-20_07:30:00 wrf: SUCCESS COMPLETE WRF"
+            m = success[False]
             assert m in runlog
 
 

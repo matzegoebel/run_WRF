@@ -39,7 +39,7 @@ param_names = {"mp_physics": {1: "kessler", 2: "lin"},
 
 
 params["start_time"] = "2018-06-20_07:00:00"  # format %Y-%m-%d_%H:%M:%S
-params["end_time"] = "2018-06-20_07:30:00"  # format %Y-%m-%d_%H:%M:%S
+params["end_time"] = "2018-06-20_07:06:00"  # format %Y-%m-%d_%H:%M:%S
 
 params["n_rep"] = 1  # number of repetitions for each configuration
 
@@ -78,13 +78,13 @@ params["bl_pbl_physics"] = 2
 
 # indices for output streams and their respective name and output interval (minutes, floats allowed)
 # 0 is the standard output stream
-params["output_streams"] = {24: ["wrfout", 10.], 0: ["fastout", 5.]}
+params["output_streams"] = {24: ["wrfout", 2.], 0: ["fastout", 1.]}
 
 # filename where output variables for standard and auxiliary streams are modified:
 # if None: use specified value in namelist.input: if "" no file is used
 params["iofields_filename"] = "IO_test.txt"
 
-params["restart_interval_m"] = 20  # restart interval (min)
+params["restart_interval_m"] = 4  # restart interval (min)
 
 
 registries = ["Registry.EM_COMMON", "registry.hyb_coord", "registry.les", "registry.io_boilerplate"]  # registries to look for default namelist parameters
