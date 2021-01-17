@@ -60,10 +60,10 @@ params["ztop"] = 2000  # top of domain (m)
 params["zdamp"] = int(params["ztop"] / 3)  # depth of damping layer (m)
 params["nz"] = None  # number of vertical levels
 params["dz0"] = 20  # height of first model level (m)
-# if nz is None and for dz_method=0 only: specify maximum vertical grid spacing instead of nz
+# if nz is None and for vgrid_method=0 only: specify maximum vertical grid spacing instead of nz
 # either float or "dx" to make it equal to dx
 params["dzmax"] = 300
-params["dz_method"] = 3  # method for creating vertical grid as defined in vertical_grid.py
+params["vgrid_method"] = 1  # method for creating vertical grid as defined in vertical_grid.py
 
 params["dt_f"] = None  # time step (s), if None calculated as dt = 6 s/m *min(dx,dy)/1000; can be float
 # minimum time between radiation calls (min); if radt is not specified: radt=max(radt_min, 10*dt)
@@ -92,7 +92,7 @@ params["restart_interval_m"] = 20  # restart interval (min)
 registries = ["Registry.EM_COMMON", "registry.hyb_coord", "registry.les", "registry.io_boilerplate"]  # registries to look for default namelist parameters
 
 # non-namelist parameters that will not be included in namelist file
-del_args = ["output_streams", "start_time", "end_time", "dz0", "dz_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
+del_args = ["output_streams", "start_time", "end_time", "dz0", "vgrid_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
             "n_rep", "dt_f", "radt_min"]
 # %%
 '''Settings for resource requirements of batch jobs'''

@@ -736,8 +736,8 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
                 vert_args[key] = args[key]
                 del args[key]
 
-        if "dz_method" in args:
-            vert_args["method"] = args["dz_method"]
+        if "vgrid_method" in args:
+            vert_args["method"] = args["vgrid_method"]
 
         args["eta_levels"], dz = vertical_grid.create_levels(args["ztop"], args["dz0"], **vert_args)
         args["e_vert"] = len(args["eta_levels"])
