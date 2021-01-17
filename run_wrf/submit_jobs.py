@@ -23,9 +23,9 @@ import sys
 
 
 def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
-            debug=False, use_job_scheduler=False, check_args=False,
-            pool_jobs=False, mail="ea", wait=False, no_namelist_check=False,
-            test_run=False, verbose=False, param_combs=None):
+                debug=False, use_job_scheduler=False, check_args=False,
+                pool_jobs=False, mail="ea", wait=False, no_namelist_check=False,
+                test_run=False, verbose=False, param_combs=None):
     """
     Initialize and run idealized WRF experiments.
     Refer to README.md for more information.
@@ -176,7 +176,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
 
     else:
         print(param_combs.index.values)
-    print("-"*40)
+    print("-" * 40)
     for i, (cname, param_comb) in enumerate(param_combs.iterrows()):
         IDi = param_comb["fname"]
         args = deepcopy(param_comb.dropna().to_dict())
@@ -203,7 +203,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
         end_d = end_d.split("-")
         end_t = end_t.split(":")
 
-        run_hours = (end_time_dt - start_time_dt).total_seconds()/3600
+        run_hours = (end_time_dt - start_time_dt).total_seconds() / 3600
         if run_hours <= 0:
             raise ValueError("Selected end time {} smaller or equal start time {}!".format(
                 args["end_time"], args["start_time"]))
@@ -229,30 +229,30 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
 
         if ("lx" in conf.params) and ("dx" in conf.params):
             if (not gp) or (gp == "y"):
-                args["e_we"] = math.ceil(args["lx"]/args["dx"]) + 1
+                args["e_we"] = math.ceil(args["lx"] / args["dx"]) + 1
             else:
-                args["e_we"] = max(math.ceil(args["lx"]/args["dx"]),
+                args["e_we"] = max(math.ceil(args["lx"] / args["dx"]),
                                    args["min_gridpoints_x"] - 1) + 1
                 if (fm is True) or (fm == "x"):
-                    lxr = (args["e_we"] - 1)*args["dx"]/args["lx"]
+                    lxr = (args["e_we"] - 1) * args["dx"] / args["lx"]
                     if lxr != int(lxr):
                         raise Exception("Domain size must be multiple of lx")
 
         if ("ly" in conf.params) and ("dy" in conf.params):
             if (not gp) or (gp == "x"):
-                args["e_sn"] = math.ceil(args["ly"]/args["dy"]) + 1
+                args["e_sn"] = math.ceil(args["ly"] / args["dy"]) + 1
             else:
-                args["e_sn"] = max(math.ceil(args["ly"]/args["dy"]),
+                args["e_sn"] = max(math.ceil(args["ly"] / args["dy"]),
                                    args["min_gridpoints_y"] - 1) + 1
                 if (fm is True) or (fm == "y"):
-                    lyr = (args["e_sn"] - 1)*args["dy"]/args["ly"]
+                    lyr = (args["e_sn"] - 1) * args["dy"] / args["ly"]
                     if lyr != int(lyr):
                         raise Exception("Domain size must be multiple of ly")
 
         # slots
-        nx = misc_tools.find_nproc(args["e_we"]-1, min_n_per_proc=conf.min_nx_per_proc,
+        nx = misc_tools.find_nproc(args["e_we"] - 1, min_n_per_proc=conf.min_nx_per_proc,
                                    even_split=conf.even_split)
-        ny = misc_tools.find_nproc(args["e_sn"]-1, min_n_per_proc=conf.min_ny_per_proc,
+        ny = misc_tools.find_nproc(args["e_sn"] - 1, min_n_per_proc=conf.min_ny_per_proc,
                                    even_split=conf.even_split)
 
         if conf.max_nslotsx is not None:
@@ -263,7 +263,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
         if (nx == 1) and (ny == 1):
             nx = -1
             ny = -1
-        nslotsi = nx*ny
+        nslotsi = nx * ny
 
         # determine which build to use
         slot_comm = ""
@@ -288,7 +288,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                                                      namelist_check=not no_namelist_check)
             # job scheduler queue and vmem
             if use_job_scheduler and conf.request_vmem:
-                vmem_grid = conf.vmem_init_per_grid_point*args["e_we"]*args["e_sn"]
+                vmem_grid = conf.vmem_init_per_grid_point * args["e_we"] * args["e_sn"]
                 vmem_init = max(conf.vmem_init_min, int(vmem_grid))
                 if ("bigmem_limit" in dir(conf)) and (vmem_init > conf.bigmem_limit):
                     queue = conf.bigmem_queue
@@ -384,7 +384,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                 if use_job_scheduler:
                     os.environ["job_scheduler"] = job_scheduler
                     os.environ["wrf_args"] = args_str_r
-                    rt_init = misc_tools.format_timedelta(conf.rt_init*60)
+                    rt_init = misc_tools.format_timedelta(conf.rt_init * 60)
                     qlog = batch_log_dir + job_name
                     os.environ["qlog"] = qlog
                     qout, qerr = [qlog + job_id + s for s in [".out", ".err"]]
@@ -466,7 +466,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                         run_hours = run_hours_rst
 
                 last_id = False
-                if (rep == n_rep-1) and (i == len(param_combs) - 1):
+                if (rep == n_rep - 1) and (i == len(param_combs) - 1):
                     last_id = True
                 if skip:
                     vmem = vmem[:-1]
@@ -479,8 +479,8 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                     IDs.append(IDr)
                     rtri = None
                     if use_job_scheduler or test_run:
-                        rtri = args["rt_per_timestep"] * run_hours / \
-                            args["dt_f"] * 3600  # runtime in seconds
+                        # runtime in seconds
+                        rtri = args["rt_per_timestep"] * run_hours * args["dt_f"] * 3600
                         rtr.append(rtri)
 
                 if (not pool_jobs) or (sum(nslots) >= conf.pool_size) or last_id:
@@ -518,7 +518,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                                     nperhost = nperhost_avail[nperhost_avail >= sum(nslots)].min()
                                 slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
                             elif job_scheduler == "slurm":
-                                nodes = math.ceil(sum(nslots)/conf.pool_size)
+                                nodes = math.ceil(sum(nslots) / conf.pool_size)
                                 if nodes == 1:
                                     ntasks = sum(nslots)
                                 else:
@@ -546,7 +546,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                             send_rt_signal = conf.send_rt_signal
 
                             if conf.request_vmem:
-                                vmemp = int(sum(vmem)/sum(nslots))
+                                vmemp = int(sum(vmem) / sum(nslots))
                                 if ("bigmem_limit" in dir(conf)) and (vmemp > conf.bigmem_limit):
                                     queue = conf.bigmem_queue
 
@@ -608,7 +608,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                                     print(ID)
                                     run_dir_i = "{}/WRF_{}/".format(conf.run_path, ID)
                                     print(os.popen("tail -n {} {}/run_{}.log".format(log_lines,
-                                                                    run_dir_i, timestamp)).read())
+                                                                                     run_dir_i, timestamp)).read())
                                     print(fopen(run_dir_i + "run_{}.err".format(timestamp)).read_text())
                             # if err != 0:
                             #     raise RuntimeError("WRF run failed!")
@@ -655,19 +655,19 @@ if __name__ == "__main__":
 
     # command line arguments (equivalent to function arguments above)
     # short form, long form, action
-    parse_params = {"config_file":    ("-c", "--config", "store"),
-                    "init":           ("-i", "--init", "store_true"),
-                    "outpath":        ("-o", "--outpath", "store"),
-                    "exist":          ("-e", "--exist", "store"),
-                    "debug":          ("-d", "--debug", "store_true"),
+    parse_params = {"config_file":       ("-c", "--config", "store"),
+                    "init":              ("-i", "--init", "store_true"),
+                    "outpath":           ("-o", "--outpath", "store"),
+                    "exist":             ("-e", "--exist", "store"),
+                    "debug":             ("-d", "--debug", "store_true"),
                     "use_job_scheduler": ("-j", "--use_job_sched", "store_true"),
-                    "check_args":     ("-t", "--test", "store_true"),
-                    "pool_jobs":      ("-p", "--pool", "store_true"),
-                    "mail":           ("-m", "--mail", "store"),
-                    "wait":           ("-w", "--wait", "store_true"),
+                    "check_args":        ("-t", "--test", "store_true"),
+                    "pool_jobs":         ("-p", "--pool", "store_true"),
+                    "mail":              ("-m", "--mail", "store"),
+                    "wait":              ("-w", "--wait", "store_true"),
                     "no_namelist_check": ("-n", "--no_namelist_check", "store_true"),
-                    "test_run":        ("-T", "--test_run", "store_true"),
-                    "verbose":        ("-v", "--verbose", "store_true")
+                    "test_run":          ("-T", "--test_run", "store_true"),
+                    "verbose":           ("-v", "--verbose", "store_true")
                     }
 
     assert sorted(parse_params.keys()) == sorted(desc.keys())
