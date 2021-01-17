@@ -24,6 +24,7 @@ from run_wrf import vertical_grid
 from pathlib import Path as fopen
 import xarray as xr
 import importlib
+
 # %%nproc
 
 
@@ -1172,6 +1173,7 @@ def get_node_size_slurm(queue):
         print("WARNING: Different node sizes for the given queues: {}\n "
               "Choosing smaller one...".format(dict(zip(queue, node_size))))
     return node_size.min()
+
 # %%
 
 

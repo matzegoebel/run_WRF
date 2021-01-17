@@ -24,7 +24,7 @@ do
   if grep -x -q "\s*$1\s*=.*" ${outfile}
   then
     line=$(grep "\s$1\s*=" ${outfile})
-    value_change=$(python ${code_dir}/check_namelist_value.py "$line" "$2")
+    value_change=$(check_namelist_value "$line" "$2")
     if [ -z "$value_change" ]
     then
       sed  -i -r -e "s/\s$1\s*=.*/ $1 = $2/g" $outfile

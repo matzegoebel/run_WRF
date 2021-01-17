@@ -18,7 +18,7 @@ import inspect
 from copy import deepcopy
 from pathlib import Path as fopen
 import sys
-import get_namelist
+from run_wrf import get_namelist
 
 # %%
 

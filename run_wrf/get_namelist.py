@@ -6,6 +6,7 @@ Functions to read in and modify WRF namelists
 
 @author: Matthias Göbel
 """
+import sys
 
 
 def namelist_to_dict(path, verbose=False, first_domain_only=True,
@@ -86,3 +87,18 @@ def mod_namelist_val(val):
         pass
 
     return val
+
+
+def check_namelist_value():
+    """Detect if given value of namelist parameter is equal to
+       the one declared in a line of a namelist file.
+    """
+    line = sys.argv[1]
+    new_val = sys.argv[2]
+
+    param_val = get_namelist_param_val(line)
+    if param_val is not None:
+        old_val = param_val[1]
+        new_val = mod_namelist_val(new_val)
+        if old_val == new_val:
+            print("Old and new value are equal")

@@ -29,13 +29,13 @@ runlog=run_${timestamp}.log
 runerr=run_${timestamp}.err
 
 
-si=0
+start_slot=0
 pool=false
 if (( $njobs > 1 )) && (( pool_jobs == 1 )) && (( batch == 1 )) && [[ $job_scheduler == "sge" ]]
 then
   pool=true
   qs=$(qstat -t)
-  hosts=$(python ${code_dir}/pool/get_hosts.py "$JOB_ID" "$qs")
+  hosts=$(get_hosts "$JOB_ID" "$qs")
   hosts=(${hosts})
   echo "hosts ${hosts[*]}"
 fi
@@ -63,16 +63,16 @@ do
     echo "parallel"
     if $pool
     then
-      echo "si $si"
-      hostsi=${hosts[@]:$si:$nsi}
+      echo "start_slot $start_slot"
+      hostsi=${hosts[@]:$start_slot:$nsi}
       echo "on hosts: $hostsi"
 
-      H=$(python ${code_dir}/pool/get_hosts_set.py "$hostsi")
-      python ${code_dir}/pool/rankfile.py  "${hosts[*]}" "$si" "$nsi" > rankfile.$JOB_ID
+      H=$(get_hosts_set "$hostsi")
+      rankfile "${hosts[*]}" "${start_slot}" "$nsi" > rankfile.$JOB_ID
       cat rankfile.$JOB_ID
 
       mpiexec -H $H -rf rankfile.$JOB_ID -mca rmaps_rank_file_physical 1 -np $nsi -v -report-bindings -display-map -display-allocation ./wrf.exe & pid[i]=$!
-      si=$((si + nsi))
+      start_slot=$((start_slot + nsi))
     else
       mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!
       echo "mpiexec -np $nsi -v ./wrf.exe  & pid[i]=$!"
@@ -103,7 +103,7 @@ while [[ ${#finished[@]} -lt $njobs ]] && [[ ${elapsed_t} -le ${rtlimit} ]]
 do
 
   elapsed_t=$(($(date +%s) - start_time))
-  
+
   for (( i=0; i<$njobs; i++ ))
   do
     cd ${run_path}/WRF_${jobs[i]}
@@ -123,7 +123,7 @@ do
   fi
   sleep 1
 done
-    
+
 #clean up
 for (( i=0; i<$njobs; i++ ))
 do
@@ -140,7 +140,7 @@ do
   fi
 
   echo
-  
+
   if [[ ! " ${finished[@]} " =~ " ${i} " ]]
   then
     echo "The job is about to terminate soon! Killing wrf.exe processes..."
