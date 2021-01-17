@@ -722,9 +722,6 @@ def prepare_init(args, conf, wrf_dir, namelist_check=True):
         args["time_step_fract_num"] = round((args["dt_f"] - dt_int) * 10)
         args["time_step_fract_den"] = 10
 
-        if ("radt" not in args) and ("radt_min" in args):
-            args["radt"] = max(args["radt_min"], 10 * dt_int / 60)  # rule of thumb
-
     # vertical domain
     if ("eta_levels" not in args) and ("ztop" in args) and ("dz0" in args):
         if ("dzmax" in args) and (args["dzmax"] == "dx"):

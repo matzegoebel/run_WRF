@@ -70,9 +70,7 @@ params["dz0"] = 20  # height of first model level (m)
 params["dzmax"] = None
 params["vgrid_method"] = 0  # method for creating vertical grid as defined in vertical_grid.py #TODO: change all 3 to 1
 
-params["dt_f"] = None  # time step (s), if None calculated as dt = 6 s/m *min(dx,dy)/1000; can be float
-# minimum time between radiation calls (min); if radt is not specified: radt=max(radt_min, 10*dt)
-params["radt_min"] = 1
+params["dt_f"] = None  # time step (s), can be float
 
 params["input_sounding"] = "shalconv"  # name of input sounding to use (final name is then created: input_sounding_$name)
 
@@ -96,7 +94,7 @@ registries = ["Registry.EM_COMMON", "registry.hyb_coord", "registry.les", "regis
 
 # non-namelist parameters that will not be included in namelist file
 del_args = ["output_streams", "start_time", "end_time", "dz0", "vgrid_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
-            "n_rep", "dt_f", "radt_min"]
+            "n_rep", "dt_f"]
 # %%
 '''Settings for resource requirements of batch jobs'''
 
