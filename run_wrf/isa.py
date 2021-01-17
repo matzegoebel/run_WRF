@@ -14,15 +14,15 @@ Lukas Strauss, Austro Control (modifications)
 
 """
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # MODULES
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 import math
 import numpy as np
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # CONSTANTS
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 g0 = 9.80665   # m/s2 - standard acceleration due to gravity
 p0 = 101325.   # Pa - sea level pressure
 R = 287.05287  # J/kg/K - specific gas constant
@@ -35,20 +35,22 @@ a0 = 340.294   # m/s - speed of sound at sea level
 # *h*, *T* and *p* are height, temperature and pressure at the lower bound of
 # the layer, respectively, *gamma* is the temperature gradient in the layer.
 # *h* used here corresponds to H (= geopotential altitude) in Doc 7488.
-isa_layers = [ { "h": -5000., "T": 320.65, "p": 177687.,"gamma": -0.0065 },
-               { "h": 0., "T": 288.15, "p": p0, "gamma": -0.0065 },
-               { "h": 11000., "T": 216.65, "p": 22632., "gamma": 0. },
-               { "h": 20000., "T": 216.65, "p": 5474.87, "gamma": 0.001 },
-               { "h": 32000., "T": 228.65, "p": 868.014, "gamma": 0.0028 },
-               { "h": 47000., "T": 270.65, "p": 110.906, "gamma": 0. },
-               { "h": 51000., "T": 270.65, "p": 66.9384, "gamma": -0.0028 },
-               { "h": 71000., "T": 214.65, "p": 3.95639, "gamma": -0.002 },
-               { "h": 80000., "T": 196.65, "p": 0.886272, "gamma": np.nan }
-             ]
+isa_layers = [{"h": -5000., "T": 320.65, "p": 177687., "gamma": -0.0065},
+              {"h": 0., "T": 288.15, "p": p0, "gamma": -0.0065},
+              {"h": 11000., "T": 216.65, "p": 22632., "gamma": 0.},
+              {"h": 20000., "T": 216.65, "p": 5474.87, "gamma": 0.001},
+              {"h": 32000., "T": 228.65, "p": 868.014, "gamma": 0.0028},
+              {"h": 47000., "T": 270.65, "p": 110.906, "gamma": 0.},
+              {"h": 51000., "T": 270.65, "p": 66.9384, "gamma": -0.0028},
+              {"h": 71000., "T": 214.65, "p": 3.95639, "gamma": -0.002},
+              {"h": 80000., "T": 196.65, "p": 0.886272, "gamma": np.nan}
+              ]
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # FUNCTIONS
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+
+
 def height(p):
     """Calculate height for given pressure according to ISA.
 
@@ -64,8 +66,8 @@ def height(p):
 
     """
     if p < isa_layers[-1]["p"]:
-        print ("isa.height requested for pressure lighter than minimum "
-               "pressure supported:", p, "<", isa_layers[-1]["p"])
+        print("isa.height requested for pressure lighter than minimum "
+              "pressure supported:", p, "<", isa_layers[-1]["p"])
         return None
 
     i = 0
@@ -76,13 +78,15 @@ def height(p):
     if isa_layers[i]["gamma"] == 0:
         # isotherm layer
         return (-R * isa_layers[i]["T"] / g0 *
-                math.log( p / isa_layers[i]["p"] ) + isa_layers[i]["h"])
+                math.log(p / isa_layers[i]["p"]) + isa_layers[i]["h"])
     else:
         expo = -R * isa_layers[i]["gamma"] / g0
-        return ((isa_layers[i]["T"] * ( (p / isa_layers[i]["p"])**expo - 1)) /
+        return ((isa_layers[i]["T"] * ((p / isa_layers[i]["p"])**expo - 1)) /
                 isa_layers[i]["gamma"] + isa_layers[i]["h"])
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+
+
 def pressure(z):
     """Calculate pressure for a given height according to ISA.
 
@@ -98,8 +102,8 @@ def pressure(z):
 
     """
     if z > isa_layers[-1]["h"]:
-        print ("isa.pressure requested for height larger than supported:", z,
-               ">", isa_layers[-1]["h"])
+        print("isa.pressure requested for height larger than supported:", z,
+              ">", isa_layers[-1]["h"])
         return None
 
     i = 0
@@ -109,14 +113,16 @@ def pressure(z):
 
     if isa_layers[i]["gamma"] == 0:
         # isotherm layer
-        return (isa_layers[i]["p"] * math.exp( -g0 *
-                ( z - isa_layers[i]["h"] ) / R / isa_layers[i]["T"] ))
+        return (isa_layers[i]["p"] * math.exp(-g0 *
+                                              (z - isa_layers[i]["h"]) / R / isa_layers[i]["T"]))
     else:
         expo = -g0 / R / isa_layers[i]["gamma"]
-        return (isa_layers[i]["p"] * ( 1 + isa_layers[i]["gamma"] *
-                ( z - isa_layers[i]["h"] ) / isa_layers[i]["T"] )**expo)
+        return (isa_layers[i]["p"] * (1 + isa_layers[i]["gamma"] *
+                                      (z - isa_layers[i]["h"]) / isa_layers[i]["T"])**expo)
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+
+
 def temperature(z, zisp=False):
     """Calculate temperature in ISA for given height or pressure.
 
@@ -139,8 +145,8 @@ def temperature(z, zisp=False):
         h = z
 
     if h > isa_layers[-1]["h"]:
-        print ("isa.temperature requested for height larger than supported:",
-               h, ">", isa_layers[-1]["h"])
+        print("isa.temperature requested for height larger than supported:",
+              h, ">", isa_layers[-1]["h"])
         return None
 
     i = 0
@@ -153,5 +159,4 @@ def temperature(z, zisp=False):
         return isa_layers[i]["T"]
     else:
         return (isa_layers[i]["T"] + isa_layers[i]["gamma"] *
-                ( h - isa_layers[i]["h"] ))
-
+                (h - isa_layers[i]["h"]))

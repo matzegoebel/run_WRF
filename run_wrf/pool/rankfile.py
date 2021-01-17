@@ -10,7 +10,7 @@ Produce rankfile to pin jobs to certain processors.
 
 import sys
 from collections import Counter
-
+# TODO: doesn't need to be separate file
 
 hosts = sys.argv[1]
 si = int(sys.argv[2])
@@ -19,13 +19,13 @@ ns = int(sys.argv[3])
 hosts = hosts.split(" ")
 hosts = Counter(hosts)
 
-rankfile=""
+rankfile = ""
 it = 0
 i = 0
-for n,slots in hosts.items():
+for n, slots in hosts.items():
     for s in range(slots):
         if (it >= si) and (it < si + ns):
-            rankfile += "rank {}={} slot={}\n".format(i,n,s)
+            rankfile += "rank {}={} slot={}\n".format(i, n, s)
             i += 1
         it += 1
 print(rankfile)

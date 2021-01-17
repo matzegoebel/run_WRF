@@ -15,13 +15,13 @@ For MPI testing with SGE.
 from run_wrf.configs.test.config_test_mpi import *
 if "param_combs" in dir():
     del param_combs
-#%%
+# %%
 
 job_scheduler = "sge"
-#modules to load
+# modules to load
 module_load = "module load intel/18.0u1 netcdf-4"
-queue = "std.q" #batch queue for SGE
+queue = "std.q"  # batch queue for SGE
 bigmem_queue = "bigmem.q"
-bigmem_limit = 25e3 #limit (MB) where bigmem_queue is used
-pool_size = 28 #number of cores per pool if job pooling is used
+bigmem_limit = 25e3  # limit (MB) where bigmem_queue is used
+pool_size = 28  # number of cores per pool if job pooling is used
 request_vmem = True

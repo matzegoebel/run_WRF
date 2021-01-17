@@ -7,6 +7,8 @@ Drop duplicates from list of hosts.
 
 @author: Matthias Göbel
 """
+# TODO: doesn't need to be separate file
+
 
 import sys
 

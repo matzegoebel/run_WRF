@@ -19,11 +19,10 @@ if "param_combs" in dir():
     del param_combs
 from copy import deepcopy
 
-#%%
+# %%
 params = deepcopy(params)
-params["end_time"] = "2018-06-20_07:40:00" #format %Y-%m-%d_%H:%M:%S
+params["end_time"] = "2018-06-20_07:40:00"  # format %Y-%m-%d_%H:%M:%S
 
 
-#%%
+# %%
 param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
-

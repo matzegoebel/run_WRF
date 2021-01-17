@@ -18,17 +18,15 @@ if "param_combs" in dir():
 from copy import deepcopy
 
 
-#%%
-runID = "sfclay" #name for this simulation series
+# %%
+runID = "sfclay"  # name for this simulation series
 
 param_grid = odict(sf_sfclay_physics=[1, 2, 5])
 
 params = deepcopy(params)
 
-params["dx"] = 500 #horizontal grid spacing x-direction(m)
-params["dy"] = None #horizontal grid spacing y-direction (m), if None: dy = dx
+params["dx"] = 500  # horizontal grid spacing x-direction(m)
+params["dy"] = None  # horizontal grid spacing y-direction (m), if None: dy = dx
 
-#%%
+# %%
 param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
-
-
