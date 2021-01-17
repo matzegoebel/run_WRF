@@ -14,18 +14,14 @@ For MPI testing with SLURM.
 from collections import OrderedDict as odict
 from run_wrf import misc_tools
 from run_wrf.configs.test.config_test import *
-if "param_combs" in dir():
-    del param_combs
 from copy import deepcopy
+params = deepcopy(params)
 
 # %%
 
 param_grid = odict(mp_physics=[1, 2])
-params = deepcopy(params)
 
 params["lx"] = 16000
 params["ly"] = 5000
 
 mail_address = "test@test.com"
-# %%
-param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)

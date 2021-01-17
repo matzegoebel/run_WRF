@@ -13,6 +13,8 @@ For MPI testing with SLURM.
 """
 
 from run_wrf.configs.test.config_test_mpi import *
+from copy import deepcopy
+params = deepcopy(params)
 
 # %%
 

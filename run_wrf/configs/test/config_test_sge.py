@@ -13,8 +13,9 @@ For MPI testing with SGE.
 """
 
 from run_wrf.configs.test.config_test_mpi import *
-if "param_combs" in dir():
-    del param_combs
+from copy import deepcopy
+params = deepcopy(params)
+
 # %%
 
 job_scheduler = "sge"

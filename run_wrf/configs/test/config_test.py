@@ -10,10 +10,9 @@ Test settings for automated tests.
 """
 import os
 from collections import OrderedDict as odict
-from run_wrf import misc_tools
 from run_wrf.configs.base_config import *
 from copy import deepcopy
-params = deepcopy(params)#TODOm: why?
+params = deepcopy(params)
 
 # %%
 '''Simulations settings'''
@@ -77,9 +76,3 @@ params["output_streams"] = {24: ["wrfout", 2.], 0: ["fastout", 1.]}
 params["iofields_filename"] = "IO_test.txt"
 
 params["restart_interval_m"] = 4  # restart interval (min)
-
-
-# %%
-param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
-
-# Below you can manually add parameters to the DataFrame combs

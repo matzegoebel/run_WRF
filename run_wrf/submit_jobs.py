@@ -94,7 +94,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
     os.chdir(fpath[:fpath.index("submit_jobs.py")])
 
     if param_combs is None:
-        if "param_combs" in dir(conf):
+        if ("param_combs" in dir(conf)) and (conf.param_combs is not None):
             param_combs = conf.param_combs
         else:
             args = []

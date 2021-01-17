@@ -11,18 +11,10 @@ To test restart functionality
 @author: Matthias Göbel
 
 """
-import os
-from collections import OrderedDict as odict
-from run_wrf import misc_tools
 from run_wrf.configs.test.config_test import *
-if "param_combs" in dir():
-    del param_combs
 from copy import deepcopy
-
-# %%
 params = deepcopy(params)
-params["end_time"] = "2018-06-20_07:08:00"  # format %Y-%m-%d_%H:%M:%S
-
 
 # %%
-param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
+
+params["end_time"] = "2018-06-20_07:08:00"  # format %Y-%m-%d_%H:%M:%S
