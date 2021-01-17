@@ -95,7 +95,6 @@ def check_namelist_value():
     """
     line = sys.argv[1]
     new_val = sys.argv[2]
-
     param_val = get_namelist_param_val(line)
     if param_val is not None:
         old_val = param_val[1]

@@ -314,8 +314,8 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
 
             if init:
                 if os.path.isdir(run_dir_r):
+                    print("Run directory already exists.")
                     if exist == "s":
-                        print("Run directory already exists.")
                         if os.path.isfile(run_dir_r + "/wrfinput_d01"):
                             print("Initialization was complete.\nSkipping...")
                             continue
@@ -419,7 +419,6 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                     if exist == "s":
                         print("Skipping...")
                         skip = True
-
                     elif exist == "o":
                         print("Overwriting...")
                     elif exist == "b":

@@ -19,7 +19,7 @@ params = deepcopy(params)
 runID = "test"  # name for this simulation series
 
 # Define parameter grid for simulations
-# any namelist parameters and some additional ones can be used
+# any namelist parameters can be used and parameters with default values set in dict params below
 # if None: only 1 configuration is run
 param_grid = odict(mp_physics=[1, 2],
                    res={"dx": [200, 4000], "dz0": [10, 50], "nz": [100, 60]})
@@ -30,9 +30,7 @@ param_names = {"mp_physics": {1: "kessler", 2: "lin"},
                "sf_sfclay_physics": {1: "mm5", 2: "eta", 5: "mynn"},
                "res": ["LES", "MYJ"]}
 
-# Set additional namelist parameters (only active if they are not present in param_grid)
-# any namelist parameters and some additional ones can be used
-
+# Fill dictionary params with default values to be used for parameters not present in param_grid
 
 params["start_time"] = "2018-06-20_00:00:00"  # format %Y-%m-%d_%H:%M:%S
 params["end_time"] = "2018-06-20_02:00:00"  # format %Y-%m-%d_%H:%M:%S
@@ -53,7 +51,9 @@ params["dz0"] = 20  # height of first model level (m)
 # if nz is None and for vgrid_method=0 only: specify maximum vertical grid spacing instead of nz;
 # either float or "dx" to make it equal to dx
 params["dzmax"] = None
-params["vgrid_method"] = 0  # method for creating vertical grid as defined in vertical_grid.py #TODO: change all 3 to 1
+# method for creating vertical grid as defined in vertical_grid.py
+# if None: do not change eta_levels
+params["vgrid_method"] = 0
 
 params["dt_f"] = 1  # time step (s), can be float
 
@@ -75,9 +75,13 @@ params["iofields_filename"] = None
 
 params["restart_interval_m"] = 240  # restart interval (min)
 
+# override values of base_config
+ideal_case = "em_b_wave"  # idealized WRF case
+
 
 # %%
 
+# create parameter grid, if not set or None, grid is created in submit_jobs.py
 param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
 
-# Below you can manually add parameters to the DataFrame combs
+# Below you can manually add or change parameters in param_combs

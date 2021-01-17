@@ -54,7 +54,9 @@ params["dz0"] = 20  # height of first model level (m)
 # if nz is None and for vgrid_method=0 only: specify maximum vertical grid spacing instead of nz
 # either float or "dx" to make it equal to dx
 params["dzmax"] = 300
-params["vgrid_method"] = 1  # method for creating vertical grid as defined in vertical_grid.py
+# method for creating vertical grid as defined in vertical_grid.py
+# if None: do not change eta_levels
+params["vgrid_method"] = 1
 
 params["dt_f"] = 3  # time step (s), can be float
 
@@ -64,7 +66,6 @@ params["spec_hfx"] = None  # None specified surface heat flux instead of radiati
 
 # other standard namelist parameters
 params["mp_physics"] = 0
-
 params["bl_pbl_physics"] = 2
 
 # indices for output streams and their respective name and output interval (minutes, floats allowed)
