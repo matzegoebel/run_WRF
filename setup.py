@@ -27,8 +27,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-# Always prefer setuptools over distutils
 from setuptools import setup, find_packages
+# faster entry points
+import fastentrypoints
 # To use a consistent encoding
 from codecs import open
 from os import path
