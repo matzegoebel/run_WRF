@@ -286,7 +286,6 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
         namelist_all = get_namelist.namelist_to_dict(namelist_path, build_path=wrf_build,
                                                      registries=conf.registries)
         namelist = get_namelist.namelist_to_dict(namelist_path)
-        # TODO: check all params: in namelist or in del_args global
 
         vmemi = None
         if init:

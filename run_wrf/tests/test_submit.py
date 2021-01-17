@@ -42,9 +42,7 @@ def test_basic():
     Initialize and run WRF; Check behaviour when run already exists
     Restart run; Check that errors are raised
     """
-    with pytest.raises(RuntimeError, match="Parameter dx used in submit_jobs.py already "
-                       "defined in namelist.input! Rename this parameter!"):
-        submit_jobs(config_file="test.config_test_del_args", init=True)
+
     # run wrf
     submit_jobs(init=True, exist="o", config_file="test.config_test")
     combs = submit_jobs(init=False, verbose=True, wait=True, exist="o",

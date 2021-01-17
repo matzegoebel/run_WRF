@@ -25,6 +25,13 @@ from pathlib import Path as fopen
 import xarray as xr
 import importlib
 
+# arguments to vertical grid creation method in vertical_grid.py
+vert_keys = ["vgrid_method", "dz0", "nz", "dzmax", "D1", "alpha"]
+# non-namelist config parameters that will not be included in namelist file
+del_args = ["start_time", "end_time", "output_streams",
+            "min_gridpoints_x", "min_gridpoints_y", "lx", "ly",
+            "spec_hfx", "input_sounding", "n_rep", "dt_f", *vert_keys]
+
 # %%nproc
 
 
@@ -718,20 +725,15 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
         args["time_step_fract_den"] = 10
 
     # vertical domain
-    if ("eta_levels" not in args) and ("ztop" in args) and ("dz0" in args):
+    if ("eta_levels" not in args) and ("vgrid_method" in args):
         if ("dzmax" in args) and (args["dzmax"] == "dx"):
             args["dzmax"] = args["dx"]
-        vert_keys = ["nz", "dzmax", "etaz1", "etaz2", "n2", "z1", "z2", "alpha"]
         vert_args = {}
         for key in vert_keys:
             if key in args:
                 vert_args[key] = args[key]
-                del args[key]
-
-        if "vgrid_method" in args:
-            vert_args["method"] = args["vgrid_method"]
-
-        args["eta_levels"], dz = vertical_grid.create_levels(args["ztop"], args["dz0"], **vert_args)
+        vert_args["method"] = vert_args.pop("vgrid_method")
+        args["eta_levels"], dz = vertical_grid.create_levels(args["ztop"], **vert_args)
         args["e_vert"] = len(args["eta_levels"])
         print("Created vertical grid:\n{0} levels\nlowest level at {1:.1f} m\n"
               "thickness of uppermost layer: {2:.1f} m\n".format(args["e_vert"], dz[0], dz[-2]))
@@ -810,14 +812,20 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
         # args_str = args_str + """ iofields_filename "'{}'" """.format(args["iofields_filename"])
 
     # delete non-namelist parameters
-    del_args = conf.del_args
+    for k in args.keys():
+        if k in namelist_all:
+            if k in del_args:
+                raise ValueError("Parameter '{}' declared as non-namelist parameter in "
+                                 "tools.del_args is defined as namelist parameter "
+                                 "in registry!".format(k))
+        elif k not in del_args:
+            raise ValueError("Parameter '{}' is neither declared as non-namelist parameter in "
+                             "tools.del_args nor defined as namelist parameter "
+                             "in Registry!".format(k))
+
     args_clean = deepcopy(args)
-    for del_arg in del_args:
-        if del_arg in namelist_all:
-            raise RuntimeError("Parameter {} used in submit_jobs.py already defined in namelist.input! "
-                               "Rename this parameter!".format(del_arg))
-        if del_arg in args_clean:
-            del args_clean[del_arg]
+    args_clean = {k: v for k, v in args_clean.items() if k not in del_args}
+
     for key, val in args_clean.items():
         if type(val) == bool:
             if val:

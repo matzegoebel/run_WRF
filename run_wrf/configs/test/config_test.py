@@ -89,9 +89,6 @@ params["restart_interval_m"] = 4  # restart interval (min)
 
 registries = ["Registry.EM_COMMON", "registry.hyb_coord", "registry.les", "registry.io_boilerplate"]  # registries to look for default namelist parameters
 
-# non-namelist parameters that will not be included in namelist file
-del_args = ["output_streams", "start_time", "end_time", "dz0", "vgrid_method", "min_gridpoints_x", "min_gridpoints_y", "lx", "ly", "spec_hfx", "input_sounding",
-            "n_rep", "dt_f"]
 # %%
 '''Settings for resource requirements of batch jobs'''
 
