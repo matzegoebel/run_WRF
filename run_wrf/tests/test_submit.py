@@ -178,7 +178,7 @@ def test_mpi_and_batch():
     c = output[-1]
     batch_comm = "qsub -cwd -q std.q -o {0}/logs/run_pytest_$JOB_ID.out "\
                  "-e {0}/logs/run_pytest_$JOB_ID.err -l h_rt=000:00:27 "\
-                 " -pe openmpi-fillup 2  -M matthias.goebel@uibk.ac.at -m ea -N run_pytest -V  "\
+                 " -pe openmpi-fillup 2  -M test@test.com -m ea -N run_pytest -V  "\
                  "-l h_vmem=85M  run_wrf.job".format(conf.run_path)
     assert batch_comm == c
 
@@ -200,7 +200,7 @@ def test_mpi_and_batch():
     c = output[-1]
     batch_comm = "sbatch -p mem_0064 -o {0}/logs/run_pytest_%j.out -e {0}/logs/run_pytest_%j.err "\
                  "--time=000:00:27 --ntasks-per-node=4 -N 1 "\
-                 "--mail-user=matthias.goebel@uibk.ac.at --mail-type=END,FAIL -J run_pytest "\
+                 "--mail-user=test@test.com --mail-type=END,FAIL -J run_pytest "\
                  "--export=ALL  --qos=normal_0064  run_wrf.job".format(conf.run_path)
     assert batch_comm == c
     assert count['Get runtime from previous runs'] == combs["n_rep"].sum()

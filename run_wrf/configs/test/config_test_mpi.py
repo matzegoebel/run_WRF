@@ -27,5 +27,6 @@ use_min_gridpoints = True  # "x", "y", True (for both) or False
 params["min_gridpoints_x"] = 33  # minimum number of grid points in x direction
 params["min_gridpoints_y"] = 11  # minimum number of grid points in y direction
 
+mail_address = "test@test.com"
 # %%
 param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
