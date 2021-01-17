@@ -70,7 +70,7 @@ params["dz0"] = 20  # height of first model level (m)
 params["dzmax"] = None
 params["vgrid_method"] = 0  # method for creating vertical grid as defined in vertical_grid.py #TODO: change all 3 to 1
 
-params["dt_f"] = None  # time step (s), can be float
+params["dt_f"] = 1  # time step (s), can be float
 
 params["input_sounding"] = "shalconv"  # name of input sounding to use (final name is then created: input_sounding_$name)
 

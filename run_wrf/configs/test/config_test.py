@@ -65,7 +65,7 @@ params["dz0"] = 20  # height of first model level (m)
 params["dzmax"] = 300
 params["vgrid_method"] = 1  # method for creating vertical grid as defined in vertical_grid.py
 
-params["dt_f"] = None  # time step (s), can be float
+params["dt_f"] = 3  # time step (s), can be float
 
 params["input_sounding"] = "meanwind"  # name of input sounding to use (final name is then created: input_sounding_$name)
 

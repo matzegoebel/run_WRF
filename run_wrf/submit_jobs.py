@@ -18,6 +18,7 @@ import inspect
 from copy import deepcopy
 from pathlib import Path as fopen
 import sys
+import get_namelist
 
 # %%
 
@@ -279,12 +280,19 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
         else:
             wrf_dir_i = conf.serial_build
 
+        print("Setting namelist parameters\n")
+        wrf_build = "{}/{}".format(conf.build_path, wrf_dir_i)
+        namelist_path = "{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case)
+        namelist_all = get_namelist.namelist_to_dict(namelist_path, build_path=wrf_build,
+                                                     registries=conf.registries)
+        namelist = get_namelist.namelist_to_dict(namelist_path)
+        # TODO: check all params: in namelist or in del_args global
+
         vmemi = None
         if init:
-            wrf_build = os.path.join(conf.build_path, wrf_dir_i)
             print("Using WRF build in: {}\n".format(wrf_build))
 
-            args, args_str = misc_tools.prepare_init(args, conf, wrf_dir_i,
+            args, args_str = misc_tools.prepare_init(args, conf, namelist, namelist_all,
                                                      namelist_check=not no_namelist_check)
             # job scheduler queue and vmem
             if use_job_scheduler and conf.request_vmem:
@@ -296,6 +304,9 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                     queue = conf.queue
 
         elif use_job_scheduler or test_run:
+            if "dt_f" not in args:
+                args["dt_f"] = namelist_all["time_step"] + \
+                    namelist_all["time_step_fract_num"] / namelist_all["time_step_fract_den"]
             queue = conf.queue
             args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi,
                                                 pool_jobs=pool_jobs, test_run=test_run,

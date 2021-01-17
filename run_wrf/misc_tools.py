@@ -698,14 +698,8 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
 # %%init
 
 
-def prepare_init(args, conf, wrf_dir, namelist_check=True):
+def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
     """Sets some namelist parameters based on the config files settings."""
-    print("Setting namelist parameters\n")
-    wrf_build = "{}/{}".format(conf.build_path, wrf_dir)
-    namelist_path = "{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case)
-    namelist = get_namelist.namelist_to_dict(namelist_path)
-    namelist_all = get_namelist.namelist_to_dict(namelist_path, build_path=wrf_build,
-                                                 registries=conf.registries)
 
     namelist_upd_all = deepcopy(namelist_all)
     namelist_upd_all.update(args)
