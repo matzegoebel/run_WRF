@@ -295,8 +295,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                                                      namelist_check=not no_namelist_check)
             # job scheduler queue and vmem
             if use_job_scheduler and conf.request_vmem:
-                vmem_grid = conf.vmem_init_per_grid_point * args["e_we"] * args["e_sn"]
-                vmem_init = max(conf.vmem_init_min, int(vmem_grid))
+                vmem_init = conf.vmem_init
                 if ("bigmem_limit" in dir(conf)) and (vmem_init > conf.bigmem_limit):
                     queue = conf.bigmem_queue
                 else:

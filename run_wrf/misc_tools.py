@@ -675,11 +675,6 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
             vmemi = conf.vmem_test * nslots
         elif conf.vmem is not None:
             vmemi = conf.vmem * nslots
-        elif conf.vmem_per_grid_point is not None:
-            print("Use vmem per grid point")
-            vmemi = int(conf.vmem_per_grid_point * args["e_we"] * args["e_sn"]) * conf.vmem_buffer
-            if conf.vmem_min is not None:
-                vmemi = max(vmemi, conf.vmem_min * nslots)
         else:
             print("Get vmem from previous runs")
             if identical_runs is None:
