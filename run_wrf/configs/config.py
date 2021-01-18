@@ -8,7 +8,7 @@ Settings for submit_jobs.py
 
 """
 from collections import OrderedDict as odict
-from run_wrf import misc_tools
+from run_wrf import tools
 from run_wrf.configs.base_config import *
 from copy import deepcopy
 params = deepcopy(params)
@@ -82,6 +82,6 @@ params["ideal_case_name"] = "em_b_wave"  # idealized WRF case
 # %%
 
 # create parameter grid, if not set or None, grid is created in submit_jobs.py
-param_combs = misc_tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
+param_combs = tools.grid_combinations(param_grid, params, param_names=param_names, runID=runID)
 
 # Below you can manually add or change parameters in param_combs

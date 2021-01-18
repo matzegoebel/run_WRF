@@ -72,7 +72,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
         DataFrame with settings for all configurations.
 
     """
-    from run_wrf import misc_tools
+    from run_wrf import tools
 
     if (not init) and (outpath is not None):
         print("WARNING: option -o ignored when not in initialization mode!\n")
@@ -105,7 +105,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                 else:
                     args.append(None)
 
-            param_combs = misc_tools.grid_combinations(*args, runID=conf.runID)
+            param_combs = tools.grid_combinations(*args, runID=conf.runID)
 
     param_combs = deepcopy(param_combs)
 
@@ -218,10 +218,10 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
             args["e_sn"] = math.ceil(args["ly"] / args["dy"]) + 1
 
         # slots
-        nx = misc_tools.find_nproc(args["e_we"] - 1,
+        nx = tools.find_nproc(args["e_we"] - 1,
                                    min_n_per_proc=args["min_nx_per_proc"],
                                    even_split=args["even_split"])
-        ny = misc_tools.find_nproc(args["e_sn"] - 1,
+        ny = tools.find_nproc(args["e_sn"] - 1,
                                    min_n_per_proc=args["min_ny_per_proc"],
                                    even_split=args["even_split"])
 
@@ -264,7 +264,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
         if init:
             print("Using WRF build in: {}\n".format(wrf_build))
 
-            args, args_str = misc_tools.prepare_init(args, conf, namelist, namelist_all,
+            args, args_str = tools.prepare_init(args, conf, namelist, namelist_all,
                                                      namelist_check=not no_namelist_check)
             # job scheduler queue and vmem
             if use_job_scheduler and conf.request_vmem:
@@ -279,7 +279,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                 args["dt_f"] = namelist_all["time_step"] + \
                     namelist_all["time_step_fract_num"] / namelist_all["time_step_fract_den"]
             queue = conf.queue
-            args, skip = misc_tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi,
+            args, skip = tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi,
                                                 pool_jobs=pool_jobs, test_run=test_run,
                                                 request_vmem=conf.request_vmem)
             if skip:
@@ -371,7 +371,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                 if use_job_scheduler:
                     os.environ["job_scheduler"] = job_scheduler
                     os.environ["wrf_args"] = args_str_r
-                    rt_init = misc_tools.format_timedelta(args["rt_init"] * 60)
+                    rt_init = tools.format_timedelta(args["rt_init"] * 60)
                     qlog = batch_log_dir + job_name
                     os.environ["qlog"] = qlog
                     qout, qerr = [qlog + job_id + s for s in [".out", ".err"]]
@@ -443,7 +443,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                         raise ValueError("Value '{}' for -e option not defined!".format(exist))
 
                 if restart:
-                    run_hours_rst, rst_opt = misc_tools.get_restart_times(run_dir_r, args["end_time"])
+                    run_hours_rst, rst_opt = tools.get_restart_times(run_dir_r, args["end_time"])
                     if run_hours_rst is None:
                         restart = False
                     elif run_hours_rst <= 0:
@@ -536,7 +536,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                                 if ("bigmem_limit" in dir(conf)) and (vmemp > conf.bigmem_limit):
                                     queue = conf.bigmem_queue
 
-                            rtp = misc_tools.format_timedelta(rtr_max)
+                            rtp = tools.format_timedelta(rtr_max)
                             if rtr_max < send_rt_signal:
                                 raise ValueError("Requested runtime is smaller then the time "
                                                  "when the runtime limit signal is sent!")
@@ -581,7 +581,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                             print(comm)
                         if not check_args:
                             if restart:
-                                misc_tools.prepare_restart(run_dir_r, rst_opt)
+                                tools.prepare_restart(run_dir_r, rst_opt)
 
                             err = os.system(comm)
                             if wait:

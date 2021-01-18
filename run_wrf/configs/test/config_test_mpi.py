@@ -12,7 +12,7 @@ For MPI testing with SLURM.
 
 """
 from collections import OrderedDict as odict
-from run_wrf import misc_tools
+from run_wrf import tools
 from run_wrf.configs.test.config_test import *
 from copy import deepcopy
 params = deepcopy(params)

@@ -37,7 +37,6 @@ del_args = ["start_time", "end_time", "output_streams", "lx", "ly",
             "min_nx_per_proc", "min_ny_per_proc", "even_split",
             "max_nslotsx", "max_nslotsy", "module_load", *vert_keys]
 
-#TODOm: change misc_tools to tools
 #TODO: change submit_jobs to launch_wrf_jobs
 #TODO: change rt to runtime
 # %%nproc

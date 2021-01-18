@@ -11,13 +11,13 @@ Test submit_jobs function
 import os
 from run_wrf.submit_jobs import submit_jobs
 import pytest
-from run_wrf.misc_tools import Capturing
+from run_wrf.tools import Capturing
 from collections import Counter
 import run_wrf.configs.test.config_test as conf
 import shutil
 import time
 import xarray as xr
-from run_wrf import misc_tools
+from run_wrf import tools
 from run_wrf import get_namelist
 import glob
 import pandas as pd
@@ -63,8 +63,8 @@ def test_basic():
                 print(key, namelists[0][key], namelists[1][key])
             assert equal
 
-    input_sounding = misc_tools.read_file(rpath + "/input_sounding")
-    input_sounding_corr = misc_tools.read_file(rpath + "/input_sounding_meanwind")
+    input_sounding = tools.read_file(rpath + "/input_sounding")
+    input_sounding_corr = tools.read_file(rpath + "/input_sounding_meanwind")
     assert input_sounding == input_sounding_corr
 
     # check output data
@@ -74,7 +74,7 @@ def test_basic():
         assert outfiles_corr == outfiles
         for f, freq in zip(outfiles, ["1", "2"]):
             ds = xr.open_dataset(os.path.join(outd, run, f))
-            t = misc_tools.extract_times(ds)
+            t = tools.extract_times(ds)
             t_corr = pd.date_range(start="2018-06-20T07:00:00", end=end_time.replace("_", "T"),
                                    freq=freq + "min")
             assert (len(t) == len(t_corr)) and (t == t_corr).all()
@@ -127,14 +127,14 @@ def test_basic():
         assert outfiles == outfiles_corr
 
     # concat output and check
-    misc_tools.concat_output("test.config_test")
+    tools.concat_output("test.config_test")
     for run in os.listdir(outd):
         outfiles = sorted(os.listdir(os.path.join(outd, run)))
         outfiles_corr = ['fastout_d01_2018-06-20_07:00:00', 'wrfout_d01_2018-06-20_07:00:00']
         assert outfiles_corr == outfiles[1:]
         for f, freq in zip(outfiles_corr, ["1", "2"]):
             ds = xr.open_dataset(os.path.join(outd, run, f))
-            t = misc_tools.extract_times(ds)
+            t = tools.extract_times(ds)
             t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:08:00',
                                    freq=freq + "min")
             assert (len(t) == len(t_corr)) and (t == t_corr).all()
@@ -190,7 +190,7 @@ def test_mpi_and_batch():
         assert count[m] == combs["n_rep"].sum()
 
     rundirs_0 = combs["run_dir"].values + "_0"
-    timing = misc_tools.get_runtime_all(rundirs_0, all_times=False)["timing"].values
+    timing = tools.get_runtime_all(rundirs_0, all_times=False)["timing"].values
     message_rt = "Runtime per time step: {0:.5f} s".format(timing[0])
     assert count[message_rt] == 2
 
@@ -232,7 +232,7 @@ def test_scheduler_full():
         while not finished:
             finished = True
             status = os.popen(comm + "run_pytest").read().split("\n")
-            status = misc_tools.remove_empty_str(status)
+            status = tools.remove_empty_str(status)
             if "Following jobs do not exist:" in status:
                 pass
             if len(status) > 1:
@@ -245,7 +245,7 @@ def test_scheduler_full():
         print(rundirs)
         for rundir in rundirs:
             runlog = glob.glob(rundir + "/run_*.log")[0]
-            runlog = misc_tools.read_file(runlog)
+            runlog = tools.read_file(runlog)
             m = success[False]
             assert m in runlog
 

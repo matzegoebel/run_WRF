@@ -8,7 +8,7 @@ Base settings for submit_jobs.py
 
 """
 import os
-from run_wrf import misc_tools
+from run_wrf import tools
 
 
 # %%
@@ -104,7 +104,7 @@ if any([c in host for c in clusters]):
         # queue = "mem_0064"
         # qos = "normal_0064"
         # minimum pool size; should be equal to the number of available CPUs per node
-        pool_size = misc_tools.get_node_size_slurm(queue)
+        pool_size = tools.get_node_size_slurm(queue)
         force_pool = True  # vsc only offers exclusive nodes
     elif "vsc4" in host:
         job_scheduler = "slurm"
@@ -113,7 +113,7 @@ if any([c in host for c in clusters]):
         queue = "mem_0096"
         qos = "mem_0096"
         # minimum pool size; should be equal to the number of available CPUs per node
-        pool_size = misc_tools.get_node_size_slurm(queue)
+        pool_size = tools.get_node_size_slurm(queue)
         force_pool = True  # vsc only offers exclusive nodes
 else:
     pool_size = 4
