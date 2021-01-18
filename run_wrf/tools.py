@@ -32,13 +32,12 @@ del_args = ["start_time", "end_time", "output_streams", "lx", "ly",
             "spec_hfx", "input_sounding", "n_rep", "dt_f", "ideal_case_name",
             "outpath", "run_path", "build_path", "vmem_init", "vmem",
             "vmem_buffer", "vmem_test", "h_stack_init", "h_stack",
-            "rt_init", "runtime_per_step", "rt_buffer", "rt", "rt_test",
-            "rt_use_median", "send_rt_signal",
+            "runtime_init", "runtime_per_step", "rt_buffer",
+            "runtime", "runtime_test", "rt_use_median", "send_rt_signal",
             "min_nx_per_proc", "min_ny_per_proc", "even_split",
             "max_nslotsx", "max_nslotsy", "module_load", *vert_keys]
 
 #TODO: change submit_jobs to launch_wrf_jobs
-#TODO: change rt to runtime
 # %%nproc
 
 
@@ -643,10 +642,10 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
     runtime_per_step = None
     print_rt_step = False
     if test_run:
-        runtime_per_step = args["rt_test"] * 60 / n_steps / args["rt_buffer"]
+        runtime_per_step = args["runtime_test"] * 60 / n_steps / args["rt_buffer"]
         args["n_rep"] = 1
-    elif ("rt" in args) and (args["rt"] is not None):
-        runtime_per_step = args["rt"] * 60 / n_steps / args["rt_buffer"]
+    elif ("runtime" in args) and (args["runtime"] is not None):
+        runtime_per_step = args["runtime"] * 60 / n_steps / args["rt_buffer"]
     elif ("runtime_per_step" in args) and (args["runtime_per_step"] is not None):
         runtime_per_step = args["runtime_per_step"]
     else:

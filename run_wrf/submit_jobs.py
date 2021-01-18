@@ -371,7 +371,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                 if use_job_scheduler:
                     os.environ["job_scheduler"] = job_scheduler
                     os.environ["wrf_args"] = args_str_r
-                    rt_init = tools.format_timedelta(args["rt_init"] * 60)
+                    rt_init = tools.format_timedelta(args["runtime_init"] * 60)
                     qlog = batch_log_dir + job_name
                     os.environ["qlog"] = qlog
                     qout, qerr = [qlog + job_id + s for s in [".out", ".err"]]

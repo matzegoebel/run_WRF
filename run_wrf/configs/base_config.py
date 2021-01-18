@@ -48,13 +48,13 @@ params["h_stack_init"] = 128
 params["h_stack"] = None
 
 # runtime (min) for ideal.exe
-params["rt_init"] = 10
+params["runtime_init"] = 10
 # runtime for wrf.exe: specify either rt or runtime_per_step or None
 # if None: runtime is estimated from previous identical runs if present
 params["runtime_per_step"] = None  # runtime per timestep
 params["rt_buffer"] = 2  # buffer factor to multiply rt with (not used for test runs or if rt is given)
-params["rt"] = None  # None or job runtime in minutes; buffer not used
-params["rt_test"] = 5  # runtime (min) for test runs
+params["runtime"] = None  # None or job runtime in minutes; buffer not used
+params["runtime_test"] = 5  # runtime (min) for test runs
 # use median when averaging runtime of previous runs, may be necessary if previous runs are short
 params["rt_use_median"] = False
 params["send_rt_signal"] = 10  # seconds before requested runtime is exhausted and signal is sent to job
