@@ -33,22 +33,12 @@ fi
 
 cd $run_dir
 
-if (( cluster==0 ))
-then
-  #~ ulimit -s unlimited
-  set -o errexit
-
-else
-  echo "start cluster job"
-  module purge
-  eval $module_load
-fi
+eval $module_load
 
 if [ -z "$wrf_args" ]
 then
   wrf_args=$1
 fi
-
 
 #from run directory for data files needed by physics modules; symbolic links sufficient
 cp -s ${build_dir}/run/* .

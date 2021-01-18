@@ -4,16 +4,7 @@ start_time=$(date +%s)
 
 set -e
 
-
-if (( cluster == 1 ))
-then
-  cluster=true
-  module purge
-  eval $module_load
-
-else
-  cluster=false
-fi
+eval $module_load
 
 ulimit -s unlimited
 

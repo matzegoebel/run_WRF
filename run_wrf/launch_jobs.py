@@ -220,11 +220,9 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
 
         # slots
         nx = tools.find_nproc(args["e_we"] - 1,
-                              min_n_per_proc=args["min_nx_per_proc"],
-                              even_split=args["even_split"])
+                              min_n_per_proc=args["min_nx_per_proc"])
         ny = tools.find_nproc(args["e_sn"] - 1,
-                              min_n_per_proc=args["min_ny_per_proc"],
-                              even_split=args["even_split"])
+                              min_n_per_proc=args["min_ny_per_proc"])
 
         if ("max_nslotsx" in args) and (args["max_nslotsx"] is not None):
             nx = min(args["max_nslotsx"], nx)
@@ -364,8 +362,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                 comm_args = dict(run_id=IDr, wrfv=wrf_dir_i, ideal_case=args["ideal_case_name"],
                                  input_sounding=args["input_sounding"], nx=nx, ny=ny,
                                  run_path=args["run_path"], build_path=args["build_path"],
-                                 batch=int(use_job_scheduler), wrf_args="",
-                                 cluster=int(conf.cluster), iofile=iofile,
+                                 batch=int(use_job_scheduler), wrf_args="", iofile=iofile,
                                  module_load=args["module_load"])
                 for p, v in comm_args.items():
                     os.environ[p] = str(v)
@@ -519,7 +516,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                         timestamp = datetime.datetime.now().isoformat()[:19]
                         comm_args = dict(nslots=nslots_str, nx=nx_str, ny=ny_str, jobs=jobs,
                                          pool_jobs=int(pool_jobs), run_path=args["run_path"],
-                                         batch=int(use_job_scheduler), cluster=int(conf.cluster),
+                                         batch=int(use_job_scheduler),
                                          restart=int(restart), outpath=outpath,
                                          module_load=args["module_load"], timestamp=timestamp)
                         for p, v in comm_args.items():

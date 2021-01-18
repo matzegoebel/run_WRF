@@ -34,13 +34,13 @@ del_args = ["start_time", "end_time", "output_streams", "lx", "ly",
             "vmem_buffer", "vmem_test", "h_stack_init", "h_stack",
             "runtime_init", "runtime_per_step", "rt_buffer",
             "runtime", "runtime_test", "rt_use_median", "send_rt_signal",
-            "min_nx_per_proc", "min_ny_per_proc", "even_split",
+            "min_nx_per_proc", "min_ny_per_proc",
             "max_nslotsx", "max_nslotsy", "module_load", *vert_keys]
 
 # %%nproc
 
 
-def find_nproc(n, min_n_per_proc=25, even_split=False):
+def find_nproc(n, min_n_per_proc=25):
     """
     Find number of processors needed for a given number grid points in WRF.
 
@@ -50,8 +50,6 @@ def find_nproc(n, min_n_per_proc=25, even_split=False):
         number of grid points
     min_n_per_proc : int, optional
         Minimum number of grid points per processor. The default is 25.
-    even_split : bool, optional
-        Force even split of grid points between processors.
 
     Returns
     -------
@@ -61,10 +59,6 @@ def find_nproc(n, min_n_per_proc=25, even_split=False):
     """
     if n <= min_n_per_proc:
         return 1
-    elif even_split:
-        for d in np.arange(min_n_per_proc, n + 1):
-            if n % d == 0:
-                return int(n / d)
     else:
         return math.floor(n / min_n_per_proc)
 

@@ -66,7 +66,6 @@ resource_search_paths = []
 # slots
 params["min_nx_per_proc"] = 16  # 25, minimum number of grid points per processor in x-direction
 params["min_ny_per_proc"] = 16  # 25, minimum number of grid points per processor in y-direction
-params["even_split"] = False  # force equal split between processors
 
 
 # %%
@@ -80,16 +79,14 @@ reduce_pool = True
 host = os.popen("hostname -d").read()
 params["module_load"] = ""  # module load and other architecture specific shell command
 request_vmem = False  # request specific values for virtual memory
+# maximum number of slots that will be requested for the x and y directions
 params["max_nslotsx"] = None
 params["max_nslotsy"] = None
 if any([c in host for c in clusters]):
-    cluster = True
-    # maximum number of slots that will be requested for the x and y directions
-
     if "leo" in host:
         job_scheduler = "sge"
         # modules to load
-        params["module_load"] = "module load intel/18.0u1 netcdf-4"
+        module_load = "module load intel/18.0u1 netcdf-4"
         queue = "std.q"  # batch queue for SGE
         bigmem_queue = "bigmem.q"
         bigmem_limit = 25e3  # limit (MB) where bigmem_queue is used
@@ -97,8 +94,8 @@ if any([c in host for c in clusters]):
         request_vmem = True
     elif "vsc3" in host:
         job_scheduler = "slurm"
-        params["module_load"] = "module load intel/19 intel-mpi/2019 hdf5/1.8.12-MPI pnetcdf/1.10.0 netcdf_C/4.4.1.1 netcdf_Fortran/4.4.4;"\
-                       "export NETCDF=/opt/sw/x86_64/glibc-2.17/ivybridge-ep/netcdf_Fortran/4.4.4/intel/19/intel-mpi/2019/hdf5/1.8.12-MPI/pnetcdf/1.10.0/netcdf_C/4.4.1.1/"
+        module_load = "module load intel/19 intel-mpi/2019 hdf5/1.8.12-MPI pnetcdf/1.10.0 netcdf_C/4.4.1.1 netcdf_Fortran/4.4.4;"\
+                      "export NETCDF=/opt/sw/x86_64/glibc-2.17/ivybridge-ep/netcdf_Fortran/4.4.4/intel/19/intel-mpi/2019/hdf5/1.8.12-MPI/pnetcdf/1.10.0/netcdf_C/4.4.1.1/"
         queue = "vsc3plus_0064"  # partition on vsc3
         qos = "vsc3plus_0064"
         # queue = "mem_0064"
@@ -115,6 +112,7 @@ if any([c in host for c in clusters]):
         # minimum pool size; should be equal to the number of available CPUs per node
         pool_size = tools.get_node_size_slurm(queue)
         force_pool = True  # vsc only offers exclusive nodes
+    params["module_load"] = "module purge;" + module_load
+
 else:
     pool_size = 4
-    cluster = False
