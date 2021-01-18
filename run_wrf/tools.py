@@ -3,7 +3,7 @@
 """
 Created on Wed Nov 13 19:22:36 2019
 
-Miscellaneous functions for submit_jobs.py
+Miscellaneous functions for launch_jobs.py
 
 @author: Matthias Göbel
 """
@@ -37,7 +37,6 @@ del_args = ["start_time", "end_time", "output_streams", "lx", "ly",
             "min_nx_per_proc", "min_ny_per_proc", "even_split",
             "max_nslotsx", "max_nslotsy", "module_load", *vert_keys]
 
-#TODO: change submit_jobs to launch_wrf_jobs
 # %%nproc
 
 

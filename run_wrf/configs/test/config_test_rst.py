@@ -3,7 +3,7 @@
 """
 Created on Fri Nov 22 17:36:46 2019
 
-Settings for submit_jobs.py
+Settings for launch_jobs.py
 Test settings for automated tests.
 
 To test restart functionality

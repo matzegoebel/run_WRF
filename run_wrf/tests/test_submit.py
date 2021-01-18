@@ -3,13 +3,13 @@
 """
 Created on Tue Nov 26 12:26:51 2019
 
-Test submit_jobs function
+Test launch_jobs function
 
 @author: Matthias Göbel
 """
 
 import os
-from run_wrf.submit_jobs import submit_jobs
+from run_wrf.launch_jobs import launch_jobs
 import pytest
 from run_wrf.tools import Capturing
 from collections import Counter
@@ -46,8 +46,8 @@ def test_basic():
     """
 #%%
     # run wrf
-    submit_jobs(init=True, exist="o", config_file="test.config_test")
-    combs = submit_jobs(init=False, verbose=True, wait=True, exist="o",
+    launch_jobs(init=True, exist="o", config_file="test.config_test")
+    combs = launch_jobs(init=False, verbose=True, wait=True, exist="o",
                         config_file="test.config_test")
 
     # test namelist
@@ -107,7 +107,7 @@ def test_basic():
         assert outfiles == bak
 
     with pytest.raises(ValueError, match="Value 'a' for -e option not defined!"):
-        combs = submit_jobs(init=True, exist="a", config_file="test.config_test")
+        combs = launch_jobs(init=True, exist="a", config_file="test.config_test")
     _, output = capture_submit(init=False, exist="r", wait=True,
                                config_file="test.config_test_rst")
     count = Counter(output)
@@ -143,7 +143,7 @@ def test_basic():
 
 def test_repeats():
     """Test config repetitions functionality."""
-    combs = submit_jobs(init=True, exist="o", config_file="test.config_test_reps")
+    combs = launch_jobs(init=True, exist="o", config_file="test.config_test_reps")
     _, output = capture_submit(init=False, wait=True, exist="o",
                                config_file="test.config_test_reps")
     print("\n".join(output))
@@ -153,7 +153,7 @@ def test_repeats():
 
 def test_mpi_and_batch():
     """Test MPI runs and check commands generated for job schedulers (without running them)"""
-    combs = submit_jobs(init=True, wait=True, exist="o", config_file="test.config_test_mpi")
+    combs = launch_jobs(init=True, wait=True, exist="o", config_file="test.config_test_mpi")
     _, output = capture_submit(init=False, pool_jobs=True, wait=True, exist="o",
                                config_file="test.config_test_mpi")
     print("\n".join(output))
@@ -215,7 +215,7 @@ def test_scheduler_full():
     # Check if job scheduler is available
     if ("job_scheduler" in dir(conf)) and \
             os.popen("command -v {}".format(batch_dict[conf.job_scheduler])).read() != "":
-        combs = submit_jobs(init=True, exist="o", config_file="test.config_test_mpi")
+        combs = launch_jobs(init=True, exist="o", config_file="test.config_test_mpi")
         _, output = capture_submit(init=False, use_job_scheduler=True, test_run=True, exist="o",
                                    verbose=True, config_file="test.config_test_mpi")
         print("\n".join(output))
@@ -284,7 +284,7 @@ def run_around_tests():
 def capture_submit(*args, **kwargs):
     try:
         with Capturing() as output:
-            combs = submit_jobs(*args, **kwargs)
+            combs = launch_jobs(*args, **kwargs)
     except Exception as e:
         print(output)
         raise(e)

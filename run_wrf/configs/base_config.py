@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 
-Base settings for submit_jobs.py
+Base settings for launch_jobs.py
 
 @author: Matthias Göbel
 

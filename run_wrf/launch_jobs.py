@@ -23,7 +23,7 @@ from run_wrf import get_namelist
 # %%
 
 
-def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
+def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                 debug=False, use_job_scheduler=False, check_args=False,
                 pool_jobs=False, mail="ea", wait=False, no_namelist_check=False,
                 test_run=False, verbose=False, param_combs=None):
@@ -92,7 +92,8 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
 
     # change to code path
     fpath = os.path.realpath(__file__)
-    os.chdir(fpath[:fpath.index("submit_jobs.py")])
+    fpath = "/".join(fpath.split("/")[:-1])
+    os.chdir(fpath)
 
     if param_combs is None:
         if ("param_combs" in dir(conf)) and (conf.param_combs is not None):
@@ -219,11 +220,11 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
 
         # slots
         nx = tools.find_nproc(args["e_we"] - 1,
-                                   min_n_per_proc=args["min_nx_per_proc"],
-                                   even_split=args["even_split"])
+                              min_n_per_proc=args["min_nx_per_proc"],
+                              even_split=args["even_split"])
         ny = tools.find_nproc(args["e_sn"] - 1,
-                                   min_n_per_proc=args["min_ny_per_proc"],
-                                   even_split=args["even_split"])
+                              min_n_per_proc=args["min_ny_per_proc"],
+                              even_split=args["even_split"])
 
         if ("max_nslotsx" in args) and (args["max_nslotsx"] is not None):
             nx = min(args["max_nslotsx"], nx)
@@ -265,7 +266,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
             print("Using WRF build in: {}\n".format(wrf_build))
 
             args, args_str = tools.prepare_init(args, conf, namelist, namelist_all,
-                                                     namelist_check=not no_namelist_check)
+                                                namelist_check=not no_namelist_check)
             # job scheduler queue and vmem
             if use_job_scheduler and conf.request_vmem:
                 vmem_init = args["vmem_init"]
@@ -280,8 +281,8 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                     namelist_all["time_step_fract_num"] / namelist_all["time_step_fract_den"]
             queue = conf.queue
             args, skip = tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi,
-                                                pool_jobs=pool_jobs, test_run=test_run,
-                                                request_vmem=conf.request_vmem)
+                                           pool_jobs=pool_jobs, test_run=test_run,
+                                           request_vmem=conf.request_vmem)
             if skip:
                 continue
             if conf.request_vmem:
@@ -620,17 +621,15 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
     return param_combs
 
 
-# %%
-if __name__ == "__main__":
-
+def parse_args():
+    """Parse command line arguments and run launch_jobs"""
     # define argument parser
-
-    sig = inspect.signature(submit_jobs).parameters
+    sig = inspect.signature(launch_jobs).parameters
 
     # default function values
     defaults = {k: d.default for k, d in sig.items()}
     del defaults["param_combs"]
-    doc = submit_jobs.__doc__
+    doc = launch_jobs.__doc__
     # get description from doc string
     desc = {}
     for k in defaults.keys():
@@ -671,4 +670,11 @@ if __name__ == "__main__":
     parser.format_help()
     options = parser.parse_args()
 
-    param_combs = submit_jobs(**options.__dict__)
+    param_combs = launch_jobs(**options.__dict__)
+
+    return param_combs
+
+
+# %%
+if __name__ == "__main__":
+    parse_args()

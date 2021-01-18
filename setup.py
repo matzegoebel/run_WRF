@@ -55,9 +55,9 @@ setup(
     extras_require={
         'test': ['pytest'],
     },
-    scripts=['run_wrf/submit_jobs.py'],
     entry_points={'console_scripts':
-                  ['concat_output=run_wrf.misc_tools:concat_output',
+                  ['run_wrf=run_wrf.launch_jobs:parse_args',
+                   'concat_output=run_wrf.misc_tools:concat_output',
                    'rankfile=run_wrf.sge_funcs:rankfile',
                    'get_hosts=run_wrf.sge_funcs:get_hosts',
                    'get_hosts_set=run_wrf.sge_funcs:get_hosts_set',

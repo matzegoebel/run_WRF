@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 
-Settings for submit_jobs.py
+Settings for launch_jobs.py
 Test settings for automated tests.
 
 To test repetitions functionality
