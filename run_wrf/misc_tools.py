@@ -29,8 +29,17 @@ import importlib
 vert_keys = ["vgrid_method", "dz0", "nz", "dzmax", "D1", "alpha"]
 # non-namelist config parameters that will not be included in namelist file
 del_args = ["start_time", "end_time", "output_streams", "lx", "ly",
-            "spec_hfx", "input_sounding", "n_rep", "dt_f", *vert_keys]
+            "spec_hfx", "input_sounding", "n_rep", "dt_f", "ideal_case_name",
+            "outpath", "run_path", "build_path", "vmem_init", "vmem",
+            "vmem_buffer", "vmem_test", "h_stack_init", "h_stack",
+            "rt_init", "runtime_per_step", "rt_buffer", "rt", "rt_test",
+            "rt_use_median", "send_rt_signal",
+            "min_nx_per_proc", "min_ny_per_proc", "even_split",
+            "max_nslotsx", "max_nslotsy", "module_load", *vert_keys]
 
+#TODOm: change misc_tools to tools
+#TODO: change submit_jobs to launch_wrf_jobs
+#TODO: change rt to runtime
 # %%nproc
 
 
@@ -627,7 +636,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
     """Set vmem and runtime per time step  based on settings in config file."""
     skip = False
 
-    resource_search_paths = [conf.run_path, *conf.resource_search_paths]
+    resource_search_paths = [args["run_path"], *conf.resource_search_paths]
 
     # get runtime per timestep
     n_steps = 3600 * run_hours / args["dt_f"]
@@ -635,19 +644,19 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
     runtime_per_step = None
     print_rt_step = False
     if test_run:
-        runtime_per_step = conf.rt_test * 60 / n_steps / conf.rt_buffer
+        runtime_per_step = args["rt_test"] * 60 / n_steps / args["rt_buffer"]
         args["n_rep"] = 1
-    elif conf.rt is not None:
-        runtime_per_step = conf.rt * 60 / n_steps / conf.rt_buffer
-    elif conf.runtime_per_step is not None:
-        runtime_per_step = conf.runtime_per_step
+    elif ("rt" in args) and (args["rt"] is not None):
+        runtime_per_step = args["rt"] * 60 / n_steps / args["rt_buffer"]
+    elif ("runtime_per_step" in args) and (args["runtime_per_step"] is not None):
+        runtime_per_step = args["runtime_per_step"]
     else:
         print("Get runtime from previous runs")
         run_dir_0 = run_dir + "_0"  # use rep 0 as reference
         identical_runs = get_identical_runs(run_dir_0, resource_search_paths)
         if len(identical_runs) > 0:
             timing = get_runtime_all(runs=identical_runs, all_times=False,
-                                     use_median=conf.rt_use_median)
+                                     use_median=args["rt_use_median"])
             if len(timing) > 0:
                 runtime_per_step = np.average(timing.timing, weights=timing.nsteps)
                 rt_sd = np.average(timing.timing_sd, weights=timing.nsteps)
@@ -663,7 +672,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
         print_rt_step = True
 
     if not skip:
-        args["rt_per_timestep"] = runtime_per_step * conf.rt_buffer
+        args["rt_per_timestep"] = runtime_per_step * args["rt_buffer"]
         if print_rt_step:
             print("Runtime per time step: {0:.5f} s".format(runtime_per_step))
 
@@ -671,9 +680,9 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
     if request_vmem:
         vmemi = None
         if test_run:
-            vmemi = conf.vmem_test * nslots
-        elif conf.vmem is not None:
-            vmemi = conf.vmem * nslots
+            vmemi = args["vmem_test"] * nslots
+        elif ("vmem" in args) and (args["vmem"] is not None):
+            vmemi = args["vmem"] * nslots
         else:
             print("Get vmem from previous runs")
             if identical_runs is None:
@@ -689,7 +698,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
                 else:
                     print("Could not retrieve vmem from previous runs. Skipping...")
             else:
-                vmemi = max(vmemi) * conf.vmem_buffer
+                vmemi = max(vmemi) * args["vmem_buffer"]
 
         if vmemi is not None:
             print("Use vmem per slot: {0:.1f}M".format(vmemi / nslots))
@@ -735,7 +744,7 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
     if "eta_levels" in args:
         args["eta_levels"] = "'" + ",".join(["{0:.6f}".format(e) for e in args["eta_levels"]]) + "'"
 
-    if "scm" in conf.ideal_case:
+    if "scm" in args["ideal_case_name"]:
         print("WARNING: Eta levels are neglected in the standard initialization of "
               "the single column model case!")
 
@@ -1106,7 +1115,7 @@ def concat_output(config_file=None):
     for cname, param_comb in param_combs.iterrows():
         for rep in range(param_comb["n_rep"]):  # repetion loop
             rundir = param_comb["fname"] + "_" + str(rep)
-            outpath = os.path.join(conf.outpath, rundir, "")  # WRF output path
+            outpath = os.path.join(param_comb["outpath"], rundir, "")  # WRF output path
             print("Concatenate files in " + outpath)
             for stream, (outfile, _) in param_comb["output_streams"].items():
                 # get all files

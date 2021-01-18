@@ -25,7 +25,9 @@ import pandas as pd
 end_time = "2018-06-20_07:06:00"
 success = {True: 'wrf: SUCCESS COMPLETE IDEAL INIT',
            False: 'd01 {} wrf: SUCCESS COMPLETE WRF'.format(end_time)}
-outd = conf.outpath
+params = conf.params
+outd = params["outpath"]
+rund = params["run_path"]
 
 test_dir = os.getcwd()
 code_dir = "/".join(test_dir.split("/")[:-1])
@@ -42,7 +44,7 @@ def test_basic():
     Initialize and run WRF; Check behaviour when run already exists
     Restart run; Check that errors are raised
     """
-
+#%%
     # run wrf
     submit_jobs(init=True, exist="o", config_file="test.config_test")
     combs = submit_jobs(init=False, verbose=True, wait=True, exist="o",
@@ -78,8 +80,8 @@ def test_basic():
             assert (len(t) == len(t_corr)) and (t == t_corr).all()
 
     # test behaviour if run already exists
-    for run in os.listdir(conf.run_path):
-        file = "{}/{}/wrfinput_d01".format(conf.run_path, run)
+    for run in os.listdir(rund):
+        file = "{}/{}/wrfinput_d01".format(rund, run)
         if os.path.isfile(file):
             os.remove(file)
     exist_message = (("s", "Redoing initialization..."), ("s", "Skipping..."),
@@ -179,7 +181,7 @@ def test_mpi_and_batch():
     batch_comm = "qsub -cwd -q std.q -o {0}/logs/run_pytest_$JOB_ID.out "\
                  "-e {0}/logs/run_pytest_$JOB_ID.err -l h_rt=000:00:27 "\
                  " -pe openmpi-fillup 2  -M test@test.com -m ea -N run_pytest -V  "\
-                 "-l h_vmem=85M  run_wrf.job".format(conf.run_path)
+                 "-l h_vmem=85M  run_wrf.job".format(rund)
     assert batch_comm == c
 
     messages = ['Get runtime from previous runs', 'Get vmem from previous runs',
@@ -201,10 +203,11 @@ def test_mpi_and_batch():
     batch_comm = "sbatch -p mem_0064 -o {0}/logs/run_pytest_%j.out -e {0}/logs/run_pytest_%j.err "\
                  "--time=000:00:27 --ntasks-per-node=4 -N 1 "\
                  "--mail-user=test@test.com --mail-type=END,FAIL -J run_pytest "\
-                 "--export=ALL  --qos=normal_0064  run_wrf.job".format(conf.run_path)
+                 "--export=ALL  --qos=normal_0064  run_wrf.job".format(rund)
     assert batch_comm == c
     assert count['Get runtime from previous runs'] == combs["n_rep"].sum()
     assert count[message_rt] == 2
+    # TODO: also check environment variables
 
 
 def test_scheduler_full():
@@ -254,15 +257,14 @@ def run_around_tests():
     """Delete test data before and after every test and transfer test namelist and iofiles before the tests"""
 
     # Code that will run before each test
-
     os.chdir(code_dir)
     # remove test data
-    for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
+    for d in [outd, rund]:
         if os.path.isdir(d):
             shutil.rmtree(d)
     # copy namelist and io file for tests
     for build in [conf.parallel_build, conf.serial_build]:
-        target_dir = "{}/{}/test/{}/".format(conf.build_path, build, conf.ideal_case)
+        target_dir = "{}/{}/test/{}/".format(params["build_path"], build, params["ideal_case_name"])
         shutil.copy("{}/test_data/IO_test.txt".format(test_dir), target_dir)
         shutil.copy("{}/test_data/namelists/namelist.input".format(test_dir), target_dir)
 
@@ -274,7 +276,7 @@ def run_around_tests():
     yield
 
     # Code that will run after each test
-    for d in [os.environ["wrf_res"] + "/test/pytest", os.environ["wrf_runs"] + "/pytest"]:
+    for d in [outd, rund]:
         if os.path.isdir(d):
             shutil.rmtree(d)
 

@@ -20,7 +20,7 @@ params = deepcopy(params)
 
 job_scheduler = "sge"
 # modules to load
-module_load = "module load intel/18.0u1 netcdf-4"
+params["module_load"] = "module load intel/18.0u1 netcdf-4"
 queue = "std.q"  # batch queue for SGE
 bigmem_queue = "bigmem.q"
 bigmem_limit = 25e3  # limit (MB) where bigmem_queue is used

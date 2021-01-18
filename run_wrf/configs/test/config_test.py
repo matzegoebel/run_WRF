@@ -19,9 +19,9 @@ params = deepcopy(params)
 
 runID = "pytest"  # name for this simulation series
 
-outpath = os.environ["wrf_res"] + "/test/" + runID  # WRF output path root
-run_path = os.environ["wrf_runs"] + "/" + runID  # path where run directories of simulations will be created
-build_path = os.environ["wrf_builds"] + "/tests"  # path where different versions of the compiled WRF model code reside
+params["outpath"] = os.environ["wrf_res"] + "/test/" + runID  # WRF output path root
+params["run_path"] = os.environ["wrf_runs"] + "/test/" + runID  # path where run directories of simulations will be created
+params["build_path"] = os.environ["wrf_builds"] + "/tests"  # path where different versions of the compiled WRF model code reside
 
 # Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
 param_grid = odict(mp_physics=[1, 2])

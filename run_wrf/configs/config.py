@@ -76,7 +76,7 @@ params["iofields_filename"] = None
 params["restart_interval_m"] = 240  # restart interval (min)
 
 # override values of base_config
-ideal_case = "em_b_wave"  # idealized WRF case
+params["ideal_case_name"] = "em_b_wave"  # idealized WRF case
 
 
 # %%

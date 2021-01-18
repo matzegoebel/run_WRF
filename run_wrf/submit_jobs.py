@@ -81,6 +81,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
     if init and (exist == "r"):
         raise ValueError("For restart runs no initialization is needed!")
 
+    outpath_input = outpath
     if config_file[-3:] == ".py":
         config_file = config_file[:-3]
     try:
@@ -111,11 +112,6 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
     if test_run:
         print("Do short test runs on cluster to find out required runtime and virtual memory\n\n")
 
-    if outpath is None:
-        base_outpath = conf.outpath
-    else:
-        base_outpath = outpath
-
     if init:
         job_name = "init_"
     else:
@@ -123,8 +119,6 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
     job_name += conf.runID
     # temporary log output for job scheduler
     if use_job_scheduler:
-        batch_log_dir = conf.run_path + "/logs/"
-        os.makedirs(batch_log_dir, exist_ok=True)
         job_scheduler = conf.job_scheduler.lower()
         if job_scheduler not in ["slurm", "sge"]:
             raise ValueError("Job scheduler {} not implemented. "
@@ -152,7 +146,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
 
     # if test_run and (job_scheduler == "sge"):
     #     #do test run on one node by using openmpi-xperhost to ensure correct vmem logging
-    #     conf.reduce_pool = True
+    #     conf.reduce_pool = True TODO
 
     IDs = []
     rtr = []
@@ -184,7 +178,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
         del args["fname"]
 
         # create output ID for current configuration
-        run_dir = "{}/WRF_{}".format(conf.run_path, IDi)
+        run_dir = "{}/WRF_{}".format(args["run_path"], IDi)
 
         print("\n\nConfig:  " + IDi)
         print(cname)
@@ -224,15 +218,17 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
             args["e_sn"] = math.ceil(args["ly"] / args["dy"]) + 1
 
         # slots
-        nx = misc_tools.find_nproc(args["e_we"] - 1, min_n_per_proc=conf.min_nx_per_proc,
-                                   even_split=conf.even_split)
-        ny = misc_tools.find_nproc(args["e_sn"] - 1, min_n_per_proc=conf.min_ny_per_proc,
-                                   even_split=conf.even_split)
+        nx = misc_tools.find_nproc(args["e_we"] - 1,
+                                   min_n_per_proc=args["min_nx_per_proc"],
+                                   even_split=args["even_split"])
+        ny = misc_tools.find_nproc(args["e_sn"] - 1,
+                                   min_n_per_proc=args["min_ny_per_proc"],
+                                   even_split=args["even_split"])
 
-        if conf.max_nslotsx is not None:
-            nx = min(conf.max_nslotsx, nx)
-        if conf.max_nslotsy is not None:
-            ny = min(conf.max_nslotsy, ny)
+        if ("max_nslotsx" in args) and (args["max_nslotsx"] is not None):
+            nx = min(args["max_nslotsx"], nx)
+        if ("max_nslotsy" in args) and (args["max_nslotsy"] is not None):
+            ny = min(args["max_nslotsy"], ny)
 
         if (nx == 1) and (ny == 1):
             nx = -1
@@ -253,9 +249,13 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
         else:
             wrf_dir_i = conf.serial_build
 
+        if use_job_scheduler:
+            batch_log_dir = args["run_path"] + "/logs/"
+            os.makedirs(batch_log_dir, exist_ok=True)
+
         print("Setting namelist parameters\n")
-        wrf_build = "{}/{}".format(conf.build_path, wrf_dir_i)
-        namelist_path = "{}/test/{}/namelist.input".format(wrf_build, conf.ideal_case)
+        wrf_build = "{}/{}".format(args["build_path"], wrf_dir_i)
+        namelist_path = "{}/test/{}/namelist.input".format(wrf_build, args["ideal_case_name"])
         namelist_all = get_namelist.namelist_to_dict(namelist_path, build_path=wrf_build,
                                                      registries=conf.registries)
         namelist = get_namelist.namelist_to_dict(namelist_path)
@@ -268,7 +268,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                                                      namelist_check=not no_namelist_check)
             # job scheduler queue and vmem
             if use_job_scheduler and conf.request_vmem:
-                vmem_init = conf.vmem_init
+                vmem_init = args["vmem_init"]
                 if ("bigmem_limit" in dir(conf)) and (vmem_init > conf.bigmem_limit):
                     queue = conf.bigmem_queue
                 else:
@@ -296,6 +296,11 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
             if arg not in param_combs.keys():
                 param_combs[arg] = None
             param_combs[arg][cname] = val
+
+        if outpath_input is None:
+            base_outpath = args["outpath"]
+        else:
+            base_outpath = outpath_input
 
         n_rep = args.setdefault("n_rep", 1)
         for rep in range(n_rep):  # repetion loop
@@ -326,7 +331,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                         print("Overwriting...")
                     elif exist == "b":
                         print("Creating backup...")
-                        bk_dir = "{}/bak/".format(conf.run_path)
+                        bk_dir = "{}/bak/".format(args["run_path"])
                         run_dir_bk = "{}/WRF_{}_bak_".format(bk_dir, IDr)
                         os.makedirs(bk_dir, exist_ok=True)
                         bk_ind = 0
@@ -355,18 +360,18 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                     if iofile_ != "NONE_SPECIFIED":
                         iofile = iofile_
 
-                comm_args = dict(run_id=IDr, wrfv=wrf_dir_i, ideal_case=conf.ideal_case,
+                comm_args = dict(run_id=IDr, wrfv=wrf_dir_i, ideal_case=args["ideal_case_name"],
                                  input_sounding=args["input_sounding"], nx=nx, ny=ny,
-                                 run_path=conf.run_path, build_path=conf.build_path,
+                                 run_path=args["run_path"], build_path=args["build_path"],
                                  batch=int(use_job_scheduler), wrf_args="",
                                  cluster=int(conf.cluster), iofile=iofile,
-                                 module_load=conf.module_load)
+                                 module_load=args["module_load"])
                 for p, v in comm_args.items():
                     os.environ[p] = str(v)
                 if use_job_scheduler:
                     os.environ["job_scheduler"] = job_scheduler
                     os.environ["wrf_args"] = args_str_r
-                    rt_init = misc_tools.format_timedelta(conf.rt_init * 60)
+                    rt_init = misc_tools.format_timedelta(args["rt_init"] * 60)
                     qlog = batch_log_dir + job_name
                     os.environ["qlog"] = qlog
                     qout, qerr = [qlog + job_id + s for s in [".out", ".err"]]
@@ -374,8 +379,8 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                     if job_scheduler == "sge":
                         batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -M " \
                                          "{} -m {} -N {} -V ".format(*batch_args)
-                        if "h_stack_init" in dir(conf) and conf.h_stack_init is not None:
-                            batch_args_str += " -l h_stack={}M ".format(round(conf.h_stack_init))
+                        if ("h_stack_init" in args) and (args["h_stack_init"] is not None):
+                            batch_args_str += " -l h_stack={}M ".format(round(args["h_stack_init"]))
                         if conf.request_vmem:
                             batch_args_str += " -l h_vmem={}M ".format(vmem_init)
 
@@ -512,10 +517,10 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                         ny_str = " ".join([str(ns[1]) for ns in nxny])
                         timestamp = datetime.datetime.now().isoformat()[:19]
                         comm_args = dict(nslots=nslots_str, nx=nx_str, ny=ny_str, jobs=jobs,
-                                         pool_jobs=int(pool_jobs), run_path=conf.run_path,
+                                         pool_jobs=int(pool_jobs), run_path=args["run_path"],
                                          batch=int(use_job_scheduler), cluster=int(conf.cluster),
                                          restart=int(restart), outpath=outpath,
-                                         module_load=conf.module_load, timestamp=timestamp)
+                                         module_load=args["module_load"], timestamp=timestamp)
                         for p, v in comm_args.items():
                             os.environ[p] = str(v)
 
@@ -524,7 +529,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
 
                         if use_job_scheduler:
                             os.environ["job_scheduler"] = job_scheduler
-                            send_rt_signal = conf.send_rt_signal
+                            send_rt_signal = args["send_rt_signal"]
 
                             if conf.request_vmem:
                                 vmemp = int(sum(vmem) / sum(nslots))
@@ -546,8 +551,8 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
                             if job_scheduler == "sge":
                                 batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={}  {} " \
                                                  " -M {} -m {} -N {} -V ".format(*batch_args)
-                                if "h_stack" in dir(conf) and conf.h_stack is not None:
-                                    batch_args_str += " -l h_stack={}M ".format(round(conf.h_stack))
+                                if ("h_stack" in args) and (args["h_stack"] is not None):
+                                    batch_args_str += " -l h_stack={}M ".format(round(args["h_stack"]))
                                 if conf.request_vmem:
                                     batch_args_str += " -l h_vmem={}M ".format(vmemp)
 
@@ -587,7 +592,7 @@ def submit_jobs(config_file="config", init=False, outpath=None, exist="s",
 
                                 for ID in IDs:
                                     print(ID)
-                                    run_dir_i = "{}/WRF_{}/".format(conf.run_path, ID)
+                                    run_dir_i = "{}/WRF_{}/".format(args["run_path"], ID)
                                     print(os.popen("tail -n {} {}/run_{}.log".format(log_lines,
                                                                                      run_dir_i, timestamp)).read())
                                     print(fopen(run_dir_i + "run_{}.err".format(timestamp)).read_text())

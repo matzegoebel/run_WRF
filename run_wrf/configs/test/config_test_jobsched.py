@@ -14,4 +14,4 @@ from run_wrf.configs.test.config_test import *
 from copy import deepcopy
 params = deepcopy(params)
 
-vmem = 500
+params["vmem"] = 500
