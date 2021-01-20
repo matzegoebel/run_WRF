@@ -50,8 +50,8 @@ setup(
     author='Matthias Göbel',
     author_email='matthias-goebel@freenet.de',
     keywords='WRF',
-    packages=find_packages(exclude=['contrib', 'docs', 'tests']),
-    install_requires=['numpy', 'pandas', 'xarray', 'metpy', 'nco'],
+    packages=find_packages(),
+    install_requires=['pandas', 'xarray', 'scipy', 'matplotlib'],
     extras_require={
         'test': ['pytest'],
     },

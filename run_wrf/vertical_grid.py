@@ -13,7 +13,6 @@ Lukas Strauss and Matthias Göbel
 """
 
 import numpy as np
-from metpy import constants as metconst
 from scipy import integrate
 import os
 import matplotlib.pyplot as plt
@@ -185,11 +184,13 @@ def height_to_pressure_std(z, p0=1013.25, return_da=False, strat=True):
        If strat=False, the tropospheric lapse rate is also used
        above 11 km.
     """
+    g = 9.81
+    Rd = 287.06
     if np.array(z == 0).all():
         return p0
     ztop = np.array(z).max()
     T = T_std(ztop, strat=strat)
-    T_int = integrate.cumtrapz(metconst.g.m/(1000*metconst.Rd.m*T), T.z)
+    T_int = integrate.cumtrapz(g / (Rd * T), T.z)
     T_int = np.insert(T_int, 0, 0)
     p = T.copy()
     p[:] = p0*np.exp(-T_int)

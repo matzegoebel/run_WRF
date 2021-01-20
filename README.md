@@ -39,13 +39,15 @@ To concatenate all available output files (e.g., from restarted runs) of each ru
 
 ## Requirements
 The package is written for a Linux environment. For Windows, it may have to be adjusted.
-In addition to the standard library, the Python packages `numpy`, `pandas`, `xarray`, `metpy`, and `nco` are required.
+In addition to the standard library, the Python packages `numpy`, `pandas`, `xarray`, `matplotlib`, and `scipy` are required.
+To concatenate the output of restarted runs, [NCO](http://nco.sourceforge.net/nco.html) needs to be installed, e.g. via `conda install nco`.
 The package was tested with Python 3.6.
 
 ## Installation
 In the root directory run:
 
-`pip install -e .`
+`pip install -e .` or `pip install -e .[test]` to be able to run the pytest test suite.
+This installs the package and all required dependencies.
 
 ## Testing
 The folder `tests` contains scripts and data for testing the code after changing it.
