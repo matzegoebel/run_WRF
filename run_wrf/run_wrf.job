@@ -10,7 +10,7 @@ ulimit -s unlimited
 
 code_dir=$(pwd)
 
-echo "jobs: $jobs"
+echo "running jobs: $jobs"
 jobs=(${jobs})
 njobs=${#jobs[@]}
 nslots=(${nslots})

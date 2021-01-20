@@ -91,9 +91,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
         conf = importlib.import_module(config_file)
 
     # change to code path
-    fpath = os.path.realpath(__file__)
-    fpath = "/".join(fpath.split("/")[:-1])
-    os.chdir(fpath)
+    os.chdir(os.path.abspath(os.path.dirname(__file__)))
 
     if param_combs is None:
         if ("param_combs" in dir(conf)) and (conf.param_combs is not None):
@@ -674,8 +672,6 @@ def parse_args():
     options = parser.parse_args()
 
     param_combs = launch_jobs(**options.__dict__)
-
-    return param_combs
 
 
 # %%

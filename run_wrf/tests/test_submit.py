@@ -44,7 +44,6 @@ def test_basic():
     Initialize and run WRF; Check behaviour when run already exists
     Restart run; Check that errors are raised
     """
-#%%
     # run wrf
     launch_jobs(init=True, exist="o", config_file="test.config_test")
     combs = launch_jobs(init=False, verbose=True, wait=True, exist="o",
@@ -60,7 +59,7 @@ def test_basic():
         if "_outname" not in key:
             equal = namelists[0][key] == namelists[1][key]
             if not equal:
-                print(key, namelists[0][key], namelists[1][key])
+                print("unequal namelist settings:", key, namelists[0][key], namelists[1][key])
             assert equal
 
     input_sounding = tools.read_file(rpath + "/input_sounding")
@@ -138,7 +137,6 @@ def test_basic():
             t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:08:00',
                                    freq=freq + "min")
             assert (len(t) == len(t_corr)) and (t == t_corr).all()
-# %%
 
 
 def test_repeats():

@@ -4,10 +4,6 @@
 set -e
 
 
-#~ t0=$(expr `date +%s%N` / 1000000)
-#~ echo (( t - t0))
-
-
 code_dir=$(pwd)
 build_dir="${build_path}/$wrfv"
 run_dir="${run_path}/WRF_${run_id}"

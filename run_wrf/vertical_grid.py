@@ -21,7 +21,6 @@ import math
 figloc = "~/"
 figloc = os.path.expanduser(figloc)
 
-
 # %% grid creation methods
 
 def linear_dz(ztop, dz0, dzmax=None, nz=None):

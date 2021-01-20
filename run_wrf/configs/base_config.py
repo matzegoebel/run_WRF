@@ -62,7 +62,7 @@ params["runtime_test"] = 5  # runtime (min) for test runs
 params["rt_use_median"] = False
 params["send_rt_signal"] = 10  # seconds before requested runtime is exhausted and signal is sent to job
 
-# additional paths (other than run_path) to search for log files
+# additional paths (other than run path) to search for log files
 # to determine runtime and/or vmem if not specified
 resource_search_paths = []
 
