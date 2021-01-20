@@ -19,9 +19,12 @@ params = {}
 
 params["ideal_case_name"] = "em_les"  # idealized WRF case
 
-params["outpath"] = os.environ["wrf_res"]  # WRF output path root
-params["run_path"] = os.environ["wrf_runs"]  # path where run directories of simulations will be created
-params["build_path"] = os.environ["wrf_builds"]  # path where different versions of the compiled WRF model code reside
+if "wrf_res" in os.environ:
+    params["outpath"] = os.environ["wrf_res"]  # WRF output path root
+if "wrf_runs" in os.environ:
+    params["run_path"] = os.environ["wrf_runs"]  # path where run directories of simulations will be created
+if "wrf_builds" in os.environ:
+    params["build_path"] = os.environ["wrf_builds"]  # path where different versions of the compiled WRF model code reside
 serial_build = "WRF"  # used if nslots=1
 parallel_build = "WRF_mpi"  # used if nslots > 1
 debug_build = "WRF_debug"  # used for -d option

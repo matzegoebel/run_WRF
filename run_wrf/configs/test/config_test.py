@@ -11,6 +11,7 @@ Test settings for automated tests.
 import os
 from collections import OrderedDict as odict
 from run_wrf.configs.base_config import *
+import run_wrf
 from copy import deepcopy
 params = deepcopy(params)
 
@@ -18,9 +19,9 @@ params = deepcopy(params)
 '''Simulations settings'''
 
 runID = "pytest"  # name for this simulation series
-
-params["outpath"] = os.environ["wrf_res"] + "/test/" + runID  # WRF output path root
-params["run_path"] = os.environ["wrf_runs"] + "/test/" + runID  # path where run directories of simulations will be created
+test_path = os.path.abspath(os.path.dirname(run_wrf.__file__)) + "/tests/test_sims/"
+params["outpath"] = test_path + "/results/"  # WRF output path root
+params["run_path"] = test_path + "/runs/"  # path where run directories of simulations will be createdparams["build_path"] = os.environ["wrf_builds"] + "/tests"  # path where different versions of the compiled WRF model code reside
 params["build_path"] = os.environ["wrf_builds"] + "/tests"  # path where different versions of the compiled WRF model code reside
 
 # Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
