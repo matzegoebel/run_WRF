@@ -70,6 +70,9 @@ params["min_ny_per_proc"] = 16  # 25, minimum number of grid points per processo
 
 # %%
 '''Slot configurations and cluster settings'''
+# path to mpiexec or mpirun executable to use; if None: use the system default
+mpiexec = None
+
 mail_address = ""  # mail address for job scheduler
 clusters = ["leo", "vsc3", "vsc4"]
 force_pool = False  # always use pooling

@@ -159,6 +159,12 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
         print("Initialize WRF simulations")
     else:
         print("Run WRF simulations")
+        if ("mpiexec" not in dir(conf)) or (conf.mpiexec is None):
+            mpiexec = "mpiexec"
+            print("mpiexec=None or not set in config file. Using system default.")
+        else:
+            mpiexec = conf.mpiexec
+            print("Use mpiexec at {}".format(mpiexec))
 
     print("Configs:")
     if "core_param" in param_combs.index:
@@ -516,7 +522,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                         timestamp = datetime.datetime.now().isoformat()[:19]
                         comm_args = dict(nslots=nslots_str, nx=nx_str, ny=ny_str, jobs=jobs,
                                          pool_jobs=int(pool_jobs), run_path=args["run_path"],
-                                         batch=int(use_job_scheduler),
+                                         batch=int(use_job_scheduler), mpiexec=mpiexec,
                                          restart=int(restart), outpath=outpath,
                                          module_load=args["module_load"], timestamp=timestamp)
                         for p, v in comm_args.items():
