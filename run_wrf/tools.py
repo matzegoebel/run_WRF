@@ -216,8 +216,9 @@ def grid_combinations(param_grid, add_params=None, param_names=None, runID=None)
         params = []
         composite_params = []
         for param, val in d.items():
-            if type(val) == dict:
+            if type(val) in (dict, odict):
                 val_list = list(val.values())
+                val_list = [make_list(i) for i in val_list]
                 lens = np.array([len(i) for i in val_list])
                 if (lens[0] != lens).any():
                     raise ValueError("All parameter ranges that belong to the same composite "
@@ -295,14 +296,14 @@ def output_id_from_config(param_comb=None, param_grid=None, param_names=None, ru
         for p, v in param_grid.items():
             if (param_names is not None) and (p in param_names):
                 namep = param_names[p]
-                if type(v) == dict:
+                if type(v) in (dict, odict):
                     ID[p] = namep[param_comb[p + "_idx"]]
                 else:
-                    if type(namep) == dict:
+                    if type(namep) in (dict, odict):
                         ID[p] = namep[param_comb[p]]
                     else:
                         ID[p] = namep[param_grid[p].index(param_comb[p])]
-            elif type(v) == dict:
+            elif type(v) in (dict, odict):
                 raise ValueError("param_names need to be defined for composite parameters!")
             else:
                 ID[p] = param_comb[p]
