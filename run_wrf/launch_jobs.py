@@ -24,7 +24,7 @@ from run_wrf import get_namelist
 
 
 def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
-                debug=False, use_job_scheduler=False, check_args=False,
+                debug=False, build=None, use_job_scheduler=False, check_args=False,
                 pool_jobs=False, mail="ea", wait=False, no_namelist_check=False,
                 test_run=False, verbose=False, param_combs=None):
     """
@@ -43,7 +43,11 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
         What to do if output already exists: Skip run ('s'), overwrite ('o'),
         restart ('r') or backup files ('b'). Default is 's'.
     debug : bool, optional
-        Run wrf in debugging mode. Just adds '_debug' to the build directory.
+        Run wrf in debugging mode. Uses WRF build specified by conf.debug_build.
+    build : str, optional
+        WRF build (subdirectory of conf.build_path) to use. Default is None,
+        which means that one of the build directories specified in the config file is used.
+        Supersedes argument 'debug'.
     use_job_scheduler : bool, optional
         Use job scheduler to submit jobs
     check_args : bool, optional
@@ -240,28 +244,36 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
 
         # determine which build to use
         slot_comm = ""
-        if debug:
-            wrf_dir_i = conf.debug_build
-        elif (np.array([*nslots, nslotsi]) > 1).any():
-            wrf_dir_i = conf.parallel_build
+
+        parallel = False
+        if (np.array([*nslots, nslotsi]) > 1).any():
+            parallel = True
             if use_job_scheduler and (not pool_jobs):
                 if job_scheduler == "sge":
                     slot_comm = "-pe openmpi-fillup {}".format(nslotsi)
                 elif job_scheduler == "slurm":
                     slot_comm = "-N {}".format(nslotsi)
+
+        # set WRF build to use
+        if build is not None:
+            wrf_dir_i = build
+        elif debug:
+            wrf_dir_i = conf.debug_build
+        elif parallel:
+            wrf_dir_i = conf.parallel_build
         else:
             wrf_dir_i = conf.serial_build
-
-        if use_job_scheduler:
-            batch_log_dir = args["run_path"] + "/logs/"
-            os.makedirs(batch_log_dir, exist_ok=True)
+        wrf_build = "{}/{}".format(args["build_path"], wrf_dir_i)
 
         print("Setting namelist parameters\n")
-        wrf_build = "{}/{}".format(args["build_path"], wrf_dir_i)
         namelist_path = "{}/test/{}/namelist.input".format(wrf_build, args["ideal_case_name"])
         namelist_all = get_namelist.namelist_to_dict(namelist_path, build_path=wrf_build,
                                                      registries=conf.registries)
         namelist = get_namelist.namelist_to_dict(namelist_path)
+
+        if use_job_scheduler:
+            batch_log_dir = args["run_path"] + "/logs/"
+            os.makedirs(batch_log_dir, exist_ok=True)
 
         vmemi = None
         if init:
@@ -646,6 +658,7 @@ def parse_args():
                     "outpath":           ("-o", "--outpath", "store"),
                     "exist":             ("-e", "--exist", "store"),
                     "debug":             ("-d", "--debug", "store_true"),
+                    "build":             ("-b", "--build", "store"),
                     "use_job_scheduler": ("-j", "--use_job_sched", "store_true"),
                     "check_args":        ("-t", "--test", "store_true"),
                     "pool_jobs":         ("-p", "--pool", "store_true"),
