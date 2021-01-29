@@ -38,8 +38,8 @@ The pooling option can also be used without job scheduler. Combined with the `-w
 To concatenate all available output files (e.g., from restarted runs) of each run defined in a config file, execute: `concat_output config_file`.
 
 ## Requirements
-The package is written for a Linux environment. For Windows, it may have to be adjusted.
-In addition to the standard library, the Python packages `numpy`, `pandas`, `xarray`, `matplotlib`, and `scipy` are required.
+The package is written for a Linux environment. On Windows it will probably not work.
+In addition to the standard Python 3 library, the Python packages `numpy`, `pandas`, `xarray`, `matplotlib`, and `scipy` are required.
 To concatenate the output of restarted runs, [NCO](http://nco.sourceforge.net/nco.html) needs to be installed, e.g. via `conda install nco`.
 The package was tested with Python 3.6.
 
