@@ -43,7 +43,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
         What to do if output already exists: Skip run ('s'), overwrite ('o'),
         restart ('r') or backup files ('b'). Default is 's'.
     debug : bool, optional
-        Run wrf in debugging mode. Uses WRF build specified by conf.debug_build.
+        Run wrf in debugging mode. Uses WRF build specified by debug_build in config file.
     build : str, optional
         WRF build (subdirectory of conf.build_path) to use. Default is None,
         which means that one of the build directories specified in the config file is used.
@@ -258,11 +258,11 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
         if build is not None:
             wrf_dir_i = build
         elif debug:
-            wrf_dir_i = conf.debug_build
+            wrf_dir_i = args["debug_build"]
         elif parallel:
-            wrf_dir_i = conf.parallel_build
+            wrf_dir_i = args["parallel_build"]
         else:
-            wrf_dir_i = conf.serial_build
+            wrf_dir_i = args["serial_build"]
         wrf_build = "{}/{}".format(args["build_path"], wrf_dir_i)
 
         print("Setting namelist parameters\n")

@@ -25,9 +25,9 @@ if "wrf_runs" in os.environ:
     params["run_path"] = os.environ["wrf_runs"]  # path where run directories of simulations will be created
 if "wrf_builds" in os.environ:
     params["build_path"] = os.environ["wrf_builds"]  # path where different versions of the compiled WRF model code reside
-serial_build = "WRF"  # used if nslots=1
-parallel_build = "WRF_mpi"  # used if nslots > 1
-debug_build = "WRF_debug"  # used for -d option
+params["serial_build"] = "WRF"  # used if nslots=1
+params["parallel_build"] = "WRF_mpi"  # used if nslots > 1
+params["debug_build"] = "WRF_debug"  # used for -d option
 
 # registries to look for default namelist parameters
 registries = ["Registry.EM_COMMON", "registry.hyb_coord", "registry.les", "registry.io_boilerplate"]

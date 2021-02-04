@@ -30,6 +30,7 @@ vert_keys = ["vgrid_method", "dz0", "nz", "dzmax", "D1", "alpha"]
 # non-namelist config parameters that will not be included in namelist file
 del_args = ["start_time", "end_time", "output_streams", "lx", "ly",
             "spec_hfx", "input_sounding", "n_rep", "dt_f", "ideal_case_name",
+            "serial_build", "debug_build", "parallel_build",
             "outpath", "run_path", "build_path", "vmem_init", "vmem",
             "vmem_buffer", "vmem_test", "h_stack_init", "h_stack",
             "runtime_init", "runtime_per_step", "rt_buffer",
