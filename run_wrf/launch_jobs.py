@@ -645,9 +645,17 @@ def parse_args():
     doc = launch_jobs.__doc__
     # get description from doc string
     desc = {}
-    for k in defaults.keys():
-        desc_k = doc[doc.index(" " + k + " "):]
-        desc[k] = desc_k.split("\n")[1].strip()
+    keys = list(defaults.keys())
+    for i, k in enumerate(keys):
+        d = "    {} : "
+        if i == len(keys) - 1:
+            kp1 = "param_combs : "
+        else:
+            kp1 = d.format(keys[i + 1])
+        desc_k = doc[doc.index(d.format(k)):doc.index(kp1)]
+        desc_k = desc_k.split("\n")[1:]
+        desc_k = [d.strip() for d in desc_k]
+        desc[k] = " ".join(desc_k)
 
     intro = doc[:doc.index("Parameters\n")]
 
