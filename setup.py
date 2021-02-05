@@ -57,7 +57,8 @@ setup(
     },
     entry_points={'console_scripts':
                   ['run_wrf=run_wrf.launch_jobs:parse_args',
-                   'concat_output=run_wrf.misc_tools:concat_output',
+                   'concat_output=run_wrf.tools:concat_output',
+                   'get_runtime=run_wrf.tools:get_runtime',
                    'rankfile=run_wrf.sge_funcs:rankfile',
                    'get_hosts=run_wrf.sge_funcs:get_hosts',
                    'get_hosts_set=run_wrf.sge_funcs:get_hosts_set',

@@ -402,7 +402,7 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
     return timing
 
 
-def get_runtime(runlog, timing=None, counter=None, all_times=False, use_median=False):
+def get_runtime(runlog=None, timing=None, counter=None, all_times=False, use_median=False):
     """
     Get runtime, MPI slot and domain size information from log file in run_dir.
 
@@ -412,7 +412,7 @@ def get_runtime(runlog, timing=None, counter=None, all_times=False, use_median=F
     Parameters
     ----------
     run_dir : str
-        Path of directory.
+        Path of directory. If None, try to parse command line argument.
     timing : pandas DataFrame, optional
         DataFrame to write information to. The default is None.
     counter : int, optional
@@ -435,6 +435,22 @@ def get_runtime(runlog, timing=None, counter=None, all_times=False, use_median=F
         Current counter for writing.
 
     """
+    cmd = False
+    if runlog is None:
+        args = sys.argv[1:]
+        usage = "Usage:\n get_runtime logfile [--median]"
+        if (len(args) not in [1, 2]) or (args[0] in ["-h", "--help", "-help"]):
+            print("Get average (mean or median) and standard deviation of"
+                  " runtime per timestep from logfile.\n" + usage)
+            sys.exit()
+        runlog = args[0]
+        if len(args) == 2:
+            if args[1] == "--median":
+                use_median = True
+            else:
+                raise RuntimeError("Argument {} not understood!\n{}".format(args[1], usage))
+        cmd = True
+
     if os.path.isfile(runlog):
         with open(runlog) as f:
             log = f.readlines()
@@ -499,6 +515,9 @@ def get_runtime(runlog, timing=None, counter=None, all_times=False, use_median=F
                 counter += 1
         else:
             counter += 1
+
+    if cmd:
+        return timing
     return timing, counter
 
 
