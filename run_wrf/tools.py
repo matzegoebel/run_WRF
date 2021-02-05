@@ -512,6 +512,7 @@ def get_runtime(runlog=None, timing=None, counter=None, all_times=False, use_med
                     timing.loc[counter, "timing"] = np.nanmean(timing_ID)
                 timing.loc[counter, "timing_sd"] = np.nanstd(timing_ID)
                 timing.loc[counter, "nsteps"] = len(timing_ID)
+                timing.loc[counter, "timing_sum"] = timing_ID.sum()
                 counter += 1
         else:
             counter += 1

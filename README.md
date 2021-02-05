@@ -14,7 +14,12 @@ When run in parallel mode, the script assumes the name of the parallel build dir
 
 With the `-v` option (verbose mode) the arguments of the call to the bash scripts are displayed. In this way you can check if the namelist parameters that will be set for each configuration are as desired.
 
-With the `-c` option you can specify an alternative config file (default is `config`) located in (a subdirectory of) the folder `configs`. For instance, the config file `test_sfclay.py` is located in `configs/example/` and can be accessed with `run_wrf -i -c example.config_sfclay`. This example config file also shows how to use the parameters defined in another config file, such that only the parameters which are different in the new file have to be specified.
+With the `-c` option you can specify an alternative config file (default is `config`) located in (a subdirectory of) the folder `configs`. For instance, the config file `test_sfclay.py` is located in `configs/example/` and can be accessed with
+```sh
+ run_wrf -i -c example.config_sfclay
+```
+
+This example config file also shows how to use the parameters defined in another config file, such that only the parameters which are different in the new file have to be specified.
 
 When initializing the simulations, the namelist settings are checked for sanity and consistency based on best practice guidelines for WRF. Warnings and---for severe problems---errors are raised. To ignore the errors and proceed with initializing the simulations, use the `-n` option.
 
@@ -25,6 +30,12 @@ If the simulation folder (in init mode) or the output files (in simulation mode)
 When run on a cluster, the `-j` flag allows submitting the jobs with a job scheduler, `SGE` or `SLURM`. The job scheduler and other cluster specific settings such as required modules and queues can be set in the config file for each cluster in use. In the default config file settings for the LEO cluster of the University of Innsbruck and the Vienna Scientific Cluster (*VSC*) are included. Email settings for the job scheduler can be set with the `-m` option.
 
 The package simplifies requesting job resources like virtual memory, runtime and number of CPUs. If the runtime or virtual memory of jobs is not specified in the config file, the program searches for simulations with an identical namelist file (except for some parameters irrelevant to the runtime per time step) and uses the runtime and virtual memory information in the respective log file. For this purpose, you can create short test simulations with the `-T` (and `-j`) option. This sets the number of repetitions to 1, the runtime to the value of `rt_test` and the virtual memory to `vmem_test` as defined in the config file. On the *VSC* cluster only one job per node is allowed. The specification of virtual memory is thus not necessary and omitted by default.
+Instead of automatically searching for runs and retrieving their runtime, you can also use the command 
+```sh
+get_runtime logfile [--median]
+```
+
+to retrieve the average runtime per timestep for a specific log file (e.g., `rsl.error.0000`). The value can then be used in the configuration parameter `runtime_per_step`.
 
 If not using a job scheduler, the simulations are started simultaneously and run in the background, by default. The `-w` option allows waiting for a simulation (or pool of simulations, see below) to finish, before submitting the next.
 
@@ -35,7 +46,10 @@ The `-d` option leads to "_debug" being appended to the build directory name. Th
 If you want to run several simulations on the same cluster node, you can use the `-p` option. This gathers jobs until the specified pool size is reached and runs them simultaneously in one batch job. If you do not want to share the node with other users, you can fill up the whole node by specifying a pool size as large as the available slots on a node. On the *VSC* cluster only one job per node is allowed. Therefore job pooling is important to make best use of the available resources and thus switched on by default.
 The pooling option can also be used without job scheduler. Combined with the `-w` option, you can ensure that only `pool_size` cores are used simultaneously.
 
-To concatenate all available output files (e.g., from restarted runs) of each run defined in a config file, execute: `concat_output config_file`.
+To concatenate all available output files (e.g., from restarted runs) of each run defined in a config file, execute: 
+```sh
+concat_output config_file
+```
 
 ## Requirements
 The package is written for a Linux environment. On Windows it will probably not work.
@@ -45,9 +59,16 @@ The package was tested with Python 3.6.
 
 ## Installation
 In the root directory run:
-
-`pip install -e .` or `pip install -e .[test]` to be able to run the pytest test suite.
+```sh
+pip install -e .
+```
 This installs the package and all required dependencies.
+Use
+```sh
+pip install -e .[test]
+```
+to be able to run the pytest test suite.
+
 
 ## Testing
 The folder `tests` contains scripts and data for testing the code after changing it.
@@ -55,7 +76,7 @@ Change to that folder and type `pytest` in the command line to run the test suit
 By default, for this to work, the ideal case `em_les` must be compiled in serial and parallel mode and the build directories `WRF_test` and `WRF_test_mpi` must reside in `$wrf_builds/test`.
 
 ## Known problems
-Currently, the script (especially the modification of the namelist files) does not work for nested runs, as it is meant to be used for idealized simulations, only.
+The script does not work for real-case simulations.
 
 ## Getting involved
 Feel free to report [issues](https://github.com/matzegoebel/run_wrf/issues) on Github.
