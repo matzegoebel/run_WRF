@@ -1154,7 +1154,7 @@ def concat_output(config_file=None):
                 time_prev = None
                 all_times = []
                 for outfile in outfiles:
-                    ds = xr.open_dataset(outfile, decode_times=False)
+                    ds = xr.open_dataset(outfile, decode_times=False, engine="scipy")
                     time = extract_times(ds)
                     all_times.append(time)
                     ds.close()
@@ -1181,7 +1181,7 @@ def concat_output(config_file=None):
                                     "original and restarted runs")
 
                 # check final file
-                ds = xr.open_dataset(outfiles[-1], decode_times=False)
+                ds = xr.open_dataset(outfiles[-1], decode_times=False, engine="scipy")
                 concat_times = extract_times(ds)
                 if (len(all_times) != len(concat_times)) or (all_times != concat_times).any():
                     raise RuntimeError("Error in concatenated time dimension")

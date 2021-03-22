@@ -21,6 +21,7 @@ from run_wrf import tools
 from run_wrf import get_namelist
 import glob
 import pandas as pd
+from pathlib import Path
 
 end_time = "2018-06-20_07:06:00"
 success = {True: 'wrf: SUCCESS COMPLETE IDEAL INIT',
@@ -72,7 +73,7 @@ def test_basic():
         outfiles_corr = ['fastout_d01_2018-06-20_07:00:00', 'wrfout_d01_2018-06-20_07:00:00']
         assert outfiles_corr == outfiles
         for f, freq in zip(outfiles, ["1", "2"]):
-            ds = xr.open_dataset(os.path.join(outd, run, f), decode_times=False)
+            ds = xr.open_dataset(os.path.join(outd, run, f), decode_times=False, engine="scipy")
             t = tools.extract_times(ds)
             t_corr = pd.date_range(start="2018-06-20T07:00:00", end=end_time.replace("_", "T"),
                                    freq=freq + "min")
@@ -132,7 +133,7 @@ def test_basic():
         outfiles_corr = ['fastout_d01_2018-06-20_07:00:00', 'wrfout_d01_2018-06-20_07:00:00']
         assert outfiles_corr == outfiles[1:]
         for f, freq in zip(outfiles_corr, ["1", "2"]):
-            ds = xr.open_dataset(os.path.join(outd, run, f), decode_times=False)
+            ds = xr.open_dataset(os.path.join(outd, run, f), decode_times=False, engine="scipy")
             t = tools.extract_times(ds)
             t_corr = pd.date_range(start="2018-06-20T07:00:00", end='2018-06-20T07:08:00',
                                    freq=freq + "min")
@@ -277,6 +278,7 @@ def run_around_tests():
     for d in [outd, rund]:
         if os.path.isdir(d):
             shutil.rmtree(d)
+    os.chdir(Path(__file__).parent)
 
 
 def capture_submit(*args, **kwargs):
