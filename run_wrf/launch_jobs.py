@@ -607,8 +607,8 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                                 for ID in IDs:
                                     print(ID)
                                     run_dir_i = "{}/WRF_{}/".format(args["run_path"], ID)
-                                    print(os.popen("tail -n {} {}/run_{}.log".format(log_lines,
-                                                                                     run_dir_i, timestamp)).read())
+                                    print(os.popen("tail -n {} '{}/run_{}.log'".format(log_lines,
+                                                                                       run_dir_i, timestamp)).read())
                                     print(fopen(run_dir_i + "run_{}.err".format(timestamp)).read_text())
                             # if err != 0:
                             #     raise RuntimeError("WRF run failed!")

@@ -315,6 +315,13 @@ def output_id_from_config(param_comb=None, param_grid=None, param_names=None, ru
     if runID is not None:
         ID_str = runID + ID_str
 
+    # remove/replace characters that are problematic in paths
+    remove = [" ", "'", '"']
+    for r in remove:
+        ID_str = ID_str.replace(r, "")
+    ID_str = ID_str.replace("[", "(").replace("]", ")").replace("/", "-")
+    ID_str = ID_str.replace("{", "(").replace("}", ")")
+
     return ID_str, ID
 
 # %%runtime
