@@ -280,6 +280,8 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
     alpha_z = np.diff(z)[1:] / np.diff(z)[:-1]
     alpha_z = np.append(np.append(np.nan, alpha_z), np.nan)
 
+    if any(alpha_z > 1.1):
+        print("WARNING: vertical grid stretching ratio exceeds 110 % for some vertical levels!")
     # ---------------------------------------------------------------------------
     # Make a plot.
     # ---------------------------------------------------------------------------
