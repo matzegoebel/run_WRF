@@ -18,8 +18,6 @@ import os
 import matplotlib.pyplot as plt
 import xarray as xr
 import math
-figloc = "~/"
-figloc = os.path.expanduser(figloc)
 
 # %% grid creation methods
 
@@ -249,6 +247,11 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
         vertical grid spacings (m).
 
     """
+    if "figloc" in kwargs:
+        figloc = kwargs.pop("figloc")
+    else:
+        figloc = "~/"
+
     if method == 0:
         # linearly increasing dz from dz0 at z=0 to dzmax at z=ztop
         z = linear_dz(ztop, dz0, dzmax=dzmax, nz=nz)
@@ -309,6 +312,7 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
             ax.set_ylim(0, max(z))
 
         if savefig:
+            figloc = os.path.expanduser(figloc)
             fig.savefig(figloc + '/wrf_stretched_grid_etaz.pdf')
 
     # ---------------------------------------------------------------------------
