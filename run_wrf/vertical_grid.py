@@ -273,6 +273,8 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
     # scale to 0-1 range
     eta = (eta - eta.min())/(eta.max() - eta.min())
 
+    grid = xr.Dataset({"eta": eta})
+
     # Compute dp, dz and the alphas
     dp = np.diff(p)
     dp = np.append(np.nan, dp)
@@ -282,6 +284,11 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
     alpha = np.append(np.append(np.nan, alpha), np.nan)
     alpha_z = np.diff(z)[1:] / np.diff(z)[:-1]
     alpha_z = np.append(np.append(np.nan, alpha_z), np.nan)
+    grid["dp"] = ("eta", dp)
+    grid["dz"] = ("eta", dz)
+    grid["alpha"] = ("eta", alpha)
+    grid["alpha_z"] = ("eta", alpha_z)
+    grid = grid.assign_coords(z=("eta", z), p=("eta", p))
 
     if any(alpha_z > 1.1):
         print("WARNING: vertical grid stretching ratio exceeds 110 % for some vertical levels!")
@@ -342,14 +349,14 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
                     alpha_z[i])))
         print('-'*len(header))
 
-    return eta, dz
+    return grid
 
 
 # %%
 if __name__ == '__main__':
     p0 = 1000
     ztop = 15000
-    eta, dz = create_levels(ztop=ztop, dz0=20, method=0, dzmax=400, D1=0, alpha=1.,
-                            p0=p0, table=True, plot=True, savefig=True, strat=False)
+    grid = create_levels(ztop=ztop, dz0=20, method=0, dzmax=400, D1=0, alpha=1.,
+                         p0=p0, table=True, plot=True, savefig=True, strat=False)
 
-    print(', '.join(['%.6f' % eta_tmp for eta_tmp in eta]))
+    print(', '.join(['%.6f' % eta_tmp for eta_tmp in grid.eta]))

@@ -756,7 +756,8 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
             if key in args:
                 vert_args[key] = args[key]
         vert_args["method"] = vert_args.pop("vgrid_method")
-        args["eta_levels"], dz = vertical_grid.create_levels(args["ztop"], **vert_args)
+        vgrid = vertical_grid.create_levels(args["ztop"], **vert_args)
+        args["eta_levels"], dz = vgrid.eta.values, vgrid.dz.values
         args["e_vert"] = len(args["eta_levels"])
         print("Created vertical grid:\n{0} levels\nlowest level at {1:.1f} m\n"
               "thickness of uppermost layer: {2:.1f} m\n".format(args["e_vert"], dz[0], dz[-2]))
