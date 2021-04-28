@@ -17,6 +17,7 @@ from copy import deepcopy
 params = deepcopy(params)
 
 # %%
+params["end_time"] = "2018-06-20_10:00:00"  # format %Y-%m-%d_%H:%M:%S
 
 job_scheduler = "sge"
 # modules to load

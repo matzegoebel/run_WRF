@@ -480,7 +480,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                     rtri = None
                     if use_job_scheduler or test_run:
                         # runtime in seconds
-                        rtri = args["rt_per_timestep"] * run_hours * args["dt_f"] * 3600
+                        rtri = args["rt_per_timestep"] * run_hours / args["dt_f"] * 3600
                         rtr.append(rtri)
 
                 if (not pool_jobs) or (sum(nslots) >= conf.pool_size) or last_id:
