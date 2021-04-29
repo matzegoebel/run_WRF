@@ -305,7 +305,9 @@ def output_id_from_config(param_comb=None, param_grid=None, param_names=None, ru
                     else:
                         ID[p] = namep[param_grid[p].index(param_comb[p])]
             elif type(v) in (dict, odict):
-                raise ValueError("param_names need to be defined for composite parameters!")
+                i = param_comb[p + "_idx"]
+                for ki, vi in v.items():
+                    ID[ki] = vi[i]
             else:
                 ID[p] = param_comb[p]
 
