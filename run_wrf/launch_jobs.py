@@ -274,6 +274,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
         if use_job_scheduler:
             batch_log_dir = args["run_path"] + "/logs/"
             os.makedirs(batch_log_dir, exist_ok=True)
+            queue = conf.queue
 
         vmemi = None
         if init:
@@ -285,15 +286,12 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
             if use_job_scheduler and conf.request_vmem:
                 vmem_init = args["vmem_init"]
                 if ("bigmem_limit" in dir(conf)) and (vmem_init > conf.bigmem_limit):
-                    queue = conf.bigmem_queue
-                else:
-                    queue = conf.queue
+                     queue = conf.bigmem_queue
 
         elif use_job_scheduler or test_run:
             if "dt_f" not in args:
                 args["dt_f"] = namelist_all["time_step"] + \
                     namelist_all["time_step_fract_num"] / namelist_all["time_step_fract_den"]
-            queue = conf.queue
             args, skip = tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi,
                                            pool_jobs=pool_jobs, test_run=test_run,
                                            request_vmem=conf.request_vmem)
@@ -378,13 +376,12 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                 comm_args = dict(run_id=IDr, wrfv=wrf_dir_i, ideal_case=args["ideal_case_name"],
                                  input_sounding=args["input_sounding"], nx=nx, ny=ny,
                                  run_path=args["run_path"], build_path=args["build_path"],
-                                 batch=int(use_job_scheduler), wrf_args="", iofile=iofile,
+                                 batch=int(use_job_scheduler), wrf_args=args_str_r, iofile=iofile,
                                  module_load=args["module_load"])
                 for p, v in comm_args.items():
                     os.environ[p] = str(v)
                 if use_job_scheduler:
                     os.environ["job_scheduler"] = job_scheduler
-                    os.environ["wrf_args"] = args_str_r
                     rt_init = tools.format_timedelta(args["runtime_init"] * 60)
                     qlog = batch_log_dir + job_name
                     os.environ["qlog"] = qlog
@@ -407,21 +404,21 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
 
                     comm = batch_args_str + " init_wrf.job"
                 else:
-                    comm = "bash init_wrf.job '{}' ".format(args_str_r)
+                    comm = "bash init_wrf.job"
 
                 if verbose:
                     print(comm)
                 if not check_args:
                     err = os.system(comm)
-
-                    initlog = fopen(run_dir_r + "/init.log").read_text()
-                    if "wrf: SUCCESS COMPLETE IDEAL INIT" in initlog:
-                        print("wrf: SUCCESS COMPLETE IDEAL INIT")
-                    else:
-                        initerr = fopen(run_dir_r + "/init.err").read_text()
-                        print("\n")
-                        print(initerr)
-                        raise RuntimeError("Initialization failed!")
+                    if not use_job_scheduler:
+                        initlog = fopen(run_dir_r + "/init.log").read_text()
+                        if "wrf: SUCCESS COMPLETE IDEAL INIT" in initlog:
+                            print("wrf: SUCCESS COMPLETE IDEAL INIT")
+                        else:
+                            initerr = fopen(run_dir_r + "/init.err").read_text()
+                            print("\n")
+                            print(initerr)
+                            raise RuntimeError("Initialization failed!")
 
             else:
                 skip = False
@@ -558,7 +555,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                             qlog = batch_log_dir + job_name
                             os.environ["qlog"] = qlog
                             qout, qerr = [qlog + job_id + s for s in [".out", ".err"]]
-                            batch_args = [conf.queue, qout, qerr, rtp,
+                            batch_args = [queue, qout, qerr, rtp,
                                           slot_comm, conf.mail_address, mail, job_name]
                             os.environ["rtlimit"] = str(int(rtr_max - send_rt_signal))
 

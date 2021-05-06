@@ -766,7 +766,7 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
               "thickness of uppermost layer: {2:.1f} m\n".format(args["e_vert"], dz[0], dz[-2]))
 
     if "eta_levels" in args:
-        args["eta_levels"] = "'" + ",".join(["{0:.6f}".format(e) for e in args["eta_levels"]]) + "'"
+        args["eta_levels"] = ",".join(["{0:.6f}".format(e) for e in args["eta_levels"]])
 
     if "scm" in args["ideal_case_name"]:
         print("WARNING: Eta levels are neglected in the standard initialization of "
@@ -835,7 +835,7 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
     if "iofields_filename" in args:
         if args["iofields_filename"] == "":
             args["iofields_filename"] = "NONE_SPECIFIED"
-        args["iofields_filename"] = '''"'{}'"'''.format(args["iofields_filename"])
+        args["iofields_filename"] = '''"{}"'''.format(args["iofields_filename"])
         # args_str = args_str + """ iofields_filename "'{}'" """.format(args["iofields_filename"])
 
     # delete non-namelist parameters

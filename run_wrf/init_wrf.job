@@ -31,10 +31,6 @@ cd $run_dir
 
 eval $module_load
 
-if [ -z "$wrf_args" ]
-then
-  wrf_args=$1
-fi
 
 #from run directory for data files needed by physics modules; symbolic links sufficient
 cp -s ${build_dir}/run/* .
