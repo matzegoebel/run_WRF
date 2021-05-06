@@ -26,7 +26,8 @@ import xarray as xr
 import importlib
 
 # arguments to vertical grid creation method in vertical_grid.py
-vert_keys = ["vgrid_method", "dz0", "nz", "dzmax", "D1", "alpha"]
+vert_keys = ["vgrid_method", "dz0", "nz", "dzmax", "D1", "alpha",
+             "theta", "z_theta", "sounding_path", "strat"]
 # non-namelist config parameters that will not be included in namelist file
 del_args = ["start_time", "end_time", "output_streams", "lx", "ly",
             "spec_hfx", "input_sounding", "n_rep", "dt_f", "ideal_case_name",

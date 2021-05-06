@@ -17,8 +17,7 @@ import run_wrf.configs.test.config_test as conf
 import shutil
 import time
 import xarray as xr
-from run_wrf import tools
-from run_wrf import get_namelist
+from run_wrf import tools, get_namelist, vertical_grid
 import glob
 import pandas as pd
 from pathlib import Path
@@ -249,6 +248,24 @@ def test_scheduler_full():
             assert m in runlog
 
 
+def test_vgrid():
+    """Test vertical grid creation.
+
+       Actual vertical grid spacings should be close to desired ones (within +- 1 m).
+    """
+    combs = launch_jobs(init=True, exist="o", config_file="test.config_test_vgrid")
+    rpath = combs["run_dir"][0] + "_0"
+
+    wrfinput = xr.open_dataset(rpath + "/wrfinput_d01", engine="scipy").isel(Time=0)
+    z = (wrfinput["PHB"] + wrfinput["PH"]) / 9.81
+    z = z.mean(["west_east", "south_north"])
+    dz = z.diff("bottom_top_stag")
+    c = combs.iloc[0]
+    grid = vertical_grid.create_levels(ztop=c["ztop"], dz0=c["dz0"], method=c["vgrid_method"],
+                                       dzmax=c["dzmax"], nz=c["nz"])
+    err = dz - grid.dz[:-1].values
+    assert all(abs(err) < 1)
+
 # %%helper functions
 
 @pytest.fixture(autouse=True)
@@ -265,6 +282,7 @@ def run_around_tests():
     for build in [params["parallel_build"], params["serial_build"]]:
         target_dir = "{}/{}/test/{}/".format(params["build_path"], build, params["ideal_case_name"])
         shutil.copy("{}/test_data/IO_test.txt".format(test_dir), target_dir)
+        shutil.copy("{}/test_data/input_sounding_cops".format(test_dir), target_dir)
         shutil.copy("{}/test_data/namelists/namelist.input".format(test_dir), target_dir)
 
     # check skipping non-initialized runs

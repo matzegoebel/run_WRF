@@ -13,12 +13,16 @@ Lukas Strauss and Matthias Göbel
 """
 
 import numpy as np
-from scipy import integrate
+from scipy import integrate, interpolate
 import os
 import matplotlib.pyplot as plt
 import xarray as xr
 import math
+import pandas as pd
 
+g = 9.81
+Rd = 287.06
+cp = 1004.666
 # %% grid creation methods
 
 def linear_dz(ztop, dz0, dzmax=None, nz=None):
@@ -181,8 +185,6 @@ def height_to_pressure_std(z, p0=1013.25, return_da=False, strat=True):
        If strat=False, the tropospheric lapse rate is also used
        above 11 km.
     """
-    g = 9.81
-    Rd = 287.06
     if np.array(z == 0).all():
         return p0
     ztop = np.array(z).max()
@@ -198,16 +200,31 @@ def height_to_pressure_std(z, p0=1013.25, return_da=False, strat=True):
     return p
 
 
+def theta_to_pressure(theta, z, p0=1000):
+    """Calculate pressure from potential temperature and surface pressure"""
+
+    integral = -integrate.cumtrapz(1/theta, z)
+    c = cp/Rd
+    pt = p0*(g/cp*integral + 1)**c
+    p =  np.concatenate(([p0], pt))
+
+    return p
+
+
 # %% create levels
 
 
-def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
-                  table=False, plot=False, savefig=False, strat=False, **kwargs):
+def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, strat=False,
+                  theta=None, z_theta=None, sounding_path=None, p0=1000,
+                  table=False, plot=False, savefig=False, **kwargs):
     """Create eta values for the vertical grid in WRF.
 
     First the metric heights of the model levels are calculated from the input parameters.
-    Then these are converted to pressure levels using the US standard atmosphere.
-    Finally the corresponding eta values are computed.
+    Then these are converted to pressure levels using the potential temperature
+    array if given or the US standard atmosphere. The potential temperature array can
+    also be extracted from an idealized WRF input sounding file.
+    Finally the corresponding eta values are computed and the results are
+    displayed in a figure and in a table.
 
     Parameters
     ----------
@@ -224,6 +241,17 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
     dzmax : float, optional
         Maxmimum grid spacing (m). Can be used instead of nz for methods 0 and 3
         and is optional for method 2. The default is None.
+    strat : bool, optional
+        Take stratosphere into account when calculating pressure from height
+        using the US standard atmosphere.
+        The default is False.
+    theta : array-like, optional
+        Potential temperature used to convert height levels to pressure levels.
+    z_theta : array-like, optional
+        Height levels corresponding to theta values.
+    sounding_path : str or Path-like, optional
+        Path to idealized WRF input sounding used to extract the potential
+        temperature array theta (and z_theta).
     p0 : float, optional
         surface pressure (hPa). The default is 1000.
     table : bool, optional
@@ -232,19 +260,15 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
         Plot the vertical grid. The default is False.
     savefig : bool, optional
         Save the plot. The default is False.
-    strat : bool, optional
-        Take stratosphere into account when calculating pressure from height.
-        The default is False.
     **kwargs :
         Keyword arguments passed to the underlying grid creation method.
 
 
     Returns
     -------
-    eta : numpy array
-        eta values to be used in WRF.
-    dz : numpy array
-        vertical grid spacings (m).
+    grid: xr.Dataset
+        Values for eta, height, pressure, grid spacing, and stretching ratio
+        for all vertical levels
 
     """
     if "figloc" in kwargs:
@@ -262,10 +286,22 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, theta=None, p0=1000,
         raise ValueError("Vertical grid method {} not implemented!".format(method))
 
     # convert height to pressure levels
-    ptop = height_to_pressure_std(ztop, p0=p0, strat=strat)
-    p = height_to_pressure_std(z, p0=p0, strat=strat)
-
-    if (method != 1) and (np.round(z[-1], 3) != ztop):
+    if sounding_path is not None:
+        sounding = pd.read_csv(sounding_path, skiprows=1, header=None, delim_whitespace=True)
+        z_theta, theta = sounding[0].values, sounding[1].values
+    if theta is not None:
+        if (z[-1] > z_theta[-1]) or (ztop > z_theta[-1]):
+            raise ValueError("Input theta must contain values up to ztop!")
+        interp_th = interpolate.interp1d(z_theta, theta, fill_value="extrapolate")
+        theta = interp_th(z)
+        p = theta_to_pressure(theta, z, p0=p0)
+        interp_p = interpolate.interp1d(z, p, fill_value="extrapolate")
+        ptop = interp_p(ztop)
+    else:
+        # use US standard atmosphere
+        ptop = height_to_pressure_std(ztop, p0=p0, strat=strat)
+        p = height_to_pressure_std(z, p0=p0, strat=strat)
+    if (method == 0) and (np.round(z[-1], 3) != ztop):
         raise ValueError("Uppermost level ({}) is not at ztop ({})!".format(z[-1], ztop))
 
     # Define stretched grid in pressure-based eta coordinate.
