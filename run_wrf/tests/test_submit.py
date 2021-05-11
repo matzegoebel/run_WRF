@@ -63,7 +63,8 @@ def test_basic():
             assert equal
 
     input_sounding = tools.read_file(rpath + "/input_sounding")
-    input_sounding_corr = tools.read_file(rpath + "/input_sounding_meanwind")
+    build = os.path.join(combs["build_path"][0], combs["parallel_build"][0], "test", "em_les")
+    input_sounding_corr = tools.read_file(build + "/input_sounding_meanwind")
     assert input_sounding == input_sounding_corr
 
     # check output data

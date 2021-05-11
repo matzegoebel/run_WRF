@@ -39,26 +39,26 @@ rm -f wrfinput_d?? rsl.*
 
 #from ideal case directory for namelist file, input sounding and IO file 
 cd $wrf_case_dir
-cp --remove-destination namelist.input input_sounding* $iofile $run_dir
-cd $run_dir
-#binaries from main
-cp -f -b ${build_dir}/main/wrf.exe ${build_dir}/main/ideal.exe .
+cp --remove-destination namelist.input $iofile $run_dir
 
 if [ -n "${input_sounding}" ]
 then
-  input_sounding_org="input_sounding"
-  input_sounding=${input_sounding_org}_${input_sounding}
-  rm -f ${input_sounding_org}
-  if [ -f ${input_sounding} ]
-  then
-    cp ${input_sounding} ${input_sounding_org}
-  else
-    echo "Input sounding ${input_sounding} not available! Exit..." >&2
-    exit 1
-  fi
+  input_sounding="input_sounding_${input_sounding}"
 else
-  input_sounding="input_sounding" 
+  input_sounding="input_sounding"
 fi
+if [ -f ${input_sounding} ]
+then
+  rm -f "${run_dir}/input_sounding"
+  cp ${input_sounding} "${run_dir}/input_sounding"
+else
+  echo "Input sounding ${input_sounding} not available! Exit..." >&2
+  exit 1
+fi
+
+cd $run_dir
+#binaries from main
+cp -f -b ${build_dir}/main/wrf.exe ${build_dir}/main/ideal.exe .
 
 echo "use input sounding: ${input_sounding}"
 echo "create namelist"
