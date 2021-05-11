@@ -19,7 +19,7 @@ params = deepcopy(params)
 
 # %%
 
-param_grid = odict(mp_physics=[1, 2])
+param_grid = odict(mp_physics=[5, 2])
 
 params["lx"] = 16000
 params["ly"] = 5000

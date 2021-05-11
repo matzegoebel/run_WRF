@@ -15,5 +15,5 @@ from copy import deepcopy
 params = deepcopy(params)
 
 # %%
-param_grid = odict(mp_physics=[1])
+param_grid = odict(mp_physics=[5])
 params["n_rep"] = 2  # number of repetitions for each configuration

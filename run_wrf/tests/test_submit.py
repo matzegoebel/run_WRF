@@ -157,7 +157,7 @@ def test_mpi_and_batch():
                                config_file="test.config_test_mpi")
     print("\n".join(output))
     count = Counter(output)
-    m = "Submit IDs: ['pytest_mp_physics=kessler_0', 'pytest_mp_physics=lin_0']"
+    m = "Submit IDs: ['pytest_mp_physics=eta_0', 'pytest_mp_physics=lin_0']"
     assert count[m] == 1
     m = success[False]
     assert count[m] == combs["n_rep"].sum()

@@ -25,10 +25,10 @@ params["run_path"] = test_path + "/runs/"  # path where run directories of simul
 params["build_path"] = os.environ["wrf_builds"] + "/tests"  # path where different versions of the compiled WRF model code reside
 
 # Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
-param_grid = odict(mp_physics=[1, 2])
+param_grid = odict(mp_physics=[5, 2])
 
 # names of parameter values for output filenames; either dictionaries or lists (not for composite parameters)
-param_names = {"mp_physics": {1: "kessler", 2: "lin"},
+param_names = {"mp_physics": {5: "eta", 2: "lin"},
                "sf_sfclay_physics": {1: "mm5", 2: "eta", 5: "mynn"},
                "res": ["LES", "MYJ"]}
 
