@@ -1199,7 +1199,7 @@ def get_node_size_slurm(queue):
     queue = queue.split(",")
     ncpus = []
     for q in queue:
-        n = os.popen("sinfo -o %c -h -p {}".format(q)).read()
+        n = os.popen("sinfo -r -o %c -h -p {}".format(q)).read()
         if n == "":
             raise ValueError("Job queue {} not available!".format(q))
         ncpus.append(n)
