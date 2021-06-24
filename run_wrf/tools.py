@@ -270,7 +270,8 @@ def grid_combinations(param_grid, add_params=None, param_names=None, runID=None)
     return combs
 
 
-def output_id_from_config(param_comb=None, param_grid=None, param_names=None, runID=None):
+def output_id_from_config(param_comb=None, param_grid=None, param_names=None,
+                          split_composite=True, runID=None):
     """
     Create ID for output files. Param_names can be used to replace parameter values.
 
@@ -282,6 +283,9 @@ def output_id_from_config(param_comb=None, param_grid=None, param_names=None, ru
         input dictionary containing the parameter values
     param_names : dictionary of lists or dictionaries, optional
         names of parameter values for output filenames
+    split_composite : bool, optional
+        If composite parameter is not in param_names, split into subparameters.
+        If False, join subvalues.
     runID : str or None, optional
         General ID for the requested simulation series used as prefix in filenames
 
@@ -296,6 +300,7 @@ def output_id_from_config(param_comb=None, param_grid=None, param_names=None, ru
     if param_grid is not None:
         ID = {}
         for p, v in param_grid.items():
+            g = param_grid[p]
             if (param_names is not None) and (p in param_names):
                 namep = param_names[p]
                 if type(v) in (dict, odict):
@@ -304,11 +309,14 @@ def output_id_from_config(param_comb=None, param_grid=None, param_names=None, ru
                     if type(namep) in (dict, odict):
                         ID[p] = namep[param_comb[p]]
                     else:
-                        ID[p] = namep[param_grid[p].index(param_comb[p])]
+                        ID[p] = namep[g.index(param_comb[p])]
             elif type(v) in (dict, odict):
                 i = param_comb[p + "_idx"]
-                for ki, vi in v.items():
-                    ID[ki] = vi[i]
+                if split_composite:
+                    for ki, vi in v.items():
+                        ID[ki] = vi[i]
+                else:
+                    ID[p] = "_".join([str(g[key][i]) for key in g.keys()])
             else:
                 ID[p] = param_comb[p]
 
