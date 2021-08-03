@@ -1209,9 +1209,12 @@ def get_node_size_slurm(queue):
     for q in queue:
         n = os.popen("sinfo -r -o %c -h -p {}".format(q)).read()
         if n == "":
-            raise ValueError("Job queue {} not available!".format(q))
+            print("WARNING: Job queue {} not available!".format(q))
+            continue
         ncpus.append(n)
     node_size = np.array([int(int(n) / 2) for n in ncpus])
+    if len(node_size) == 0:
+        return None
     if any(node_size[0] != node_size):
         print("WARNING: Different node sizes for the given queues: {}\n "
               "Choosing smaller one...".format(dict(zip(queue, node_size))))

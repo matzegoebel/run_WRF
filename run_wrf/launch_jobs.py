@@ -147,6 +147,8 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
         job_scheduler = None
         conf.request_vmem = False
 
+    if pool_jobs and (conf.pool_size is None):
+        raise ValueError("pool_size cannot be None when using pool_jobs!")
     # if test_run and (job_scheduler == "sge"):
     #     #do test run on one node by using openmpi-xperhost to ensure correct vmem logging
     #     conf.reduce_pool = True TODO
