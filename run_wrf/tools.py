@@ -314,7 +314,10 @@ def output_id_from_config(param_comb=None, param_grid=None, param_names=None,
                 i = param_comb[p + "_idx"]
                 if split_composite:
                     for ki, vi in v.items():
-                        ID[ki] = vi[i]
+                        if isinstance(vi, list):
+                            ID[ki] = vi[i]
+                        else:
+                            ID[ki] = vi
                 else:
                     ID[p] = "_".join([str(g[key][i]) for key in g.keys()])
             else:
