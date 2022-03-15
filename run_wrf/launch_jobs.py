@@ -19,6 +19,9 @@ from copy import deepcopy
 from pathlib import Path as fopen
 import sys
 from run_wrf import get_namelist
+import warnings
+import pandas as pd
+warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
 # %%
 
