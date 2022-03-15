@@ -177,8 +177,7 @@ def test_mpi_and_batch():
     print("\n".join(output))
     count = Counter(output)
     c = output[-1]
-    batch_comm = "qsub -cwd -q std.q -o {0}/logs/run_pytest_$JOB_ID.out "\
-                 "-e {0}/logs/run_pytest_$JOB_ID.err -l h_rt=000:01:31 "\
+    batch_comm = "qsub -cwd -q std.q -o {0}/logs/ -e {0}/logs/ -l h_rt=000:01:31 "\
                  " -pe openmpi-fillup 2  -M test@test.com -m ea -N run_pytest -V  "\
                  "-l h_vmem=85M  run_wrf.job".format(rund)
     assert batch_comm == c
@@ -199,7 +198,7 @@ def test_mpi_and_batch():
     print("\n".join(output))
     count = Counter(output)
     c = output[-1]
-    batch_comm = "sbatch -p mem_0064 -o {0}/logs/run_pytest_%j.out -e {0}/logs/run_pytest_%j.err "\
+    batch_comm = "sbatch -p mem_0064 -o {0}/logs/run_pytest.o_%j -e {0}/logs/run_pytest.e_%j "\
                  "--time=000:01:31 --ntasks-per-node=4 -N 1 "\
                  "--mail-user=test@test.com --mail-type=END,FAIL -J run_pytest "\
                  "--export=ALL  --qos=normal_0064  run_wrf.job".format(rund)

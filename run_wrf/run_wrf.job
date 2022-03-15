@@ -157,8 +157,8 @@ do
       sacct -j $SLURM_JOB_ID -l -p > resources_${timestamp}.info
     fi
     #prepend log to run log
-    echo -e "$(cat ${qlog}_${jobid}.out)\n$(cat $runlog)" > $runlog
-    echo -e "$(cat ${qlog}_${jobid}.err)\n$(cat $runerr)" > $runerr
+    echo -e "$(cat ${qlog}.o${jobid})\n$(cat $runlog)" > $runlog
+    echo -e "$(cat ${qlog}.e${jobid})\n$(cat $runerr)" > $runerr
   fi
 
   echo

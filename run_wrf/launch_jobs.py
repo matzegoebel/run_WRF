@@ -388,10 +388,9 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                 if use_job_scheduler:
                     os.environ["job_scheduler"] = job_scheduler
                     rt_init = tools.format_timedelta(args["runtime_init"] * 60)
-                    qlog = batch_log_dir + job_name
-                    os.environ["qlog"] = qlog
-                    qout, qerr = [qlog + job_id + s for s in [".out", ".err"]]
-                    batch_args = [queue, qout, qerr, rt_init, conf.mail_address, mail, job_name]
+                    qlog = batch_log_dir
+                    os.environ["qlog"] = qlog + job_name
+                    batch_args = [queue, qlog, qlog, rt_init, conf.mail_address, mail, job_name]
                     if job_scheduler == "sge":
                         batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -M " \
                                          "{} -m {} -N {} -V ".format(*batch_args)
@@ -401,6 +400,9 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                             batch_args_str += " -l h_vmem={}M ".format(vmem_init)
 
                     elif job_scheduler == "slurm":
+                        qout, qerr = [f"{qlog}{job_name}.{s}{job_id}" for s in [".o", ".e"]]
+                        batch_args[1] = qout
+                        batch_args[2] = qerr
                         batch_args_str = "sbatch --qos={}  -p {} -o {} -e {} --time={} " \
                             "--mail-user={} --mail-type={} -J {} -N 1 -n 1 " \
                             "--export=ALL ".format(conf.qos, *batch_args)
@@ -557,11 +559,10 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                                 raise ValueError("Requested runtime is smaller then the time "
                                                  "when the runtime limit signal is sent!")
 
-                            qlog = batch_log_dir + job_name
-                            os.environ["qlog"] = qlog
-                            qout, qerr = [qlog + job_id + s for s in [".out", ".err"]]
-                            batch_args = [queue, qout, qerr, rtp,
-                                          slot_comm, conf.mail_address, mail, job_name]
+                            qlog = batch_log_dir
+                            os.environ["qlog"] = qlog + job_name
+                            batch_args = [queue, qlog, qlog, rtp, slot_comm,
+                                          conf.mail_address, mail, job_name]
                             os.environ["rtlimit"] = str(int(rtr_max - send_rt_signal))
 
                             if job_scheduler == "sge":
@@ -573,6 +574,9 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                                     batch_args_str += " -l h_vmem={}M ".format(vmemp)
 
                             elif job_scheduler == "slurm":
+                                qout, qerr = [f"{qlog}{job_name}.{s}{job_id}" for s in [".o", ".e"]]
+                                batch_args[1] = qout
+                                batch_args[2] = qerr
                                 batch_args_str = "sbatch -p {} -o {} -e {} --time={} {} " \
                                                  "--mail-user={} --mail-type={} -J {} " \
                                                  "--export=ALL ".format(*batch_args)
