@@ -24,6 +24,7 @@ from run_wrf import vertical_grid
 from pathlib import Path as fopen
 import xarray as xr
 import importlib
+from fractions import Fraction
 
 # arguments to vertical grid creation method in vertical_grid.py
 vert_keys = ["vgrid_method", "dz0", "nz", "dzmax", "D1", "alpha",
@@ -756,10 +757,12 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
 
     # timestep
     if "dt_f" in args:
+        # convert time step from float to integer + fraction
         dt_int = math.floor(args["dt_f"])
         args["time_step"] = dt_int
-        args["time_step_fract_num"] = round((args["dt_f"] - dt_int) * 10)
-        args["time_step_fract_den"] = 10
+        dt_frac = Fraction(args["dt_f"] - dt_int).limit_denominator()
+        args["time_step_fract_num"] = dt_frac.numerator
+        args["time_step_fract_den"] = dt_frac.denominator
 
     # vertical domain
     if ("eta_levels" not in args) and ("vgrid_method" in args):
