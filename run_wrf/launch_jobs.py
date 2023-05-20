@@ -400,7 +400,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                             batch_args_str += " -l h_vmem={}M ".format(vmem_init)
 
                     elif job_scheduler == "slurm":
-                        qout, qerr = [f"{qlog}{job_name}.{s}{job_id}" for s in [".o", ".e"]]
+                        qout, qerr = [f"{qlog}{job_name}.{s}{job_id}" for s in ["o", "e"]]
                         batch_args[1] = qout
                         batch_args[2] = qerr
                         batch_args_str = "sbatch --qos={}  -p {} -o {} -e {} --time={} " \
@@ -574,7 +574,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                                     batch_args_str += " -l h_vmem={}M ".format(vmemp)
 
                             elif job_scheduler == "slurm":
-                                qout, qerr = [f"{qlog}{job_name}.{s}{job_id}" for s in [".o", ".e"]]
+                                qout, qerr = [f"{qlog}{job_name}.{s}{job_id}" for s in ["o", "e"]]
                                 batch_args[1] = qout
                                 batch_args[2] = qerr
                                 batch_args_str = "sbatch -p {} -o {} -e {} --time={} {} " \
