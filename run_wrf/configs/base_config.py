@@ -60,7 +60,7 @@ params["runtime"] = None  # None or job runtime in minutes; buffer not used
 params["runtime_test"] = 5  # runtime (min) for test runs
 # use median when averaging runtime of previous runs, may be necessary if previous runs are short
 params["rt_use_median"] = False
-params["send_rt_signal"] = 10  # seconds before requested runtime is exhausted and signal is sent to job
+params["send_rt_signal"] = 90  # seconds before requested runtime is exhausted and signal is sent to job
 
 # additional paths (other than run path) to search for log files
 # to determine runtime and/or vmem if not specified
