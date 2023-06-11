@@ -415,7 +415,7 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
             _, new_counter = get_runtime(runlog, timing=timing, counter=counter,
                                          all_times=all_times, use_median=use_median)
             timing.iloc[counter:new_counter, :len(IDl)] = IDl
-            timing.loc[counter:new_counter, "path"] = runpath
+            timing.loc[counter:new_counter-1, "path"] = runpath
             counter = new_counter
         if verbose:
             print_progress(counter=j + 1, length=len(runs))
