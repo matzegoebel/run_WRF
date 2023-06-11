@@ -262,12 +262,13 @@ def grid_combinations(param_grid, add_params=None, param_names=None, runID=None)
         core[:] = False
         core[params] = True
         core = core.rename("core_param")
-        combs = combs.append(core)
+        combs = pd.concat([combs, core.to_frame().T])
         # mark _idx colums
         composite = core.rename("composite_idx")
         composite[:] = False
         composite[composite_params] = True
-        combs = combs.append(composite)
+        combs = pd.concat([combs, composite.to_frame().T])
+
     return combs
 
 
