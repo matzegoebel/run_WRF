@@ -53,22 +53,14 @@ concat_output config_file
 
 ## Requirements
 The package is written for a Linux environment. On Windows it will probably not work.
-In addition to the standard Python 3 library, the Python packages `numpy`, `pandas`, `xarray`, `matplotlib`, and `scipy` are required.
-To concatenate the output of restarted runs, [NCO](http://nco.sourceforge.net/nco.html) needs to be installed, e.g. via `conda install nco`.
-The package was tested with Python 3.6.
-
-## Installation
-In the root directory run:
+To install the dependencies (numpy, xarray, pandas, matplotlib, scipy and nco), I recommend using [`conda`](https://docs.conda.io/en/latest/miniconda.html) and the provided conda environment file.
 ```sh
+# install dependencies
+conda env create --file conda_env.yml
+conda activate runwrf
+# install this package
 pip install -e .
 ```
-This installs the package and all required dependencies.
-Use
-```sh
-pip install -e .[test]
-```
-to be able to run the pytest test suite.
-
 
 ## Testing
 The folder `tests` contains scripts and data for testing the code after changing it.

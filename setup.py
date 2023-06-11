@@ -51,7 +51,14 @@ setup(
     author_email='matthias-goebel@freenet.de',
     keywords='WRF',
     packages=find_packages(),
-    install_requires=['pandas', 'xarray', 'scipy', 'matplotlib'],
+    python_requires="==3.11.4",
+    install_requires=[
+        "numpy==1.24.3",
+        "pandas==2.0.2",
+        "xarray==2023.5.0",
+        "matplotlib==3.7.1",
+        "scipy==1.10.1",
+    ],
     extras_require={
         'test': ['pytest'],
     },
