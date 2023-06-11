@@ -25,6 +25,7 @@ Rd = 287.06
 cp = 1004.666
 # %% grid creation methods
 
+
 def linear_dz(ztop, dz0, dzmax=None, nz=None):
     """Create height levels with Linearly increasing dz from dz0 at z=0 to dzmax at z=ztop.
        Either nz or dzmax can be provided.
@@ -55,18 +56,19 @@ def linear_dz(ztop, dz0, dzmax=None, nz=None):
     search_nz = False
     if nz is None:
         if dzmax is None:
-            raise ValueError("For vertical grid method 0: if nz is not defined, "
-                             "dzmax must be defined!")
-        nz = int(ztop/dzmax)
+            raise ValueError(
+                "For vertical grid method 0: if nz is not defined, " "dzmax must be defined!"
+            )
+        nz = int(ztop / dzmax)
         search_nz = True
 
     while not stop:
-        roots = np.roots((nz - 2)*[dz0] + [dz0-ztop])
+        roots = np.roots((nz - 2) * [dz0] + [dz0 - ztop])
         c = roots[~np.iscomplex(roots)].real
         c = float(c[c > 0])
         # if nz is not given, check if dzmax threshold is reached
         if search_nz:
-            dzmax_c = dz0*c**(nz-2)
+            dzmax_c = dz0 * c ** (nz - 2)
             if dzmax_c <= dzmax:
                 stop = True
         else:
@@ -76,7 +78,7 @@ def linear_dz(ztop, dz0, dzmax=None, nz=None):
 
     z = np.zeros(nz)
     for i in range(nz - 1):
-        z[i+1] = dz0 + z[i] * c
+        z[i + 1] = dz0 + z[i] * c
 
     return z
 
@@ -112,32 +114,32 @@ def tanh_method(ztop, dzmin, dzmax=None, nz=None, D1=0, alpha=1):
         spacing for all levels.
 
     """
-    n1 = D1/dzmin
+    n1 = D1 / dzmin
     if n1 != int(n1):
         raise ValueError("Depth of layer 1 is not a multiple of its grid spacing!")
     n1 = int(n1)
     if nz is None:
-        dzm = (dzmin + dzmax)/2
-        n2 = math.ceil((ztop-D1)/dzm)
+        dzm = (dzmin + dzmax) / 2
+        n2 = math.ceil((ztop - D1) / dzm)
         # recalculate dzm and dzmax
-        dzm = (ztop - D1)/n2
-        dzmax = 2*dzm - dzmin
+        dzm = (ztop - D1) / n2
+        dzmax = 2 * dzm - dzmin
         nz = n1 + n2 + 1
         n3 = 0
     elif dzmax is None:  # only two layer
         # if nz is None:
         n2 = nz - n1 - 1
-        dzm = (ztop - D1)/n2
+        dzm = (ztop - D1) / n2
         n3 = 0
     else:
         # average spacing in intermediate layer
-        dzm = (dzmin + dzmax)/2
+        dzm = (dzmin + dzmax) / 2
 
         # determine n2 from constraints
-        n2 = round((ztop - D1 + (n1 - nz + 1)*dzmax)/(dzm-dzmax))
-        D2 = dzm*n2
+        n2 = round((ztop - D1 + (n1 - nz + 1) * dzmax) / (dzm - dzmax))
+        D2 = dzm * n2
         n3 = nz - 1 - n2 - n1
-        D3 = dzmax*n3
+        D3 = dzmax * n3
         ztop = D1 + D2 + D3
         nz = n1 + n2 + n3 + 1
 
@@ -146,9 +148,9 @@ def tanh_method(ztop, dzmin, dzmax=None, nz=None, D1=0, alpha=1):
                 raise ValueError("Vertical grid creation failed!")
 
     # get spacing in layer 2 by stretching
-    ind = np.arange(1, n2+1)
-    a = (1 + n2)/2
-    dz2 = dzm + (dzmin - dzm)/np.tanh(2*alpha)*np.tanh(2*alpha*(ind-a)/(1-a))
+    ind = np.arange(1, n2 + 1)
+    a = (1 + n2) / 2
+    dz2 = dzm + (dzmin - dzm) / np.tanh(2 * alpha) * np.tanh(2 * alpha * (ind - a) / (1 - a))
 
     # build spacings and levels
     dz = np.concatenate((np.repeat(dzmin, n1), dz2, np.repeat(dzmax, n3)))
@@ -157,21 +159,22 @@ def tanh_method(ztop, dzmin, dzmax=None, nz=None, D1=0, alpha=1):
 
     return z, dz
 
+
 # %% thermodynamic functions
 
 
 def T_std(ztop, dz=1, strat=True):
     """Temperature (K) of the US standard atmosphere with
-       Tsfc=15°C and dT/dz=6.5 K/km from sea level up to ztop
-       with a spacing of dz (m).
-       If strat=False, the tropospheric lapse rate is also used
-       above 11 km, otherwise temperature is kept constant there
-       with a quadratic smoothing between troposphere and
-       stratosphere.
+    Tsfc=15°C and dT/dz=6.5 K/km from sea level up to ztop
+    with a spacing of dz (m).
+    If strat=False, the tropospheric lapse rate is also used
+    above 11 km, otherwise temperature is kept constant there
+    with a quadratic smoothing between troposphere and
+    stratosphere.
     """
     T0 = 15 + 273.15
     zvals = np.arange(0, ztop + 1, 1)
-    T = T0 - 0.0065*zvals
+    T = T0 - 0.0065 * zvals
     T = xr.DataArray(T, coords={"z": zvals}, dims=["z"])
     if (ztop > 11000) and strat:
         T.loc[11000:] = T.loc[11000]
@@ -182,8 +185,8 @@ def T_std(ztop, dz=1, strat=True):
 
 def height_to_pressure_std(z, p0=1013.25, return_da=False, strat=True):
     """Convert height to pressure for the US standard atmosphere.
-       If strat=False, the tropospheric lapse rate is also used
-       above 11 km.
+    If strat=False, the tropospheric lapse rate is also used
+    above 11 km.
     """
     if np.array(z == 0).all():
         return p0
@@ -192,7 +195,7 @@ def height_to_pressure_std(z, p0=1013.25, return_da=False, strat=True):
     T_int = integrate.cumtrapz(g / (Rd * T), T.z)
     T_int = np.insert(T_int, 0, 0)
     p = T.copy()
-    p[:] = p0*np.exp(-T_int)
+    p[:] = p0 * np.exp(-T_int)
     p = p.interp(z=z)
     if not return_da:
         p = p.values
@@ -203,10 +206,10 @@ def height_to_pressure_std(z, p0=1013.25, return_da=False, strat=True):
 def theta_to_pressure(theta, z, p0=1000):
     """Calculate pressure from potential temperature and surface pressure"""
 
-    integral = -integrate.cumtrapz(1/theta, z)
-    c = cp/Rd
-    pt = p0*(g/cp*integral + 1)**c
-    p =  np.concatenate(([p0], pt))
+    integral = -integrate.cumtrapz(1 / theta, z)
+    c = cp / Rd
+    pt = p0 * (g / cp * integral + 1) ** c
+    p = np.concatenate(([p0], pt))
 
     return p
 
@@ -214,9 +217,22 @@ def theta_to_pressure(theta, z, p0=1000):
 # %% create levels
 
 
-def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, strat=False,
-                  theta=None, z_theta=None, sounding_path=None, p0=1000,
-                  table=False, plot=False, savefig=False, **kwargs):
+def create_levels(
+    ztop,
+    dz0,
+    method=0,
+    nz=None,
+    dzmax=None,
+    strat=False,
+    theta=None,
+    z_theta=None,
+    sounding_path=None,
+    p0=1000,
+    table=False,
+    plot=False,
+    savefig=False,
+    **kwargs
+):
     """Create eta values for the vertical grid in WRF.
 
     First the metric heights of the model levels are calculated from the input parameters.
@@ -307,7 +323,7 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, strat=False,
     # Define stretched grid in pressure-based eta coordinate.
     eta = (p - ptop) / (p0 - ptop)
     # scale to 0-1 range
-    eta = (eta - eta.min())/(eta.max() - eta.min())
+    eta = (eta - eta.min()) / (eta.max() - eta.min())
 
     grid = xr.Dataset({"eta": eta})
 
@@ -339,24 +355,24 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, strat=False,
         fig, ax1a = plt.subplots(figsize=(5, 4))
         ms = 2
         # z
-        ax1a.plot(dz, z, 'ko', ms=ms)
-        ax1a.set_xlim(0, np.nanmax(dz)+20)
+        ax1a.plot(dz, z, "ko", ms=ms)
+        ax1a.set_xlim(0, np.nanmax(dz) + 20)
         ax1a.grid(c=(0.8, 0.8, 0.8))
-        ax1a.set_ylabel('height (m)')
-        ax1a.set_xlabel('$\Delta z$ (m)')
+        ax1a.set_ylabel("height (m)")
+        ax1a.set_xlabel("$\Delta z$ (m)")
 
         ax1b = ax1a.twiny()
-        ax1b.plot(alpha_z, z, 'o', c="blue", ms=ms)
+        ax1b.plot(alpha_z, z, "o", c="blue", ms=ms)
         xlabel = "$\Delta z (i)/\Delta z (i-1)$ (blue), $\Delta \eta (i)/\Delta \eta (i-1)$ (red)"
         ax1b.set_xlabel(xlabel)
-        ax1b.plot(alpha, z, 'o', c="red", ms=ms)
+        ax1b.plot(alpha, z, "o", c="red", ms=ms)
 
         for ax in [ax1a, ax1b]:
             ax.set_ylim(0, max(z))
 
         if savefig:
             figloc = os.path.expanduser(figloc)
-            fig.savefig(figloc + '/wrf_stretched_grid_etaz.pdf')
+            fig.savefig(figloc + "/wrf_stretched_grid_etaz.pdf")
 
     # ---------------------------------------------------------------------------
     # Print vertical grid data.
@@ -364,35 +380,47 @@ def create_levels(ztop, dz0, method=0, nz=None, dzmax=None, strat=False,
     printedPBL = False
     printedTP = False
     if table:
-        header = ('|  ml |    eta | p (hPa) | z (m) | -dp (hPa) | dz (m) | '
-                  'alpha | alpha_z |')
-        print('-'*len(header))
-        print('|    With a surface pressure of %7.2f hPa' % (p0))
-        print('|   and a model-top pressure of %7.2f hPa' % (ptop))
-        print('-'*len(header))
+        header = "|  ml |    eta | p (hPa) | z (m) | -dp (hPa) | dz (m) | " "alpha | alpha_z |"
+        print("-" * len(header))
+        print("|    With a surface pressure of %7.2f hPa" % (p0))
+        print("|   and a model-top pressure of %7.2f hPa" % (ptop))
+        print("-" * len(header))
         print(header)
-        print('-'*len(header))
+        print("-" * len(header))
         for i in range(p.size):
             if z[i] > zPBLref and not printedPBL:
-                print('|%s|' % ('-'*(len(header)-2)))
+                print("|%s|" % ("-" * (len(header) - 2)))
                 printedPBL = True
             if z[i] > zTPref and not printedTP:
-                print('|%s|' % ('-'*(len(header)-2)))
+                print("|%s|" % ("-" * (len(header) - 2)))
                 printedTP = True
-            print(('| %3i | % 5.3f | %7.0f | %5.0f | %9.1f | %6.0f | %5.3f '
-                   '| %7.3f |' %
-                   (i, eta[i], p[i], z[i], -dp[i], dz[i], alpha[i],
-                    alpha_z[i])))
-        print('-'*len(header))
+            print(
+                (
+                    "| %3i | % 5.3f | %7.0f | %5.0f | %9.1f | %6.0f | %5.3f "
+                    "| %7.3f |" % (i, eta[i], p[i], z[i], -dp[i], dz[i], alpha[i], alpha_z[i])
+                )
+            )
+        print("-" * len(header))
 
     return grid
 
 
 # %%
-if __name__ == '__main__':
+if __name__ == "__main__":
     p0 = 1000
     ztop = 15000
-    grid = create_levels(ztop=ztop, dz0=20, method=0, dzmax=400, D1=0, alpha=1.,
-                         p0=p0, table=True, plot=True, savefig=True, strat=False)
+    grid = create_levels(
+        ztop=ztop,
+        dz0=20,
+        method=0,
+        dzmax=400,
+        D1=0,
+        alpha=1.0,
+        p0=p0,
+        table=True,
+        plot=True,
+        savefig=True,
+        strat=False,
+    )
 
-    print(', '.join(['%.6f' % eta_tmp for eta_tmp in grid.eta]))
+    print(", ".join(["%.6f" % eta_tmp for eta_tmp in grid.eta]))

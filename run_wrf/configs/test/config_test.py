@@ -13,24 +13,31 @@ from collections import OrderedDict as odict
 from run_wrf.configs.base_config import *
 import run_wrf
 from copy import deepcopy
+
 params = deepcopy(params)
 
 # %%
-'''Simulations settings'''
+"""Simulations settings"""
 
 runID = "pytest"  # name for this simulation series
 test_path = os.path.abspath(os.path.dirname(run_wrf.__file__)) + "/tests/test_sims/"
 params["outpath"] = test_path + "/results/"  # WRF output path root
-params["run_path"] = test_path + "/runs/"  # path where run directories of simulations will be createdparams["build_path"] = os.environ["wrf_builds"] + "/tests"  # path where different versions of the compiled WRF model code reside
-params["build_path"] = os.environ["wrf_builds"] + "/tests"  # path where different versions of the compiled WRF model code reside
+params["run_path"] = (
+    test_path + "/runs/"
+)  # path where run directories of simulations will be createdparams["build_path"] = os.environ["wrf_builds"] + "/tests"  # path where different versions of the compiled WRF model code reside
+params["build_path"] = (
+    os.environ["wrf_builds"] + "/tests"
+)  # path where different versions of the compiled WRF model code reside
 
 # Define parameter grid for simulations (any namelist parameters and some additional ones can be used)
 param_grid = odict(mp_physics=[5, 2])
 
 # names of parameter values for output filenames; either dictionaries or lists (not for composite parameters)
-param_names = {"mp_physics": {5: "eta", 2: "lin"},
-               "sf_sfclay_physics": {1: "mm5", 2: "eta", 5: "mynn"},
-               "res": ["LES", "MYJ"]}
+param_names = {
+    "mp_physics": {5: "eta", 2: "lin"},
+    "sf_sfclay_physics": {1: "mm5", 2: "eta", 5: "mynn"},
+    "res": ["LES", "MYJ"],
+}
 
 # Set additional namelist parameters (only active if they are not present in param_grid)
 # any namelist parameters and some additional ones can be used
@@ -61,7 +68,8 @@ params["vgrid_method"] = 1
 
 params["dt_f"] = 3  # time step (s), can be float
 
-params["input_sounding"] = "meanwind"  # name of input sounding to use (final name is then created: input_sounding_$name)
+# name of input sounding to use (final name is then created: input_sounding_$name)
+params["input_sounding"] = "meanwind"
 
 params["spec_hfx"] = None  # None specified surface heat flux instead of radiation (K m s-1)
 
@@ -71,7 +79,7 @@ params["bl_pbl_physics"] = 2
 
 # indices for output streams and their respective name and output interval (minutes, floats allowed)
 # 0 is the standard output stream
-params["output_streams"] = {24: ["wrfout", 2.], 0: ["fastout", 1.]}
+params["output_streams"] = {24: ["wrfout", 2.0], 0: ["fastout", 1.0]}
 
 # filename where output variables for standard and auxiliary streams are modified:
 # if None: use specified value in namelist.input: if "" no file is used

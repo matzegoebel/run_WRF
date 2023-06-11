@@ -21,15 +21,29 @@ import sys
 from run_wrf import get_namelist
 import warnings
 import pandas as pd
-warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
+
+warnings.simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 # %%
 
 
-def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
-                debug=False, build=None, use_job_scheduler=False, check_args=False,
-                pool_jobs=False, mail="ea", wait=False, no_namelist_check=False,
-                test_run=False, verbose=False, param_combs=None):
+def launch_jobs(
+    config_file="config",
+    init=False,
+    outpath=None,
+    exist="s",
+    debug=False,
+    build=None,
+    use_job_scheduler=False,
+    check_args=False,
+    pool_jobs=False,
+    mail="ea",
+    wait=False,
+    no_namelist_check=False,
+    test_run=False,
+    verbose=False,
+    param_combs=None,
+):
     """
     Initialize and run idealized WRF experiments.
     Refer to README.md for more information.
@@ -127,8 +141,9 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
     if use_job_scheduler:
         job_scheduler = conf.job_scheduler.lower()
         if job_scheduler not in ["slurm", "sge"]:
-            raise ValueError("Job scheduler {} not implemented. "
-                             "Use SGE or SLURM".format(job_scheduler))
+            raise ValueError(
+                "Job scheduler {} not implemented. " "Use SGE or SLURM".format(job_scheduler)
+            )
         if job_scheduler == "slurm":
             # assuming no oversubscription is allowed, pooling is necessary
             if conf.force_pool:
@@ -139,8 +154,10 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                     mail_slurm.append(r)
             mail = ",".join(mail_slurm)
         if (conf.mail_address is None) or (conf.mail_address == ""):
-            raise ValueError("For jobs using {}, provide valid mail address "
-                             "in config file".format(job_scheduler))
+            raise ValueError(
+                "For jobs using {}, provide valid mail address "
+                "in config file".format(job_scheduler)
+            )
 
         if job_scheduler == "slurm":
             job_id = "_%j"
@@ -202,7 +219,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
             args["dy"] = args["dx"]
 
         # start and end times
-        date_format = '%Y-%m-%d_%H:%M:%S'
+        date_format = "%Y-%m-%d_%H:%M:%S"
         start_time_dt = datetime.datetime.strptime(args["start_time"], date_format)
         end_time_dt = datetime.datetime.strptime(args["end_time"], date_format)
         start_d, start_t = args["start_time"].split("_")
@@ -214,8 +231,11 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
 
         run_hours = (end_time_dt - start_time_dt).total_seconds() / 3600
         if run_hours <= 0:
-            raise ValueError("Selected end time {} smaller or equal start time {}!".format(
-                args["end_time"], args["start_time"]))
+            raise ValueError(
+                "Selected end time {} smaller or equal start time {}!".format(
+                    args["end_time"], args["start_time"]
+                )
+            )
 
         for di, n in zip(start_d + start_t, ["year", "month", "day", "hour", "minute", "second"]):
             args["start_" + n] = di
@@ -232,10 +252,8 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
             args["e_sn"] = math.ceil(args["ly"] / args["dy"]) + 1
 
         # slots
-        nx = tools.find_nproc(args["e_we"] - 1,
-                              min_n_per_proc=args["min_nx_per_proc"])
-        ny = tools.find_nproc(args["e_sn"] - 1,
-                              min_n_per_proc=args["min_ny_per_proc"])
+        nx = tools.find_nproc(args["e_we"] - 1, min_n_per_proc=args["min_nx_per_proc"])
+        ny = tools.find_nproc(args["e_sn"] - 1, min_n_per_proc=args["min_ny_per_proc"])
 
         if ("max_nslotsx" in args) and (args["max_nslotsx"] is not None):
             nx = min(args["max_nslotsx"], nx)
@@ -272,8 +290,9 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
 
         print("Setting namelist parameters\n")
         namelist_path = "{}/test/{}/namelist.input".format(wrf_build, args["ideal_case_name"])
-        namelist_all = get_namelist.namelist_to_dict(namelist_path, build_path=wrf_build,
-                                                     registries=conf.registries)
+        namelist_all = get_namelist.namelist_to_dict(
+            namelist_path, build_path=wrf_build, registries=conf.registries
+        )
         namelist = get_namelist.namelist_to_dict(namelist_path)
 
         if use_job_scheduler:
@@ -285,21 +304,31 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
         if init:
             print("Using WRF build in: {}\n".format(wrf_build))
 
-            args, args_str = tools.prepare_init(args, conf, namelist, namelist_all,
-                                                namelist_check=not no_namelist_check)
+            args, args_str = tools.prepare_init(
+                args, conf, namelist, namelist_all, namelist_check=not no_namelist_check
+            )
             # job scheduler queue and vmem
             if use_job_scheduler and conf.request_vmem:
                 vmem_init = args["vmem_init"]
                 if ("bigmem_limit" in dir(conf)) and (vmem_init > conf.bigmem_limit):
-                     queue = conf.bigmem_queue
+                    queue = conf.bigmem_queue
 
         elif use_job_scheduler or test_run:
             if "dt_f" not in args:
-                args["dt_f"] = namelist_all["time_step"] + \
-                    namelist_all["time_step_fract_num"] / namelist_all["time_step_fract_den"]
-            args, skip = tools.set_vmem_rt(args, run_dir, conf, run_hours, nslots=nslotsi,
-                                           pool_jobs=pool_jobs, test_run=test_run,
-                                           request_vmem=conf.request_vmem)
+                args["dt_f"] = (
+                    namelist_all["time_step"]
+                    + namelist_all["time_step_fract_num"] / namelist_all["time_step_fract_den"]
+                )
+            args, skip = tools.set_vmem_rt(
+                args,
+                run_dir,
+                conf,
+                run_hours,
+                nslots=nslotsi,
+                pool_jobs=pool_jobs,
+                test_run=test_run,
+                request_vmem=conf.request_vmem,
+            )
             if skip:
                 continue
             if conf.request_vmem:
@@ -343,8 +372,10 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                             print("Initialization was complete.\nSkipping...")
                             continue
                         else:
-                            print("However, WRF initialization was not successfully carried out."
-                                  "\nRedoing initialization...")
+                            print(
+                                "However, WRF initialization was not successfully carried out."
+                                "\nRedoing initialization..."
+                            )
                     elif exist == "o":
                         print("Overwriting...")
                     elif exist == "b":
@@ -378,11 +409,20 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                     if iofile_ != "NONE_SPECIFIED":
                         iofile = iofile_
 
-                comm_args = dict(run_id=IDr, wrfv=wrf_dir_i, ideal_case=args["ideal_case_name"],
-                                 input_sounding=args["input_sounding"], nx=nx, ny=ny,
-                                 run_path=args["run_path"], build_path=args["build_path"],
-                                 batch=int(use_job_scheduler), wrf_args=args_str_r, iofile=iofile,
-                                 module_load=args["module_load"])
+                comm_args = dict(
+                    run_id=IDr,
+                    wrfv=wrf_dir_i,
+                    ideal_case=args["ideal_case_name"],
+                    input_sounding=args["input_sounding"],
+                    nx=nx,
+                    ny=ny,
+                    run_path=args["run_path"],
+                    build_path=args["build_path"],
+                    batch=int(use_job_scheduler),
+                    wrf_args=args_str_r,
+                    iofile=iofile,
+                    module_load=args["module_load"],
+                )
                 for p, v in comm_args.items():
                     os.environ[p] = str(v)
                 if use_job_scheduler:
@@ -392,8 +432,10 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                     os.environ["qlog"] = qlog + job_name
                     batch_args = [queue, qlog, qlog, rt_init, conf.mail_address, mail, job_name]
                     if job_scheduler == "sge":
-                        batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={} -M " \
-                                         "{} -m {} -N {} -V ".format(*batch_args)
+                        batch_args_str = (
+                            "qsub -cwd -q {} -o {} -e {} -l h_rt={} -M "
+                            "{} -m {} -N {} -V ".format(*batch_args)
+                        )
                         if ("h_stack_init" in args) and (args["h_stack_init"] is not None):
                             batch_args_str += " -l h_stack={}M ".format(round(args["h_stack_init"]))
                         if conf.request_vmem:
@@ -403,9 +445,11 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                         qout, qerr = [f"{qlog}{job_name}.{s}{job_id}" for s in ["o", "e"]]
                         batch_args[1] = qout
                         batch_args[2] = qerr
-                        batch_args_str = "sbatch --qos={}  -p {} -o {} -e {} --time={} " \
-                            "--mail-user={} --mail-type={} -J {} -N 1 -n 1 " \
+                        batch_args_str = (
+                            "sbatch --qos={}  -p {} -o {} -e {} --time={} "
+                            "--mail-user={} --mail-type={} -J {} -N 1 -n 1 "
                             "--export=ALL ".format(conf.qos, *batch_args)
+                        )
                         if conf.request_vmem:
                             batch_args_str += " --mem-per-cpu={}M ".format(vmem_init)
 
@@ -502,8 +546,10 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                             IDs = IDs[:-1]
                             resched_i = True
                         elif job_scheduler == "sge":
-                            raise ValueError("Pool size ({}) smaller than number of slots of "
-                                             "current job ({})!".format(conf.pool_size, nslots[0]))
+                            raise ValueError(
+                                "Pool size ({}) smaller than number of slots of "
+                                "current job ({})!".format(conf.pool_size, nslots[0])
+                            )
 
                     iterate = True
                     while iterate:
@@ -517,8 +563,13 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                                     # select smallest available nperhost that is greater or
                                     # equal to the number of requested slots
                                     pes = os.popen("qconf -spl").read().split("\n")
-                                    nperhost_avail = np.array([int(pe[8:pe.index("per")])
-                                                               for pe in pes if "perhost" in pe])
+                                    nperhost_avail = np.array(
+                                        [
+                                            int(pe[8 : pe.index("per")])
+                                            for pe in pes
+                                            if "perhost" in pe
+                                        ]
+                                    )
                                     nperhost = nperhost_avail[nperhost_avail >= sum(nslots)].min()
                                 slot_comm = "-pe openmpi-{0}perhost {0}".format(nperhost)
                             elif job_scheduler == "slurm":
@@ -534,11 +585,20 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                         nx_str = " ".join([str(ns[0]) for ns in nxny])
                         ny_str = " ".join([str(ns[1]) for ns in nxny])
                         timestamp = datetime.datetime.now().isoformat()[:19]
-                        comm_args = dict(nslots=nslots_str, nx=nx_str, ny=ny_str, jobs=jobs,
-                                         pool_jobs=int(pool_jobs), run_path=args["run_path"],
-                                         batch=int(use_job_scheduler), mpiexec=mpiexec,
-                                         restart=int(restart), outpath=outpath,
-                                         module_load=args["module_load"], timestamp=timestamp)
+                        comm_args = dict(
+                            nslots=nslots_str,
+                            nx=nx_str,
+                            ny=ny_str,
+                            jobs=jobs,
+                            pool_jobs=int(pool_jobs),
+                            run_path=args["run_path"],
+                            batch=int(use_job_scheduler),
+                            mpiexec=mpiexec,
+                            restart=int(restart),
+                            outpath=outpath,
+                            module_load=args["module_load"],
+                            timestamp=timestamp,
+                        )
                         for p, v in comm_args.items():
                             os.environ[p] = str(v)
 
@@ -556,20 +616,34 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
 
                             rtp = tools.format_timedelta(rtr_max)
                             if rtr_max < send_rt_signal:
-                                raise ValueError("Requested runtime is smaller then the time "
-                                                 "when the runtime limit signal is sent!")
+                                raise ValueError(
+                                    "Requested runtime is smaller then the time "
+                                    "when the runtime limit signal is sent!"
+                                )
 
                             qlog = batch_log_dir
                             os.environ["qlog"] = qlog + job_name
-                            batch_args = [queue, qlog, qlog, rtp, slot_comm,
-                                          conf.mail_address, mail, job_name]
+                            batch_args = [
+                                queue,
+                                qlog,
+                                qlog,
+                                rtp,
+                                slot_comm,
+                                conf.mail_address,
+                                mail,
+                                job_name,
+                            ]
                             os.environ["rtlimit"] = str(int(rtr_max - send_rt_signal))
 
                             if job_scheduler == "sge":
-                                batch_args_str = "qsub -cwd -q {} -o {} -e {} -l h_rt={}  {} " \
-                                                 " -M {} -m {} -N {} -V ".format(*batch_args)
+                                batch_args_str = (
+                                    "qsub -cwd -q {} -o {} -e {} -l h_rt={}  {} "
+                                    " -M {} -m {} -N {} -V ".format(*batch_args)
+                                )
                                 if ("h_stack" in args) and (args["h_stack"] is not None):
-                                    batch_args_str += " -l h_stack={}M ".format(round(args["h_stack"]))
+                                    batch_args_str += " -l h_stack={}M ".format(
+                                        round(args["h_stack"])
+                                    )
                                 if conf.request_vmem:
                                     batch_args_str += " -l h_vmem={}M ".format(vmemp)
 
@@ -577,9 +651,11 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                                 qout, qerr = [f"{qlog}{job_name}.{s}{job_id}" for s in ["o", "e"]]
                                 batch_args[1] = qout
                                 batch_args[2] = qerr
-                                batch_args_str = "sbatch -p {} -o {} -e {} --time={} {} " \
-                                                 "--mail-user={} --mail-type={} -J {} " \
-                                                 "--export=ALL ".format(*batch_args)
+                                batch_args_str = (
+                                    "sbatch -p {} -o {} -e {} --time={} {} "
+                                    "--mail-user={} --mail-type={} -J {} "
+                                    "--export=ALL ".format(*batch_args)
+                                )
                                 if ("qos" in dir(conf)) and (conf.qos is not None):
                                     batch_args_str += " --qos={} ".format(conf.qos)
                                 if conf.request_vmem:
@@ -613,9 +689,18 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                                 for ID in IDs:
                                     print(ID)
                                     run_dir_i = "{}/WRF_{}/".format(args["run_path"], ID)
-                                    print(os.popen("tail -n {} '{}/run_{}.log'".format(log_lines,
-                                                                                       run_dir_i, timestamp)).read())
-                                    print(fopen(run_dir_i + "run_{}.err".format(timestamp)).read_text())
+                                    print(
+                                        os.popen(
+                                            "tail -n {} '{}/run_{}.log'".format(
+                                                log_lines, run_dir_i, timestamp
+                                            )
+                                        ).read()
+                                    )
+                                    print(
+                                        fopen(
+                                            run_dir_i + "run_{}.err".format(timestamp)
+                                        ).read_text()
+                                    )
                             # if err != 0:
                             #     raise RuntimeError("WRF run failed!")
 
@@ -626,7 +711,7 @@ def launch_jobs(config_file="config", init=False, outpath=None, exist="s",
                             nslots = [nslotsi]
                             nxny = [[nx, ny]]
 
-                        # run residual jobs that did not fit in the last job pool
+                            # run residual jobs that did not fit in the last job pool
                             if last_id:
                                 iterate = True
                                 last_id = False
@@ -658,12 +743,12 @@ def parse_args():
             kp1 = "param_combs : "
         else:
             kp1 = d.format(keys[i + 1])
-        desc_k = doc[doc.index(d.format(k)):doc.index(kp1)]
+        desc_k = doc[doc.index(d.format(k)) : doc.index(kp1)]
         desc_k = desc_k.split("\n")[1:]
         desc_k = [d.strip() for d in desc_k]
         desc[k] = " ".join(desc_k)
 
-    intro = doc[:doc.index("Parameters\n")]
+    intro = doc[: doc.index("Parameters\n")]
 
     # command line arguments (equivalent to function arguments above)
     # short form, long form, action
@@ -692,8 +777,14 @@ def parse_args():
             add_args_p = add_args[p]
         else:
             add_args_p = {}
-        parser.add_argument(*parse_params[p][:-1], action=parse_params[p][-1],
-                            dest=p, default=default, help=desc[p], **add_args_p)
+        parser.add_argument(
+            *parse_params[p][:-1],
+            action=parse_params[p][-1],
+            dest=p,
+            default=default,
+            help=desc[p],
+            **add_args_p,
+        )
 
     parser.format_help()
     options = parser.parse_args()

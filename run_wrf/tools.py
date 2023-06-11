@@ -27,18 +27,56 @@ import importlib
 from fractions import Fraction
 
 # arguments to vertical grid creation method in vertical_grid.py
-vert_keys = ["vgrid_method", "dz0", "nz", "dzmax", "D1", "alpha",
-             "theta", "z_theta", "sounding_path", "strat"]
+vert_keys = [
+    "vgrid_method",
+    "dz0",
+    "nz",
+    "dzmax",
+    "D1",
+    "alpha",
+    "theta",
+    "z_theta",
+    "sounding_path",
+    "strat",
+]
 # non-namelist config parameters that will not be included in namelist file
-del_args = ["start_time", "end_time", "output_streams", "lx", "ly",
-            "spec_hfx", "input_sounding", "n_rep", "dt_f", "ideal_case_name",
-            "serial_build", "debug_build", "parallel_build",
-            "outpath", "run_path", "build_path", "vmem_init", "vmem",
-            "vmem_buffer", "vmem_test", "h_stack_init", "h_stack",
-            "runtime_init", "runtime_per_step", "rt_buffer",
-            "runtime", "runtime_test", "rt_use_median", "send_rt_signal",
-            "min_nx_per_proc", "min_ny_per_proc",
-            "max_nslotsx", "max_nslotsy", "module_load", *vert_keys]
+del_args = [
+    "start_time",
+    "end_time",
+    "output_streams",
+    "lx",
+    "ly",
+    "spec_hfx",
+    "input_sounding",
+    "n_rep",
+    "dt_f",
+    "ideal_case_name",
+    "serial_build",
+    "debug_build",
+    "parallel_build",
+    "outpath",
+    "run_path",
+    "build_path",
+    "vmem_init",
+    "vmem",
+    "vmem_buffer",
+    "vmem_test",
+    "h_stack_init",
+    "h_stack",
+    "runtime_init",
+    "runtime_per_step",
+    "rt_buffer",
+    "runtime",
+    "runtime_test",
+    "rt_use_median",
+    "send_rt_signal",
+    "min_nx_per_proc",
+    "min_ny_per_proc",
+    "max_nslotsx",
+    "max_nslotsy",
+    "module_load",
+    *vert_keys,
+]
 
 # %%nproc
 
@@ -67,6 +105,7 @@ def find_nproc(n, min_n_per_proc=25):
 
 
 # %%general helpful functions
+
 
 def list_equal(*elements):
     """Check if all given elements are equal."""
@@ -139,8 +178,12 @@ def print_progress(start=None, prog=True, counter=None, length=None, message="El
         etime = elapsed_time(start)
         hours, remainder = divmod(etime, 3600)
         minutes, seconds = divmod(remainder, 60)
-        msg += "%s: %s hours %s minutes %s seconds" % (message, int(hours), int(minutes),
-                                                       round(seconds))
+        msg += "%s: %s hours %s minutes %s seconds" % (
+            message,
+            int(hours),
+            int(minutes),
+            round(seconds),
+        )
     overprint(msg)
 
 
@@ -149,7 +192,7 @@ def format_timedelta(td):
     td = int(td)
     hours, remainder = divmod(td, 3600)
     minutes, seconds = divmod(remainder, 60)
-    return '{:03}:{:02}:{:02}'.format(hours, minutes, seconds)
+    return "{:03}:{:02}:{:02}".format(hours, minutes, seconds)
 
 
 def ls_t(pattern):
@@ -174,6 +217,8 @@ def extract_times(ds):
     time = [datetime.fromisoformat(str(t.values.astype(str))) for t in ds["Times"]]
     time = pd.DatetimeIndex(time)
     return time.values
+
+
 # %%config grid related
 
 
@@ -224,8 +269,10 @@ def grid_combinations(param_grid, add_params=None, param_names=None, runID=None)
                 val_list = [make_list(i) for i in val_list]
                 lens = np.array([len(i) for i in val_list])
                 if (lens[0] != lens).any():
-                    raise ValueError("All parameter ranges that belong to the same composite "
-                                     "must have equal lengths!")
+                    raise ValueError(
+                        "All parameter ranges that belong to the same composite "
+                        "must have equal lengths!"
+                    )
                 val_list.append(np.arange(lens[0]))
                 params.extend([*val.keys(), param + "_idx"])
                 composite_params.append(param + "_idx")
@@ -241,8 +288,9 @@ def grid_combinations(param_grid, add_params=None, param_names=None, runID=None)
         for i, comb in enumerate(combs):
             c = flatten_list(comb)
             combs[i] = odict(zip(params, c))
-            IDi, IDi_d = output_id_from_config(combs[i], param_grid, param_names=param_names,
-                                               runID=runID)
+            IDi, IDi_d = output_id_from_config(
+                combs[i], param_grid, param_names=param_names, runID=runID
+            )
             index.append(str(IDi_d))
             # IDs used for filenames
             fnames.append(IDi)
@@ -272,8 +320,9 @@ def grid_combinations(param_grid, add_params=None, param_names=None, runID=None)
     return combs
 
 
-def output_id_from_config(param_comb=None, param_grid=None, param_names=None,
-                          split_composite=True, runID=None):
+def output_id_from_config(
+    param_comb=None, param_grid=None, param_names=None, split_composite=True, runID=None
+):
     """
     Create ID for output files. Param_names can be used to replace parameter values.
 
@@ -340,11 +389,20 @@ def output_id_from_config(param_comb=None, param_grid=None, param_names=None,
 
     return ID_str, ID
 
+
 # %%runtime
 
 
-def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, levels=None,
-                    remove=None, use_median=False, verbose=False):
+def get_runtime_all(
+    runs=None,
+    id_filter=None,
+    dirs=None,
+    all_times=False,
+    levels=None,
+    remove=None,
+    use_median=False,
+    verbose=False,
+):
     """
     Get runtime per timestep from all given run directories or for all directories
     in dirs that pass the filter id_filter.
@@ -412,10 +470,11 @@ def get_runtime_all(runs=None, id_filter=None, dirs=None, all_times=False, level
             print("{} does not have not the correct id length".format(ID))
             continue
         for runlog in runlogs[ID]:
-            _, new_counter = get_runtime(runlog, timing=timing, counter=counter,
-                                         all_times=all_times, use_median=use_median)
-            timing.iloc[counter:new_counter, :len(IDl)] = IDl
-            timing.loc[counter:new_counter-1, "path"] = runpath
+            _, new_counter = get_runtime(
+                runlog, timing=timing, counter=counter, all_times=all_times, use_median=use_median
+            )
+            timing.iloc[counter:new_counter, : len(IDl)] = IDl
+            timing.loc[counter : new_counter - 1, "path"] = runpath
             counter = new_counter
         if verbose:
             print_progress(counter=j + 1, length=len(runs))
@@ -463,8 +522,10 @@ def get_runtime(runlog=None, timing=None, counter=None, all_times=False, use_med
         args = sys.argv[1:]
         usage = "Usage:\n get_runtime logfile [--median]"
         if (len(args) not in [1, 2]) or (args[0] in ["-h", "--help", "-help"]):
-            print("Get average (mean or median) and standard deviation of"
-                  " runtime per timestep from logfile.\n" + usage)
+            print(
+                "Get average (mean or median) and standard deviation of"
+                " runtime per timestep from logfile.\n" + usage
+            )
             sys.exit()
         runlog = args[0]
         if len(args) == 2:
@@ -489,21 +550,23 @@ def get_runtime(runlog=None, timing=None, counter=None, all_times=False, use_med
                 linesp = line.split(":")
                 timing_l = linesp[-1].strip()
                 try:
-                    timing_l = float(timing_l[:timing_l.index("elapsed")])
+                    timing_l = float(timing_l[: timing_l.index("elapsed")])
                 except ValueError:
                     continue
                 timing_ID.append(timing_l)
                 if all_times:
-                    time = line[line.index("time"):line.index("on domain")][5:-1]
+                    time = line[line.index("time") : line.index("on domain")][5:-1]
                     times.append(time)
             elif "Ntasks" in line:
-                settings["nx"] = line[line.index("X") + 1: line.index(",")].replace(" ", "")
-                settings["ny"] = line[line.index("Y") + 1: line.index("\n")].replace(" ", "")
+                settings["nx"] = line[line.index("X") + 1 : line.index(",")].replace(" ", "")
+                settings["ny"] = line[line.index("Y") + 1 : line.index("\n")].replace(" ", "")
             elif "ids,ide" in line:
-                _, _, settings["ide"], _, settings["jde"] = [i for i in line[:-1].split(" ") if i != ""]
+                _, _, settings["ide"], _, settings["jde"] = [
+                    i for i in line[:-1].split(" ") if i != ""
+                ]
             elif ("WRF TILE" in line) and ("ide" not in settings):
-                settings["ide"] = line[line.index("IE") + 2: line.index("JS")]
-                settings["jde"] = line[line.index("JE") + 2:]
+                settings["ide"] = line[line.index("IE") + 2 : line.index("JS")]
+                settings["jde"] = line[line.index("JE") + 2 :]
         if "nx" not in settings:
             settings["nx"] = 1
             settings["ny"] = 1
@@ -523,9 +586,11 @@ def get_runtime(runlog=None, timing=None, counter=None, all_times=False, use_med
             counter = 0
         if len(timing_ID) > 0:
             if all_times:
-                timing.loc[counter:counter + len(timing_ID) - 1, "time"] = times
-                timing.loc[counter:counter + len(timing_ID) - 1, "timing"] = timing_ID
-                timing.loc[counter:counter + len(timing_ID) - 1, settings.keys()] = list(settings.values())
+                timing.loc[counter : counter + len(timing_ID) - 1, "time"] = times
+                timing.loc[counter : counter + len(timing_ID) - 1, "timing"] = timing_ID
+                timing.loc[counter : counter + len(timing_ID) - 1, settings.keys()] = list(
+                    settings.values()
+                )
                 counter += len(timing_ID)
             else:
                 timing.loc[counter, settings.keys()] = list(settings.values())
@@ -566,8 +631,15 @@ def get_identical_runs(run_dir, search_paths, ignore_nxy=False):
 
     """
     search_paths = make_list(search_paths)
-    ignore_params = ["start_year", "start_month", "start_day", "start_hour",
-                     "start_minute", "run_hours", "_outname"]
+    ignore_params = [
+        "start_year",
+        "start_month",
+        "start_day",
+        "start_hour",
+        "start_minute",
+        "run_hours",
+        "_outname",
+    ]
     if ignore_nxy:
         ignore_params.extend(["nproc_x", "nproc_y"])
     identical_runs = []
@@ -589,8 +661,11 @@ def get_identical_runs(run_dir, search_paths, ignore_nxy=False):
             params = list(set([*namelist_r.keys(), *namelist_ref.keys()]))
             for param in params:
                 if param not in ignore_params:
-                    if (param not in namelist_r) or (param not in namelist_ref) or \
-                       (namelist_ref[param] != namelist_r[param]):
+                    if (
+                        (param not in namelist_r)
+                        or (param not in namelist_ref)
+                        or (namelist_ref[param] != namelist_r[param])
+                    ):
                         identical = False
                         break
             if identical:
@@ -627,7 +702,7 @@ def get_vmem(runs):
             vmem_r = None
             for mag, factor in zip(("M", "G"), (1, 1000)):
                 if mag in vmem_r_str:
-                    vmem_r = float(vmem_r_str[:vmem_r_str.index(mag)]) * factor
+                    vmem_r = float(vmem_r_str[: vmem_r_str.index(mag)]) * factor
                     break
             vmem.append(vmem_r)
     if len(vmem) > 0:
@@ -651,8 +726,8 @@ def get_job_usage(resource_file):
     """
     usage = fopen(resource_file).read_text()
     if "usage" in usage:
-        usage = usage[usage.index("\nusage"):].split("\n")[1]
-        usage = usage[usage.index(":") + 1:].strip().split(",")
+        usage = usage[usage.index("\nusage") :].split("\n")[1]
+        usage = usage[usage.index(":") + 1 :].strip().split(",")
         usage = dict([i.strip().split("=") for i in usage])
     elif "MaxVMSize" in usage:
         kv = usage.split("\n")
@@ -667,8 +742,9 @@ def get_job_usage(resource_file):
     return usage
 
 
-def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
-                pool_jobs=False, test_run=False, request_vmem=True):
+def set_vmem_rt(
+    args, run_dir, conf, run_hours, nslots=1, pool_jobs=False, test_run=False, request_vmem=True
+):
     """Set vmem and runtime per time step  based on settings in config file."""
     skip = False
 
@@ -691,8 +767,9 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
         run_dir_0 = run_dir + "_0"  # use rep 0 as reference
         identical_runs = get_identical_runs(run_dir_0, resource_search_paths)
         if len(identical_runs) > 0:
-            timing = get_runtime_all(runs=identical_runs, all_times=False,
-                                     use_median=args["rt_use_median"])
+            timing = get_runtime_all(
+                runs=identical_runs, all_times=False, use_median=args["rt_use_median"]
+            )
             if len(timing) > 0:
                 runtime_per_step = np.average(timing.timing, weights=timing.nsteps)
                 rt_sd = np.average(timing.timing_sd, weights=timing.nsteps)
@@ -723,8 +800,9 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
             print("Get vmem from previous runs")
             if identical_runs is None:
                 run_dir_0 = run_dir + "_0"  # use rep 0 as reference
-                identical_runs = get_identical_runs(run_dir_0, resource_search_paths,
-                                                    ignore_nxy=False)
+                identical_runs = get_identical_runs(
+                    run_dir_0, resource_search_paths, ignore_nxy=False
+                )
 
             vmemi = get_vmem(identical_runs)
             if vmemi is None:
@@ -742,6 +820,7 @@ def set_vmem_rt(args, run_dir, conf, run_hours, nslots=1,
 
     return args, skip
 
+
 # %%init
 
 
@@ -753,8 +832,11 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
     namelist_upd = deepcopy(namelist)
     namelist_upd.update(args)
 
-    def check_p_diff(p, val=0): return (p in namelist_upd_all) and (namelist_upd_all[p] != val)
-    def check_p_diff_2(p, val=0): return (p not in args) and check_p_diff(p, val)
+    def check_p_diff(p, val=0):
+        return (p in namelist_upd_all) and (namelist_upd_all[p] != val)
+
+    def check_p_diff_2(p, val=0):
+        return (p not in args) and check_p_diff(p, val)
 
     # timestep
     if "dt_f" in args:
@@ -777,23 +859,29 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
         vgrid = vertical_grid.create_levels(args["ztop"], **vert_args)
         args["eta_levels"], dz = vgrid.eta.values, vgrid.dz.values
         args["e_vert"] = len(args["eta_levels"])
-        print("Created vertical grid:\n{0} levels\nlowest level at {1:.1f} m\n"
-              "thickness of uppermost layer: {2:.1f} m\n".format(args["e_vert"], dz[0], dz[-2]))
+        print(
+            "Created vertical grid:\n{0} levels\nlowest level at {1:.1f} m\n"
+            "thickness of uppermost layer: {2:.1f} m\n".format(args["e_vert"], dz[0], dz[-2])
+        )
 
     if "eta_levels" in args:
         args["eta_levels"] = ",".join(["{0:.6f}".format(e) for e in args["eta_levels"]])
 
     if "scm" in args["ideal_case_name"]:
-        print("WARNING: Eta levels are neglected in the standard initialization of "
-              "the single column model case!")
+        print(
+            "WARNING: Eta levels are neglected in the standard initialization of "
+            "the single column model case!"
+        )
 
     # output streams
     for stream, (_, out_int) in args["output_streams"].items():
         out_int_m = math.floor(out_int)
         out_int_s = round((out_int - out_int_m) * 60)
         if (out_int_m == 0) and (out_int_s == 0) and (out_int != 0):
-            raise ValueError("Found output interval of {0:.2f} s for output stream {1}. "
-                             "Output intervals below 1 s are not allowed!".format(out_int * 60, stream))
+            raise ValueError(
+                "Found output interval of {0:.2f} s for output stream {1}. "
+                "Output intervals below 1 s are not allowed!".format(out_int * 60, stream)
+            )
         if stream > 0:
             stream_full = "auxhist{}".format(stream)
         else:
@@ -812,8 +900,10 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
         args["tke_heat_flux"] = args["spec_hfx"]
         if "isfflx" in args:
             if args["isfflx"] == 1:
-                print("Isfflx={} not compatible with specified heat flux. "
-                      "Setting isfflx=2".format(args["isfflx"]))
+                print(
+                    "Isfflx={} not compatible with specified heat flux. "
+                    "Setting isfflx=2".format(args["isfflx"])
+                )
                 args["isfflx"] = 2
         elif check_p_diff("isfflx", 2):
             args["isfflx"] = 2
@@ -823,7 +913,7 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
         for p in ["tke_heat_flux", "tke_drag_coefficient"]:
             if check_p_diff(p):
                 print("WARNING: Setting {}=0 as spec_hfx is not set".format(p))
-                args[p] = 0.
+                args[p] = 0.0
         if check_p_diff("isfflx", 1):
             args["isfflx"] = 1
             print("Setting isfflx=1")
@@ -840,8 +930,10 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
             sfclay_scheme = 1
         p = "sf_sfclay_physics"
         if check_p_diff_2(p, sfclay_scheme):
-            print("Setting sf_sfclay_physics={} for compatibility "
-                  "with PBL scheme.".format(sfclay_scheme))
+            print(
+                "Setting sf_sfclay_physics={} for compatibility "
+                "with PBL scheme.".format(sfclay_scheme)
+            )
             args[p] = sfclay_scheme
 
     if namelist_upd_all["sf_sfclay_physics"] in [-1, 0]:
@@ -857,13 +949,17 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
     for k in args.keys():
         if k in namelist_all:
             if k in del_args:
-                raise ValueError("Parameter '{}' declared as non-namelist parameter in "
-                                 "tools.del_args is defined as namelist parameter "
-                                 "in registry!".format(k))
+                raise ValueError(
+                    "Parameter '{}' declared as non-namelist parameter in "
+                    "tools.del_args is defined as namelist parameter "
+                    "in registry!".format(k)
+                )
         elif k not in del_args:
-            raise ValueError("Parameter '{}' is neither declared as non-namelist parameter in "
-                             "tools.del_args nor defined as namelist parameter "
-                             "in Registry!".format(k))
+            raise ValueError(
+                "Parameter '{}' is neither declared as non-namelist parameter in "
+                "tools.del_args nor defined as namelist parameter "
+                "in Registry!".format(k)
+            )
 
     args_clean = deepcopy(args)
     args_clean = {k: v for k, v in args_clean.items() if k not in del_args}
@@ -898,45 +994,59 @@ def prepare_init(args, conf, namelist, namelist_all, namelist_check=True):
 
 def check_namelist_best_practice(namelist):
     """Check consistency of namelist parameters and print warnings if
-       strange parameter combinations are used
+    strange parameter combinations are used
     """
     raise_err = False
     dx = namelist["dx"]
     dy = namelist["dy"]
-    print("Checking consistency of namelist settings for horizontal grid spacing "
-          "of dx={0:.1f} m, dy={1:.1f} m".format(dx, dy))
+    print(
+        "Checking consistency of namelist settings for horizontal grid spacing "
+        "of dx={0:.1f} m, dy={1:.1f} m".format(dx, dy)
+    )
 
     # dt
     dt = namelist["time_step"] + namelist["time_step_fract_num"] / namelist["time_step_fract_den"]
     if dt > 6 * min(dx, dy) / 1000:
-        print("WARNING: time step is larger then recommended. This may cause numerical "
-              "instabilities. Recommendation: dt(s) = 6 * min(dx, dy)(km)")
+        print(
+            "WARNING: time step is larger then recommended. This may cause numerical "
+            "instabilities. Recommendation: dt(s) = 6 * min(dx, dy)(km)"
+        )
 
     # vertical grid
     if "dz" in namelist:
         dz_max = np.nanmax(namelist["dz"])
         if round(dz_max, 1) > min(dx, dy):
-            print("ERROR: There are levels with dz > min(dx, dy) (dz_max={0:.1f} m). "
-                  "Use more vertical levels, a lower model top or a higher dx!".format(dz_max))
+            print(
+                "ERROR: There are levels with dz > min(dx, dy) (dz_max={0:.1f} m). "
+                "Use more vertical levels, a lower model top or a higher dx!".format(dz_max)
+            )
             raise_err = True
         if dz_max > 1000:
-            print("ERROR: There are levels with dz > 1000 m (dz_max={0:.1f} m). "
-                  "Use more vertical levels or a lower model top!".format(dz_max))
+            print(
+                "ERROR: There are levels with dz > 1000 m (dz_max={0:.1f} m). "
+                "Use more vertical levels or a lower model top!".format(dz_max)
+            )
             raise_err = True
         if (np.nanmin(namelist["dz"]) < 0.5 * max(dx, dy)) and (namelist["mix_isotropic"] == 1):
-            print("WARNING: At some levels the vertical grid spacing is less than half the "
-                  "horizontal grid spacing. Consider using anisotropic mixing (mix_isotropic=0).")
+            print(
+                "WARNING: At some levels the vertical grid spacing is less than half the "
+                "horizontal grid spacing. Consider using anisotropic mixing (mix_isotropic=0)."
+            )
 
     # MP_physics
     if namelist["mp_physics"] != 0:
         graupel = namelist["mp_physics"] not in [1, 3, 4, 14]
         if (not graupel) and (max(dx, dy) <= 4000):
-            print("WARNING: Microphysics scheme with graupel necessary at convection-permitting "
-                  "resolution. Avoid the following settings for mp_physics: 1,3,4 or 14")
+            print(
+                "WARNING: Microphysics scheme with graupel necessary at convection-permitting "
+                "resolution. Avoid the following settings for mp_physics: 1,3,4 or 14"
+            )
         elif graupel and (min(dx, dy) >= 10000):
-            print("HINT: Microphysics scheme with graupel not necessary for grid spacings "
-                  "above 10 km. You can instead use one of the following settings for "
-                  "mp_physics: 1,3,4 or 14")
+            print(
+                "HINT: Microphysics scheme with graupel not necessary for grid spacings "
+                "above 10 km. You can instead use one of the following settings for "
+                "mp_physics: 1,3,4 or 14"
+            )
 
     # pbl scheme, LES and turbulence
     if (namelist["bl_pbl_physics"] == 0) and (max(dx, dy) >= 500) and (namelist["km_opt"] != 5):
@@ -946,56 +1056,82 @@ def check_namelist_best_practice(namelist):
             print("WARNING: No PBL scheme necessary for dx <= 100 m, use LES!")
         else:
             if ("dz" in namelist) and (namelist["dz"][0] > 100):
-                print("WARNING: First vertical level should be within surface layer (max. 100 m). "
-                      "Current lowest level at {0:.2f} m".format(namelist["dz"][0]))
+                print(
+                    "WARNING: First vertical level should be within surface layer (max. 100 m). "
+                    "Current lowest level at {0:.2f} m".format(namelist["dz"][0])
+                )
             if namelist["bl_pbl_physics"] in [3, 7, 99]:
                 eta_levels = eval("np.array([{}])".format(namelist["eta_levels"][1:-1]))
                 if eta_levels[1] > 0.995:
-                    print("WARNING: First eta level should not be larger than 0.995 for "
-                          "ACM2, GFS and MRF PBL schemes. Found: {0:.4f}".format(eta_levels[1]))
+                    print(
+                        "WARNING: First eta level should not be larger than 0.995 for "
+                        "ACM2, GFS and MRF PBL schemes. Found: {0:.4f}".format(eta_levels[1])
+                    )
 
     if (namelist["bl_pbl_physics"] == 0) and (max(dx, dy) <= 500):  # LES
         if namelist["km_opt"] == 4:
-            print("ERROR: For LES, eddy diffusivity based on horizontal deformation (km_opt=4) "
-                  "is not appropriate.")
+            print(
+                "ERROR: For LES, eddy diffusivity based on horizontal deformation (km_opt=4) "
+                "is not appropriate."
+            )
             raise_err = True
         if namelist["diff_opt"] != 2:
             print("ERROR: LES requires horizontal diffusion in physical space (diff_opt=2).")
             raise_err = True
         if namelist["sf_sfclay_physics"] not in [0, 1, 2]:
-            print("WARNING: Surface layer scheme {} not recommended for LES. "
-                  "Rather use setting 1 or 2.".format(namelist["sf_sfclay_physics"]))
+            print(
+                "WARNING: Surface layer scheme {} not recommended for LES. "
+                "Rather use setting 1 or 2.".format(namelist["sf_sfclay_physics"])
+            )
 
     if (namelist["km_opt"] in [2, 3]) and (namelist["diff_opt"] != 2):
-        print("ERROR: Horizontal diffusion in physical space (diff_opt=2) needed for "
-              "3D SGS turbulence scheme (km_opt=2 or 3).")
+        print(
+            "ERROR: Horizontal diffusion in physical space (diff_opt=2) needed for "
+            "3D SGS turbulence scheme (km_opt=2 or 3)."
+        )
         raise_err = True
     elif namelist["km_opt"] == 1:
         if namelist["khdif"] == 0:
-            print("WARNING: using constant eddy diffusivity (km_opt=1), "
-                  "but horizontal eddy diffusivity khdif=0")
+            print(
+                "WARNING: using constant eddy diffusivity (km_opt=1), "
+                "but horizontal eddy diffusivity khdif=0"
+            )
         if namelist["kvdif"] == 0:
-            print("WARNING: using constant eddy diffusivity (km_opt=1), "
-                  "but vertical eddy diffusivity kvdif=0")
+            print(
+                "WARNING: using constant eddy diffusivity (km_opt=1), "
+                "but vertical eddy diffusivity kvdif=0"
+            )
 
     if (namelist["km_opt"] != 4) and (namelist["bl_pbl_physics"] != 0):
-        print("WARNING: If boundary layer scheme is used, SGS turbulent mixing "
-              "should be based on 2D deformation (km_opt=4).")
+        print(
+            "WARNING: If boundary layer scheme is used, SGS turbulent mixing "
+            "should be based on 2D deformation (km_opt=4)."
+        )
 
     # Cumulus
     if (max(dx, dy) >= 10000) and (namelist["cu_physics"] == 0):
         print("WARNING: For dx >= 10 km, the use of a cumulus scheme is strongly recommended.")
     elif (max(dx, dy) <= 4000) and (namelist["cu_physics"] != 0):
         print("WARNING: For dx <= 4 km, a cumulus scheme is probably not needed.")
-    elif (max(dx, dy) > 4000) and (min(dx, dy) < 10000) and \
-         (namelist["cu_physics"] not in [3, 5, 11, 14]):
-        print("WARNING: The grid spacing lies in the gray zone for cumulus convection. "
-              "Consider using a scale-aware cumulus parametrization (cu_physics={3, 5, 11, 14})")
+    elif (
+        (max(dx, dy) > 4000)
+        and (min(dx, dy) < 10000)
+        and (namelist["cu_physics"] not in [3, 5, 11, 14])
+    ):
+        print(
+            "WARNING: The grid spacing lies in the gray zone for cumulus convection. "
+            "Consider using a scale-aware cumulus parametrization (cu_physics={3, 5, 11, 14})"
+        )
 
-    if (max(dx, dy) >= 500) and (namelist["shcu_physics"] == 0) and \
-       (namelist["bl_pbl_physics"] not in [4, 5, 6, 10]):
-        print("WARNING: For dx >= 500 m, a shallow cumulus scheme or PBL scheme "
-              "with mass flux component (bl_pbl_physics=4,5,6 or 10) is recommended")
+    if (
+        (max(dx, dy) >= 500)
+        and (namelist["shcu_physics"] == 0)
+        and (namelist["bl_pbl_physics"] not in [4, 5, 6, 10])
+    ):
+        print(
+            "WARNING: For dx >= 500 m, a shallow cumulus scheme or PBL scheme "
+            "with mass flux component (bl_pbl_physics=4,5,6 or 10) is recommended"
+        )
     elif (max(dx, dy) < 500) and (namelist["shcu_physics"] != 0):
         print("WARNING: For dx < 500 m, usually no shallow convection scheme is needed")
 
@@ -1003,8 +1139,10 @@ def check_namelist_best_practice(namelist):
     basic_adv = np.array([namelist[adv + "_adv_opt"] for adv in ["moist", "scalar", "momentum"]])
     any_basic_adv = (basic_adv < 2).any()
     if (max(dx, dy) > 100) and (min(dx, dy) < 1000) and any_basic_adv:
-        print("WARNING: Monotonic or non-oscillatory advection options are "
-              "recommended for 100m < dx < 1km (moist/scalar/momentum_adv_opt >= 2)")
+        print(
+            "WARNING: Monotonic or non-oscillatory advection options are "
+            "recommended for 100m < dx < 1km (moist/scalar/momentum_adv_opt >= 2)"
+        )
 
     # surface fluxes
     for flux in ["tke_drag_coefficient", "tke_heat_flux"]:
@@ -1017,22 +1155,31 @@ def check_namelist_best_practice(namelist):
         if flux in namelist:
             flux_val = namelist[flux]
         if (namelist["isfflx"] in use_fluxes) and (flux_val == 0):
-            print("WARNING: {}=0, although it is used as surface flux "
-                  "for isfflx={}".format(flux, namelist["isfflx"]))
+            print(
+                "WARNING: {}=0, although it is used as surface flux "
+                "for isfflx={}".format(flux, namelist["isfflx"])
+            )
 
     # dynamics
     damp_f = namelist["zdamp"] / namelist["ztop"]
     if damp_f < 0.2:
-        print("WARNING: the damping depth zdamp={0:.0f} m seems rather small given a "
-              "domain height of ztop={1:.0f} m".format(namelist["zdamp"], namelist["ztop"]))
+        print(
+            "WARNING: the damping depth zdamp={0:.0f} m seems rather small given a "
+            "domain height of ztop={1:.0f} m".format(namelist["zdamp"], namelist["ztop"])
+        )
     elif damp_f > 0.4:
-        print("WARNING: the damping depth zdamp={0:.0f} m seems rather large given a "
-              "domain height of ztop={1:.0f} m".format(namelist["zdamp"], namelist["ztop"]))
+        print(
+            "WARNING: the damping depth zdamp={0:.0f} m seems rather large given a "
+            "domain height of ztop={1:.0f} m".format(namelist["zdamp"], namelist["ztop"])
+        )
 
     print("\n")
     if raise_err:
-        raise ValueError("Critical inconsistencies found in namelist settings. "
-                         "Fix the issues or use -n option to ignore them.")
+        raise ValueError(
+            "Critical inconsistencies found in namelist settings. "
+            "Fix the issues or use -n option to ignore them."
+        )
+
 
 # %%restart
 
@@ -1079,13 +1226,13 @@ def get_restart_times(wdir, end_time):
     restart_time = rstfiles.split("\n")[0].split("/")[-1].split("_")[-2:]
     print("Restart run from {}".format(" ".join(restart_time)))
 
-    start_time_rst = datetime.strptime("_".join(restart_time), '%Y-%m-%d_%H:%M:%S')
+    start_time_rst = datetime.strptime("_".join(restart_time), "%Y-%m-%d_%H:%M:%S")
     times = {}
     rst_date, rst_time = restart_time
     times["start"] = rst_date.split("-")
     times["start"].extend(rst_time.split(":"))
 
-    end_time_dt = datetime.strptime(end_time, '%Y-%m-%d_%H:%M:%S')
+    end_time_dt = datetime.strptime(end_time, "%Y-%m-%d_%H:%M:%S")
     end_d, end_t = end_time.split("_")
     times["end"] = end_d.split("-")
     times["end"].extend(end_t.split(":"))
@@ -1118,20 +1265,24 @@ def prepare_restart(wdir, rst_opt):
 
     """
     os.environ["code_dir"] = os.path.curdir
-    err = os.system("bash search_replace.sh {0}/namelist.input {0}/namelist.input 0 {1}".format(wdir, rst_opt))
+    err = os.system(
+        "bash search_replace.sh {0}/namelist.input {0}/namelist.input 0 {1}".format(wdir, rst_opt)
+    )
     if err != 0:
         raise RuntimeError("Error in preparing restart run! Failed to modify namelist values!")
 
 
 def concat_output(config_file=None):
     """Concatenate all output files for each run and output stream defined in config_file
-       to a single file and delete the original files.
+    to a single file and delete the original files.
     """
     if config_file is None:
         args = sys.argv[1:]
         if (len(args) != 1) or (args[0] in ["-h", "--help", "-help"]):
-            print("Concatenate all output files for each run defined in config_file "
-                  "and delete them.\nUsage:\n concat_output config_file")
+            print(
+                "Concatenate all output files for each run defined in config_file "
+                "and delete them.\nUsage:\n concat_output config_file"
+            )
             sys.exit()
         config_file = args[0]
 
@@ -1146,8 +1297,9 @@ def concat_output(config_file=None):
     if "param_combs" in dir(conf):
         param_combs = conf.param_combs
     else:
-        param_combs = grid_combinations(conf.param_grid, conf.params,
-                                        param_names=conf.param_names, runID=conf.runID)
+        param_combs = grid_combinations(
+            conf.param_grid, conf.params, param_names=conf.param_names, runID=conf.runID
+        )
     ind = [i for i in param_combs.index if i not in ["core_param", "composite_idx"]]
     param_combs = param_combs.loc[ind]
 
@@ -1181,10 +1333,13 @@ def concat_output(config_file=None):
                         if time_prev[0] <= time[-1]:
                             stop_idx = np.where(time_prev[0] == time)[0][0] - 1
                             if stop_idx > -1:
-                                err = os.system("ncks -O -d Time,0,{0} {1} {1}".format(stop_idx,
-                                                                                       outfile))
+                                err = os.system(
+                                    "ncks -O -d Time,0,{0} {1} {1}".format(stop_idx, outfile)
+                                )
                                 if err != 0:
-                                    raise Exception("Error in ncks when reducing {}".format(outfile))
+                                    raise Exception(
+                                        "Error in ncks when reducing {}".format(outfile)
+                                    )
                             else:
                                 print("File {} is redundant!".format(outfile))
                                 os.remove(outfile)
@@ -1193,11 +1348,14 @@ def concat_output(config_file=None):
                     time_prev = time
                 all_times = np.array(sorted(set(np.concatenate(all_times))))
                 # concatenate files
-                err = os.system("ncrcat --rec_apn {} {}".format(" ".join(sorted(outfiles[:-1])),
-                                                                outfiles[-1]))
+                err = os.system(
+                    "ncrcat --rec_apn {} {}".format(" ".join(sorted(outfiles[:-1])), outfiles[-1])
+                )
                 if err != 0:
-                    raise Exception("Error in ncrcat when concatenating output of "
-                                    "original and restarted runs")
+                    raise Exception(
+                        "Error in ncrcat when concatenating output of "
+                        "original and restarted runs"
+                    )
 
                 # check final file
                 ds = xr.open_dataset(outfiles[-1], decode_times=False, engine="scipy")
@@ -1206,6 +1364,7 @@ def concat_output(config_file=None):
                     raise RuntimeError("Error in concatenated time dimension")
                 for f in outfiles[:-1]:
                     os.remove(f)
+
 
 # %%job scheduler
 
@@ -1223,9 +1382,12 @@ def get_node_size_slurm(queue):
     if len(node_size) == 0:
         return None
     if any(node_size[0] != node_size):
-        print("WARNING: Different node sizes for the given queues: {}\n "
-              "Choosing smaller one...".format(dict(zip(queue, node_size))))
+        print(
+            "WARNING: Different node sizes for the given queues: {}\n "
+            "Choosing smaller one...".format(dict(zip(queue, node_size)))
+        )
     return node_size.min()
+
 
 # %%
 
@@ -1240,5 +1402,5 @@ class Capturing(list):
 
     def __exit__(self, *args):
         self.extend(self._stringio.getvalue().splitlines())
-        del self._stringio    # free up some memory
+        del self._stringio  # free up some memory
         sys.stdout = self._stdout
