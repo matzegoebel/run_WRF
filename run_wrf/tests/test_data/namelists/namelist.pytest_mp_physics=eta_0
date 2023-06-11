@@ -38,7 +38,7 @@
  &domains
  time_step = 3
  time_step_fract_num                 = 0,
- time_step_fract_den = 10
+ time_step_fract_den                 = 1,
  max_dom                             = 1,
  s_we                                = 1,     1,     1,
  e_we = 3
