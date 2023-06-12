@@ -209,7 +209,7 @@ def launch_jobs(
         del args["fname"]
 
         # create output ID for current configuration
-        run_dir = "{}/WRF_{}".format(args["run_path"], IDi)
+        run_dir = "{}/{}".format(args["run_path"], IDi)
 
         print("\n\nConfig:  " + IDi)
         print(cname)
@@ -381,7 +381,7 @@ def launch_jobs(
                     elif exist == "b":
                         print("Creating backup...")
                         bk_dir = "{}/bak/".format(args["run_path"])
-                        run_dir_bk = "{}/WRF_{}_bak_".format(bk_dir, IDr)
+                        run_dir_bk = "{}/{}_bak_".format(bk_dir, IDr)
                         os.makedirs(bk_dir, exist_ok=True)
                         bk_ind = 0
                         while os.path.isdir(run_dir_bk + str(bk_ind)):
@@ -688,7 +688,7 @@ def launch_jobs(
 
                                 for ID in IDs:
                                     print(ID)
-                                    run_dir_i = "{}/WRF_{}/".format(args["run_path"], ID)
+                                    run_dir_i = "{}/{}/".format(args["run_path"], ID)
                                     print(
                                         os.popen(
                                             "tail -n {} '{}/run_{}.log'".format(

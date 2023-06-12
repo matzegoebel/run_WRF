@@ -434,7 +434,7 @@ def get_runtime_all(
     if runs is None:
         dirs = make_list(dirs)
         dirs = [os.path.expanduser(d) for d in dirs]
-        runs = [glob.glob(d + "/WRF_*{}*".format(id_filter)) for d in dirs]
+        runs = [glob.glob(d + "/*{}*".format(id_filter)) for d in dirs]
         runs = flatten_list(runs)
     else:
         runs = make_list(runs)

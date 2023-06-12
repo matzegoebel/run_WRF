@@ -31,8 +31,8 @@ params = conf.params
 outd = params["outpath"]
 rund = params["run_path"]
 
-test_dir = os.getcwd()
-code_dir = "/".join(test_dir.split("/")[:-1])
+test_dir = Path(__file__).parent
+code_dir = test_dir.parent
 
 batch_dict = {"slurm": "sbatch", "sge": "qsub"}
 
@@ -54,7 +54,7 @@ def test_basic():
 
     # test namelist
     rpath = combs["run_dir"][0] + "_0"
-    ID = "_".join(rpath.split("/")[-1].split("_")[1:])
+    ID = Path(rpath).name
     namelists = []
     namelists.append(get_namelist.namelist_to_dict(rpath + "/namelist.input"))
     namelists.append(
@@ -186,7 +186,7 @@ def test_mpi_and_batch():
         for runlog in runlogs:
             os.remove(runlog)
         shutil.copy("tests/test_data/resources.info", rundir)
-        shutil.copy("tests/test_data/runs/WRF_pytest_eta_0/run_2018-04-10T06:13:14.log", rundir)
+        shutil.copy("tests/test_data/runs/pytest_eta_0/run_2018-04-10T06:13:14.log", rundir)
     # test SGE
     _, output = capture_submit(
         init=False,

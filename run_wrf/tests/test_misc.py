@@ -21,12 +21,12 @@ runs_dir = "./test_data/runs/"
 def test_get_runtime():
     print(os.getcwd())
     timing, counter = tools.get_runtime(
-        runs_dir + "WRF_pytest_eta_0/run_2018-04-10T06:13:14.log", all_times=True
+        runs_dir + "pytest_eta_0/run_2018-04-10T06:13:14.log", all_times=True
     )
     assert counter == 86400
     assert timing.notna().all().all()
     timing_m, _ = tools.get_runtime(
-        runs_dir + "WRF_pytest_eta_0/run_2018-04-10T06:13:14.log",
+        runs_dir + "pytest_eta_0/run_2018-04-10T06:13:14.log",
         all_times=False,
         counter=None,
         timing=None,
@@ -47,12 +47,12 @@ def test_get_runtime():
     assert timing.iloc[:, -7:].notna().all().all()
 
     with Capturing() as output:
-        identical_runs = tools.get_identical_runs(runs_dir + "WRF_pytest_eta_0", "test_data/runs/")
+        identical_runs = tools.get_identical_runs(runs_dir + "pytest_eta_0", "test_data/runs/")
     print(output)
     assert len(output) == 2
     output = [o.split("/")[-1] for o in output]
-    assert "WRF_pytest_2_eta_0 has same namelist parameters" in output
-    assert "WRF_pytest_eta_0 has same namelist parameters" in output
+    assert "pytest_2_eta_0 has same namelist parameters" in output
+    assert "pytest_eta_0 has same namelist parameters" in output
     vmem = tools.get_vmem(identical_runs)
     assert sorted(vmem) == [114.105, 160.0]
 

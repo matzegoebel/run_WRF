@@ -6,7 +6,7 @@ set -e
 
 code_dir=$(pwd)
 build_dir="${build_path}/$wrfv"
-run_dir="${run_path}/WRF_${run_id}"
+run_dir="${run_path}/${run_id}"
 wrf_case_dir="${build_dir}/test/$ideal_case"
 
 echo

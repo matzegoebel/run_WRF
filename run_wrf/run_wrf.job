@@ -43,7 +43,7 @@ trap 'rc=$?' ERR
 
 for (( i=0; i<$njobs; i++ ))
 do
-  cd ${run_path}/WRF_${jobs[i]}
+  cd ${run_path}/${jobs[i]}
   exec 1> $runlog
   exec 2> $runerr
   echo
@@ -101,14 +101,14 @@ do
 
   for (( i=0; i<$njobs; i++ ))
   do
-    cd ${run_path}/WRF_${jobs[i]}
+    cd ${run_path}/${jobs[i]}
     exec 1>> $runlog
     exec 2>> $runerr
     #check if process is finished and append job to finished array if it is not yet in it
     if [[ -z $(ps -o pid= -p ${pid[i]}) ]] && [[ ! " ${finished[@]} " =~ " ${i} " ]]
     then
       sleep 1
-      echo  "Job WRF_${jobs[i]} finished. Elapsed time (s): ${elapsed_t}"
+      echo  "Job ${jobs[i]} finished. Elapsed time (s): ${elapsed_t}"
       finished+=($i)
     fi
   done
@@ -122,7 +122,7 @@ done
 #clean up
 for (( i=0; i<$njobs; i++ ))
 do
-  cd ${run_path}/WRF_${jobs[i]}
+  cd ${run_path}/${jobs[i]}
   exec 1>> $runlog
   exec 2>> $runerr
 
