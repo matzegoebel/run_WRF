@@ -579,6 +579,7 @@ def launch_jobs(
                                 else:
                                     ntasks = conf.pool_size
                                 slot_comm = "--ntasks-per-node={} -N {}".format(ntasks, nodes)
+                                slot_comm += " --ntasks-per-core=1"
 
                         jobs = " ".join(IDs)
                         nslots_str = " ".join([str(ns) for ns in nslots])
