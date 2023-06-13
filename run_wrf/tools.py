@@ -25,6 +25,8 @@ from pathlib import Path as fopen
 import xarray as xr
 import importlib
 from fractions import Fraction
+from functools import partial
+print = partial(print, flush=True)
 
 # arguments to vertical grid creation method in vertical_grid.py
 vert_keys = [
