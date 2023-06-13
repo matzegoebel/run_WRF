@@ -82,7 +82,7 @@ params["min_ny_per_proc"] = 16  # 25, minimum number of grid points per processo
 mpiexec = None
 
 mail_address = ""  # mail address for job scheduler
-clusters = ["leo", "vsc3", "vsc4"]
+clusters = ["leo", "vsc"]
 force_pool = False  # always use pooling
 # reduce pool size to the actual used number of slots
 # do not use if you do not want to share the node with others
@@ -103,28 +103,17 @@ if any([c in host for c in clusters]):
         bigmem_limit = 25e3  # limit (MB) where bigmem_queue is used
         pool_size = 28  # number of cores per pool if job pooling is used
         request_vmem = True
-    elif "vsc3" in host:
+    elif "vsc" in host:
         job_scheduler = "slurm"
-        module_load = (
-            "module load intel/19 intel-mpi/2019 hdf5/1.8.12-MPI pnetcdf/1.10.0 netcdf_C/4.4.1.1 netcdf_Fortran/4.4.4;"
-            "export NETCDF=/opt/sw/x86_64/glibc-2.17/ivybridge-ep/netcdf_Fortran/4.4.4/intel/19/intel-mpi/2019/hdf5/1.8.12-MPI/pnetcdf/1.10.0/netcdf_C/4.4.1.1/"
-        )
-        queue = "vsc3plus_0064"  # partition on vsc3
-        qos = "vsc3plus_0064"
-        # queue = "mem_0064"
-        # qos = "normal_0064"
-        # minimum pool size; should be equal to the number of available CPUs per node
-        pool_size = tools.get_node_size_slurm(queue)
-        force_pool = True  # vsc only offers exclusive nodes
-    elif "vsc4" in host:
-        job_scheduler = "slurm"
-        module_load = "module load intel intel-mpi;" "export NETCDF=$HOME/wrf/lib/LIBRARIES/netcdf"
-        queue = "mem_0096"
-        qos = "mem_0096"
+        module_load = "module load --auto intel netcdf-fortran;"\
+                      "export NETCDF=/gpfs/opt/sw/skylake/spack-0.19.0/opt/spack/linux-almalinux8-skylake_avx512/intel-2021.7.1/netcdf-fortran-4.6.0-6a7vghr45picbcsnhwfvxk6r253odvrh;"\
+                      "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$NETCDF/lib;"\
+                      "export I_MPI_PIN_RESPECT_CPUSET=0"
+        queue = "skylake_0096"
+        qos = "skylake_0096"
         # minimum pool size; should be equal to the number of available CPUs per node
         pool_size = tools.get_node_size_slurm(queue)
         force_pool = True  # vsc only offers exclusive nodes
     params["module_load"] = "module purge;" + module_load
-
 else:
     pool_size = 4
