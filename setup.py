@@ -58,6 +58,7 @@ setup(
         "xarray==2023.5.0",
         "matplotlib==3.7.1",
         "scipy==1.10.1",
+        "netcdf4==1.6.4",
     ],
     extras_require={
         'test': ['pytest'],

@@ -15,6 +15,7 @@ dependencies:
   - ca-certificates=2023.5.7
   - cairo=1.16.0
   - certifi=2023.5.7
+  - cftime=1.6.2
   - charset-normalizer=3.1.0
   - colorama=0.4.6
   - contourpy=1.0.7
@@ -115,6 +116,7 @@ dependencies:
   - nco=5.1.6
   - ncurses=6.4
   - netcdf-fortran=4.6.1
+  - netcdf4=1.6.4
   - nspr=4.35
   - nss=3.89
   - numpy=1.24.3
@@ -184,4 +186,3 @@ dependencies:
   - zipp=3.15.0
   - zlib=1.2.13
   - zstd=1.5.2
-prefix: ~/miniconda3/envs/runwrf

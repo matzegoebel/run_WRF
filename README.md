@@ -53,7 +53,7 @@ concat_output config_file
 
 ## Requirements
 The package is written for a Linux environment. On Windows it will probably not work.
-To install the dependencies (numpy, xarray, pandas, matplotlib, scipy and nco), I recommend using [`conda`](https://docs.conda.io/en/latest/miniconda.html) and the provided conda environment file.
+To install the dependencies (numpy, xarray, pandas, matplotlib, scipy, netcdf4, and nco), I recommend using [`conda`](https://docs.conda.io/en/latest/miniconda.html) and the provided conda environment file.
 ```sh
 # install dependencies
 conda env create --file conda_env.yml

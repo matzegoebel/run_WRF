@@ -78,7 +78,7 @@ def test_basic():
         outfiles_corr = ["fastout_d01_2018-06-20_07:00:00", "wrfout_d01_2018-06-20_07:00:00"]
         assert outfiles_corr == outfiles
         for f, freq in zip(outfiles, ["1", "2"]):
-            ds = xr.open_dataset(os.path.join(outd, run, f), decode_times=False, engine="scipy")
+            ds = xr.open_dataset(os.path.join(outd, run, f), decode_times=False, engine="netcdf4")
             t = tools.extract_times(ds)
             t_corr = pd.date_range(
                 start="2018-06-20T07:00:00", end=end_time.replace("_", "T"), freq=freq + "min"
@@ -146,7 +146,7 @@ def test_basic():
         outfiles_corr = ["fastout_d01_2018-06-20_07:00:00", "wrfout_d01_2018-06-20_07:00:00"]
         assert outfiles_corr == outfiles[1:]
         for f, freq in zip(outfiles_corr, ["1", "2"]):
-            ds = xr.open_dataset(os.path.join(outd, run, f), decode_times=False, engine="scipy")
+            ds = xr.open_dataset(os.path.join(outd, run, f), decode_times=False, engine="netcdf4")
             t = tools.extract_times(ds)
             t_corr = pd.date_range(
                 start="2018-06-20T07:00:00", end="2018-06-20T07:08:00", freq=freq + "min"
@@ -298,7 +298,7 @@ def test_vgrid():
     combs = launch_jobs(init=True, exist="o", config_file="test.config_test_vgrid")
     rpath = combs["run_dir"][0] + "_0"
 
-    wrfinput = xr.open_dataset(rpath + "/wrfinput_d01", engine="scipy").isel(Time=0)
+    wrfinput = xr.open_dataset(rpath + "/wrfinput_d01", engine="netcdf4").isel(Time=0)
     z = (wrfinput["PHB"] + wrfinput["PH"]) / 9.81
     z = z.mean(["west_east", "south_north"])
     dz = z.diff("bottom_top_stag")
