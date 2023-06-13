@@ -1296,7 +1296,7 @@ def concat_output(config_file=None):
     except ModuleNotFoundError:
         conf = importlib.import_module(config_file)
 
-    if "param_combs" in dir(conf):
+    if ("param_combs" in dir(conf)) and (conf.param_combs is not None):
         param_combs = conf.param_combs
     else:
         param_combs = grid_combinations(
